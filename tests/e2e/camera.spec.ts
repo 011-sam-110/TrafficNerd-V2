@@ -22,3 +22,13 @@ test("the proxy rejects a request with no id", async ({ request }) => {
   const res = await request.get("/api/proxy");
   expect(res.status()).toBe(400);
 });
+
+test("camera list carries country/live; detail exposes mediaType but never the raw streamUrl", async ({ request }) => {
+  const { cameras } = await (await request.get("/api/cameras")).json();
+  expect(cameras[0].country).toBeTruthy(); // list now carries country
+  expect(typeof cameras[0].live).toBe("boolean"); // …and the live-stream flag
+  const res = await request.get(`/api/camera/${encodeURIComponent(cameras[0].id)}`);
+  const { camera } = await res.json();
+  expect(camera.mediaType).toBeTruthy();
+  expect(camera.streamUrl).toBeUndefined();
+});

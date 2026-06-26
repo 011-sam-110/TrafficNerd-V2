@@ -16,3 +16,17 @@ export function isHlsAllowed(url: URL): { ok: boolean; referer?: string } {
   }
   return { ok: false };
 }
+
+/**
+ * Whether a camera's stream is a LIVE feed our proxy can actually play. Used to
+ * decide the video-vs-still icon and player. A camera whose only "video" is an
+ * MP4 clip on a non-allowlisted host (e.g. TfL JamCams) returns false → still.
+ */
+export function isLiveStreamUrl(streamUrl?: string): boolean {
+  if (!streamUrl) return false;
+  try {
+    return isHlsAllowed(new URL(streamUrl)).ok;
+  } catch {
+    return false;
+  }
+}

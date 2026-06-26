@@ -1,8 +1,7 @@
 import { expect, test } from "vitest";
-import { classifyCameraFeed } from "@/lib/cameras/classify";
+import { cameraFeed } from "@/lib/cameras/classify";
 
-test("jpeg snapshots are 'still', streams are 'video'", () => {
-  expect(classifyCameraFeed("jpeg")).toBe("still");
-  expect(classifyCameraFeed("video")).toBe("video");
-  expect(classifyCameraFeed("both")).toBe("video");
+test("a live (HLS-proxyable) stream is 'video', otherwise 'still'", () => {
+  expect(cameraFeed(true)).toBe("video");
+  expect(cameraFeed(false)).toBe("still");
 });

@@ -21,7 +21,7 @@ import { usePlanes } from "@/lib/planes/usePlanes";
 import { useLayers } from "@/lib/layers";
 import LayerControl from "@/components/LayerControl";
 import { satelliteSprite, planeIconMesh } from "@/lib/icons/sprite";
-import { classifyCameraFeed } from "@/lib/cameras/classify";
+import { cameraFeed } from "@/lib/cameras/classify";
 import { CAMERA_FEED_META, cameraRegionColor } from "@/lib/icons/svg";
 
 type Pt = {
@@ -32,7 +32,7 @@ type Pt = {
   available: boolean;
   source: string;
   country: string;
-  mediaType: "jpeg" | "video" | "both";
+  live: boolean;
 };
 
 // London — where P0's cameras are. Fly here on load so the points are front and
@@ -86,7 +86,7 @@ export default function GlobeView() {
   const cameraObjects = useMemo<WorldObject[]>(
     () =>
       pts.map((p) => {
-        const feed = classifyCameraFeed(p.mediaType);
+        const feed = cameraFeed(p.live);
         const meta = CAMERA_FEED_META[feed];
         const color = cameraRegionColor(p.source);
         return {
@@ -102,7 +102,7 @@ export default function GlobeView() {
             available: p.available,
             source: p.source,
             country: p.country,
-            mediaType: p.mediaType,
+            live: p.live,
             feed,
             color,
             icon: meta.key,
