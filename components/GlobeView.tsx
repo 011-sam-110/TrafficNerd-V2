@@ -18,6 +18,8 @@ import { altKmToShell, planeKmToShell } from "@/lib/altitude";
 import { MapView } from "@/components/MapView";
 import { useSatellites } from "@/lib/satellites/useSatellites";
 import { usePlanes } from "@/lib/planes/usePlanes";
+import { useLayers } from "@/lib/layers";
+import LayerControl from "@/components/LayerControl";
 
 type Pt = { id: string; name: string; lat: number; lon: number; available: boolean };
 
@@ -35,6 +37,9 @@ const CAMERA_ON = "#22d3ee";
 const CAMERA_OFF = "#64748b";
 const SAT_COLOR = "#e2e8f0";
 const PLANE_COLOR = "#fbbf24";
+
+// Stable empty-array reference for hidden layers (avoids needless Globe re-diffs).
+const EMPTY: WorldObject[] = [];
 
 // --- 3D object builders (one fresh Object3D per datum) -----------------------
 
@@ -116,9 +121,16 @@ export default function GlobeView() {
   // WorldObject[]; the altitude-shell + oriented-object rendering is below.
   const satellites = useSatellites();
   const planes = usePlanes();
+  const layers = useLayers();
+
+  // Apply the legend's show/hide toggles.
+  const visibleCameras = layers.cameras ? cameraObjects : EMPTY;
   const objects = useMemo<WorldObject[]>(
-    () => [...satellites, ...planes],
-    [satellites, planes],
+    () => [
+      ...(layers.satellites ? satellites : []),
+      ...(layers.planes ? planes : []),
+    ],
+    [layers.satellites, layers.planes, satellites, planes],
   );
 
   const handleReady = () => {
@@ -166,9 +178,13 @@ export default function GlobeView() {
   return (
     <div className="world-stage">
       <div className="stat-line" data-testid="stat-line">
-        {pts.length.toLocaleString()} cameras · 1 source ·{" "}
+        {pts.length.toLocaleString()} cameras · 3 sources ·{" "}
         {mapMode ? "satellite map" : "London live"}
       </div>
+
+      <LayerControl
+        counts={{ cameras: pts.length, satellites: satellites.length, planes: planes.length }}
+      />
 
       <Globe
         ref={globeRef}
@@ -183,7 +199,7 @@ export default function GlobeView() {
         atmosphereColor="#3a86ff"
         atmosphereAltitude={0.18}
         // --- Cameras: precise markers sitting ON the surface ---
-        pointsData={cameraObjects}
+        pointsData={visibleCameras}
         pointLat="lat"
         pointLng="lon"
         pointColor={(o) =>
@@ -216,7 +232,7 @@ export default function GlobeView() {
       />
 
       <div className={`map-layer${mapMode ? " is-active" : ""}`} aria-hidden={!mapMode}>
-        <MapView active={mapMode} center={focus} cameras={cameraObjects} />
+        <MapView active={mapMode} center={focus} cameras={visibleCameras} />
       </div>
 
       {mapMode && (
