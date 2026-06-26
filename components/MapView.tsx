@@ -11,12 +11,58 @@ import { useEffect, useRef } from "react";
 import maplibregl, { type StyleSpecification, type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { WorldObject } from "@/lib/world";
+import type { PlaneTrail } from "@/lib/planes/usePlanes";
 import { overlay } from "@/lib/overlay";
-import { ICON_SVG, cameraRegionColor, CAMERA_DEFAULT_REGION } from "@/lib/icons/svg";
+import { ICON_SVG, cameraRegionColor, CAMERA_DEFAULT_REGION, PLANE_META } from "@/lib/icons/svg";
 
-const KNOWN_REGIONS = ["tfl", "caltrans", "scdot"];
+const KNOWN_REGIONS = ["tfl", "caltrans", "scdot", "digitraffic"];
 function regionKeyOf(source: string | undefined): string {
   return source && KNOWN_REGIONS.includes(source) ? source : "default";
+}
+
+const PLANE_SRC = "planes";
+const PLANE_LAYER = "plane-markers";
+const TRAIL_SRC = "trails";
+const TRAIL_LAYER = "trail-lines";
+
+function toPlaneFC(planes: WorldObject[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: planes.map((p) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+      properties: {
+        id: p.id,
+        category: (p.meta?.category as string) ?? "airliner",
+        heading: p.heading ?? 0,
+        color: p.color ?? "#fbbf24",
+      },
+    })),
+  };
+}
+
+function toTrailFC(trails: PlaneTrail[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: trails
+      .filter((t) => t.points.length >= 2)
+      .map((t) => ({
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: t.points.map((p) => [p[1], p[0]]) },
+        properties: { id: t.id, color: t.color },
+      })),
+  };
+}
+
+// Register one heading-up plane icon per type (coloured by PLANE_META).
+async function loadPlaneIcons(map: maplibregl.Map): Promise<void> {
+  await Promise.all(
+    Object.values(PLANE_META).map(async (meta) => {
+      if (map.hasImage(meta.key)) return;
+      const img = await rasterizeIcon(ICON_SVG[meta.key].replaceAll("currentColor", meta.color));
+      if (!map.hasImage(meta.key)) map.addImage(meta.key, img, { pixelRatio: 2 });
+    }),
+  );
 }
 
 const ESRI_STYLE: StyleSpecification = {
@@ -93,6 +139,7 @@ async function loadCameraIcons(map: maplibregl.Map): Promise<void> {
     ["tfl", cameraRegionColor("tfl")],
     ["caltrans", cameraRegionColor("caltrans")],
     ["scdot", cameraRegionColor("scdot")],
+    ["digitraffic", cameraRegionColor("digitraffic")],
     ["default", CAMERA_DEFAULT_REGION.color],
   ];
   await Promise.all(
@@ -111,16 +158,24 @@ export function MapView({
   active,
   center,
   cameras,
+  planes = [],
+  trails = [],
 }: {
   active: boolean;
   center: { lat: number; lng: number };
   cameras: WorldObject[];
+  planes?: WorldObject[];
+  trails?: PlaneTrail[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
   const camerasRef = useRef(cameras);
   camerasRef.current = cameras;
+  const planesRef = useRef(planes);
+  planesRef.current = planes;
+  const trailsRef = useRef(trails);
+  trailsRef.current = trails;
 
   // Lazy init on first activation.
   useEffect(() => {
@@ -137,6 +192,7 @@ export function MapView({
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-left");
 
     map.on("load", async () => {
+      (window as unknown as { __map?: maplibregl.Map }).__map = map; // debug handle
       await loadCameraIcons(map);
       readyRef.current = true;
       map.addSource(SRC, { type: "geojson", data: toFeatureCollection(camerasRef.current) });
@@ -177,6 +233,45 @@ export function MapView({
       map.on("mouseleave", LAYER, () => {
         map.getCanvas().style.cursor = "";
       });
+
+      // --- Planes + breadcrumb trails (FlightRadar-style on the map) ---
+      await loadPlaneIcons(map);
+      // Trails go UNDER the plane markers.
+      map.addSource(TRAIL_SRC, { type: "geojson", data: toTrailFC(trailsRef.current) });
+      map.addLayer({
+        id: TRAIL_LAYER,
+        type: "line",
+        source: TRAIL_SRC,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": ["get", "color"], "line-width": 2, "line-opacity": 0.55 },
+      });
+      map.addSource(PLANE_SRC, { type: "geojson", data: toPlaneFC(planesRef.current) });
+      map.addLayer({
+        id: PLANE_LAYER,
+        type: "symbol",
+        source: PLANE_SRC,
+        layout: {
+          "icon-image": ["concat", "plane-", ["get", "category"]],
+          "icon-size": ["interpolate", ["linear"], ["zoom"], 7, 0.45, 11, 0.7, 15, 1],
+          "icon-rotate": ["get", "heading"],
+          "icon-rotation-alignment": "map",
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
+      });
+      map.on("click", PLANE_LAYER, (e) => {
+        const f = e.features?.[0];
+        if (!f) return;
+        const id = (f.properties as { id?: string })?.id;
+        const plane = planesRef.current.find((p) => p.id === id);
+        if (plane) overlay.open(plane);
+      });
+      map.on("mouseenter", PLANE_LAYER, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", PLANE_LAYER, () => {
+        map.getCanvas().style.cursor = "";
+      });
     });
     // center is intentionally read once at init; the effect below re-centres.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -196,6 +291,14 @@ export function MapView({
     if (!map || !readyRef.current) return;
     (map.getSource(SRC) as GeoJSONSource | undefined)?.setData(toFeatureCollection(cameras));
   }, [cameras]);
+
+  // Keep planes + trails in sync as they move (every poll).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    (map.getSource(PLANE_SRC) as GeoJSONSource | undefined)?.setData(toPlaneFC(planes));
+    (map.getSource(TRAIL_SRC) as GeoJSONSource | undefined)?.setData(toTrailFC(trails));
+  }, [planes, trails]);
 
   // Keep the canvas sized to the window.
   useEffect(() => {

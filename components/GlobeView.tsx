@@ -17,7 +17,7 @@ import { overlay } from "@/lib/overlay";
 import { altKmToShell, planeKmToShell } from "@/lib/altitude";
 import { MapView } from "@/components/MapView";
 import { useSatellites } from "@/lib/satellites/useSatellites";
-import { usePlanes } from "@/lib/planes/usePlanes";
+import { usePlanes, type PlaneTrail } from "@/lib/planes/usePlanes";
 import { useLayers } from "@/lib/layers";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import LayerControl from "@/components/LayerControl";
@@ -51,8 +51,18 @@ const CAMERA_OFF = "#64748b";
 const SAT_COLOR = "#cbd5e1";
 const PLANE_COLOR = "#fbbf24";
 
-// Stable empty-array reference for hidden layers (avoids needless Globe re-diffs).
+// Stable empty-array references for hidden layers (avoids needless Globe re-diffs).
 const EMPTY: WorldObject[] = [];
+const EMPTY_TRAILS: PlaneTrail[] = [];
+
+// "#rrggbb" + alpha → "rgba(...)" for the trail gradient (globe.gl honours alpha).
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+}
 
 export default function GlobeView() {
   const [pts, setPts] = useState<Pt[]>([]);
@@ -118,7 +128,7 @@ export default function GlobeView() {
   // revolve smoothly) + planes (OpenSky, polled ~15s). Both already emit
   // WorldObject[]; the altitude-shell + oriented-object rendering is below.
   const satellites = useSatellites();
-  const planes = usePlanes();
+  const planesLayer = usePlanes();
   const layers = useLayers();
   const camFilter = useCameraFilter();
 
@@ -138,10 +148,13 @@ export default function GlobeView() {
   const objects = useMemo<WorldObject[]>(
     () => [
       ...(layers.satellites ? satellites : []),
-      ...(layers.planes ? planes : []),
+      ...(layers.planes ? planesLayer.objects : []),
     ],
-    [layers.satellites, layers.planes, satellites, planes],
+    [layers.satellites, layers.planes, satellites, planesLayer.objects],
   );
+
+  // Plane breadcrumb trails (hidden with the planes layer / EMPTY ref to skip diffs).
+  const visibleTrails = layers.planes ? planesLayer.trails : EMPTY_TRAILS;
 
   const handleReady = () => {
     const g = globeRef.current;
@@ -216,7 +229,7 @@ export default function GlobeView() {
       </div>
 
       <LayerControl
-        counts={{ cameras: pts.length, satellites: satellites.length, planes: planes.length }}
+        counts={{ cameras: pts.length, satellites: satellites.length, planes: planesLayer.objects.length }}
       />
 
       <RegionJump counts={regionCounts} onJump={flyToRegion} />
@@ -266,10 +279,32 @@ export default function GlobeView() {
         objectThreeObject={objectThreeObject}
         objectLabel={(o) => (o as WorldObject).label}
         onObjectClick={(o) => overlay.open(o as WorldObject)}
+        // --- Plane breadcrumb trails: recent track + projected heading ahead ---
+        pathsData={visibleTrails}
+        pathPoints="points"
+        pathPointLat={(p) => (p as number[])[0]}
+        pathPointLng={(p) => (p as number[])[1]}
+        pathPointAlt={(p) => planeKmToShell((p as number[])[2])}
+        pathColor={(o: object) => {
+          const t = o as PlaneTrail;
+          const n = t.points.length;
+          // Fade from near-transparent (oldest breadcrumb) to solid (now + ahead).
+          return t.points.map((_, i) =>
+            hexToRgba(t.color, n <= 1 ? 0.95 : 0.15 + 0.8 * (i / (n - 1))),
+          );
+        }}
+        pathStroke={2.5}
+        pathTransitionDuration={0}
       />
 
       <div className={`map-layer${mapMode ? " is-active" : ""}`} aria-hidden={!mapMode}>
-        <MapView active={mapMode} center={focus} cameras={visibleCameras} />
+        <MapView
+          active={mapMode}
+          center={focus}
+          cameras={visibleCameras}
+          planes={layers.planes ? planesLayer.objects : EMPTY}
+          trails={visibleTrails}
+        />
       </div>
 
       {mapMode && (

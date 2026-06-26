@@ -25,3 +25,14 @@ test("low and modest speed is a light aircraft", () => {
 test("null speed is treated as zero (no crash)", () => {
   expect(classifyPlane({ altKm: 0.5, velocityMs: null, onGround: false })).toBe("helicopter");
 });
+
+test("ADS-B category wins over the profile heuristic", () => {
+  // A7 = rotorcraft even though the profile (high+fast) looks like an airliner.
+  expect(classifyPlane({ altKm: 11, velocityMs: 230, onGround: false, category: "A7" })).toBe("helicopter");
+  // A5 = heavy → airliner.
+  expect(classifyPlane({ altKm: 2, velocityMs: 90, onGround: false, category: "A5" })).toBe("airliner");
+  // On-ground still overrides any category.
+  expect(classifyPlane({ altKm: 0, velocityMs: 5, onGround: true, category: "A5" })).toBe("ground");
+  // Unknown category falls back to the profile.
+  expect(classifyPlane({ altKm: 11, velocityMs: 230, onGround: false, category: "A0" })).toBe("airliner");
+});

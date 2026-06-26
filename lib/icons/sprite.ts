@@ -122,6 +122,6 @@ export function satelliteSprite(icon: IconKey, color: string): THREE.Object3D {
 /** Flat heading-orientable icon for a plane (lies in the tangent plane). */
 export function planeIconMesh(icon: IconKey, color: string): THREE.Mesh {
   const mesh = new THREE.Mesh(planeGeom, meshMaterial(icon, color));
-  mesh.scale.set(5, 5, 1);
+  mesh.scale.set(4, 4, 1);
   return mesh;
 }
