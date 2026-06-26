@@ -143,6 +143,7 @@ export const CAMERA_REGIONS: RegionMeta[] = [
   { source: "tfl", label: "London (TfL)", color: "#22d3ee", view: { lat: 51.5, lng: -0.12, altitude: 0.5 } },
   { source: "caltrans", label: "California", color: "#4ade80", view: { lat: 36.8, lng: -119.7, altitude: 0.95 } },
   { source: "scdot", label: "South Carolina", color: "#2dd4bf", view: { lat: 33.9, lng: -80.9, altitude: 0.6 } },
+  { source: "digitraffic", label: "Finland", color: "#38bdf8", view: { lat: 64.5, lng: 26, altitude: 0.9 } },
 ];
 
 export const CAMERA_DEFAULT_REGION: RegionMeta = {

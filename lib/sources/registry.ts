@@ -2,10 +2,11 @@ import type { Camera } from "@/lib/types";
 import { fetchRegistry as fetchTfl } from "@/lib/sources/tfl";
 import { fetchRegistry as fetchCaltrans } from "@/lib/sources/caltrans";
 import { fetchRegistry as fetchScdot } from "@/lib/sources/scdot";
+import { fetchRegistry as fetchDigitraffic } from "@/lib/sources/digitraffic";
 import { findById, nearest } from "@/lib/sources/select";
 
 const TTL_MS = 5 * 60 * 1000;
-const SOURCES: Array<() => Promise<Camera[]>> = [fetchTfl, fetchCaltrans, fetchScdot];
+const SOURCES: Array<() => Promise<Camera[]>> = [fetchTfl, fetchCaltrans, fetchScdot, fetchDigitraffic];
 let cache: { cameras: Camera[]; at: number } | null = null;
 
 export function mergeResults(

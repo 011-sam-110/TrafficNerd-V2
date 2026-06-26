@@ -5,6 +5,7 @@ const RULES: { host: string; prefix: string; suffix?: string }[] = [
   { host: "s3-eu-west-1.amazonaws.com", prefix: "/jamcams.tfl.gov.uk/" },
   { host: "cwwp2.dot.ca.gov", prefix: "/data/" },
   { host: "scdotsnap.us-east-1.skyvdn.com", prefix: "/", suffix: ".png" },
+  { host: "weathercam.digitraffic.fi", prefix: "/", suffix: ".jpg" },
 ];
 
 export function isAllowed(url: URL): boolean {
