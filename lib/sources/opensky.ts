@@ -5,6 +5,8 @@
  */
 
 import type { WorldObject } from "@/lib/world";
+import { classifyPlane } from "@/lib/planes/classify";
+import { PLANE_META } from "@/lib/icons/svg";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -131,6 +133,12 @@ export function parseStates(states: unknown[][]): Plane[] {
  * globe layer can render it uniformly alongside cameras and satellites.
  */
 export function planeToWorldObject(p: Plane): WorldObject {
+  const category = classifyPlane({
+    altKm: p.altKm,
+    velocityMs: p.velocityMs,
+    onGround: p.onGround,
+  });
+  const meta = PLANE_META[category];
   return {
     kind: "plane",
     id: `plane:${p.icao24}`,
@@ -139,7 +147,9 @@ export function planeToWorldObject(p: Plane): WorldObject {
     altKm: p.altKm,
     heading: p.headingDeg,
     label: p.callsign,
-    color: "#f59e0b",
+    color: meta.color,
+    icon: meta.key,
+    typeLabel: meta.label,
     meta: {
       callsign: p.callsign,
       country: p.country,
@@ -147,6 +157,8 @@ export function planeToWorldObject(p: Plane): WorldObject {
       altKm: p.altKm,
       verticalRateMs: p.verticalRateMs,
       onGround: p.onGround,
+      category,
+      typeLabel: meta.label,
     },
   };
 }

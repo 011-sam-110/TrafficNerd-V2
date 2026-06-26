@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { WorldObject } from "@/lib/world";
 import { CameraImage } from "@/components/CameraImage";
+import { CameraVideo } from "@/components/CameraVideo";
 
 type CamInfo = {
   id: string;
@@ -20,6 +21,7 @@ type CamInfo = {
   attribution: string;
   license: string;
   refreshSeconds: number;
+  live: boolean;
 };
 
 export function CameraDetail({ object }: { object: WorldObject }) {
@@ -57,13 +59,23 @@ export function CameraDetail({ object }: { object: WorldObject }) {
       </p>
 
       {cam ? (
-        <CameraImage
-          id={cam.id}
-          alt={cam.name}
-          attribution={cam.attribution}
-          license={cam.license}
-          refreshSeconds={cam.refreshSeconds}
-        />
+        cam.live ? (
+          <CameraVideo
+            id={cam.id}
+            alt={cam.name}
+            attribution={cam.attribution}
+            license={cam.license}
+            refreshSeconds={cam.refreshSeconds}
+          />
+        ) : (
+          <CameraImage
+            id={cam.id}
+            alt={cam.name}
+            attribution={cam.attribution}
+            license={cam.license}
+            refreshSeconds={cam.refreshSeconds}
+          />
+        )
       ) : err ? (
         <div className="cam-loading">Could not load this camera.</div>
       ) : (

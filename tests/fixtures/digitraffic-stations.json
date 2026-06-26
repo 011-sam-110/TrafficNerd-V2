@@ -1,0 +1,17 @@
+{ "type": "FeatureCollection", "features": [
+  { "type": "Feature", "id": "C01503",
+    "geometry": { "type": "Point", "coordinates": [23.99616, 60.05374, 0] },
+    "properties": { "id": "C01503", "name": "kt51_Inkoo", "collectionStatus": "GATHERING",
+      "presets": [ { "id": "C0150301", "inCollection": false }, { "id": "C0150302", "inCollection": true } ] } },
+  { "type": "Feature", "id": "C99999",
+    "geometry": { "type": "Point", "coordinates": [25.0, 65.0, 0] },
+    "properties": { "id": "C99999", "name": "vt4_Oulu", "collectionStatus": "REMOVED_TEMPORARILY",
+      "presets": [ { "id": "C9999901", "inCollection": true } ] } },
+  { "type": "Feature", "id": "C00000",
+    "geometry": null,
+    "properties": { "id": "C00000", "name": "no-geometry", "collectionStatus": "GATHERING",
+      "presets": [ { "id": "C0000001", "inCollection": true } ] } },
+  { "type": "Feature", "id": "C11111",
+    "geometry": { "type": "Point", "coordinates": [24.0, 61.0, 0] },
+    "properties": { "id": "C11111", "name": "no-presets", "collectionStatus": "GATHERING", "presets": [] } }
+] }

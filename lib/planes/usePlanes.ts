@@ -2,28 +2,38 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { WorldObject } from "@/lib/world";
-import { planeToWorldObject } from "@/lib/sources/opensky";
-import type { Plane } from "@/lib/sources/opensky";
+import { buildTrailPath, pushHistory, type TrailPoint } from "@/lib/planes/trail";
 
-const POLL_INTERVAL_MS = 15_000;
+const POLL_INTERVAL_MS = 12_000;
+
+/** A plane's breadcrumb path: recent positions + a projected point ahead. */
+export interface PlaneTrail {
+  id: string;
+  color: string;
+  /** [lat, lon, altKm] tuples. */
+  points: [number, number, number][];
+}
+
+export interface PlanesLayer {
+  objects: WorldObject[];
+  trails: PlaneTrail[];
+}
 
 interface PlanesResponse {
   count: number;
-  planes: Plane[];
+  planes: WorldObject[];
 }
 
 /**
- * React hook that polls /api/planes every 15 s and returns live aircraft as
- * {@link WorldObject} arrays ready for the globe layer.
- *
- * - Fetches once immediately on mount.
- * - On fetch/parse error it silently keeps the last good dataset.
- * - Clears the polling interval on unmount.
+ * Polls /api/planes (adsb.lol, already classified server-side) and returns the
+ * live aircraft plus a breadcrumb TRAIL per plane. Position history is kept
+ * client-side across polls (the server only knows "now"), capped per plane and
+ * pruned when a plane leaves coverage. Keeps the last good data on fetch error.
  */
-export function usePlanes(): WorldObject[] {
-  const [objects, setObjects] = useState<WorldObject[]>([]);
-  // Keep a ref so the error-path closure always sees the latest good data
-  const lastGoodRef = useRef<WorldObject[]>([]);
+export function usePlanes(): PlanesLayer {
+  const [layer, setLayer] = useState<PlanesLayer>({ objects: [], trails: [] });
+  const historyRef = useRef<Map<string, TrailPoint[]>>(new Map());
+  const lastGoodRef = useRef<PlanesLayer>({ objects: [], trails: [] });
 
   useEffect(() => {
     let cancelled = false;
@@ -33,16 +43,37 @@ export function usePlanes(): WorldObject[] {
         const res = await fetch("/api/planes");
         if (!res.ok) return; // keep last good
         const data = (await res.json()) as PlanesResponse;
-        const mapped = data.planes.map(planeToWorldObject);
-        if (!cancelled) {
-          lastGoodRef.current = mapped;
-          setObjects(mapped);
+        if (cancelled) return;
+
+        const prev = historyRef.current;
+        const next = new Map<string, TrailPoint[]>();
+        const trails: PlaneTrail[] = [];
+
+        for (const o of data.planes) {
+          const cur: TrailPoint = { lat: o.lat, lon: o.lon, altKm: o.altKm ?? 0 };
+          const hist = pushHistory(prev.get(o.id) ?? [], cur);
+          next.set(o.id, hist);
+          // Trail = history (minus the current, which buildTrailPath re-adds) +
+          // current + projected-ahead.
+          const path = buildTrailPath(
+            hist.slice(0, -1),
+            cur,
+            o.heading ?? 0,
+            (o.meta?.velocityMs as number | null) ?? null,
+          );
+          trails.push({
+            id: o.id,
+            color: o.color ?? "#fbbf24",
+            points: path.map((p) => [p.lat, p.lon, p.altKm] as [number, number, number]),
+          });
         }
+
+        historyRef.current = next; // prunes planes no longer present
+        const result = { objects: data.planes, trails };
+        lastGoodRef.current = result;
+        setLayer(result);
       } catch {
-        // Network error or JSON parse failure — keep last good data
-        if (!cancelled) {
-          setObjects(lastGoodRef.current);
-        }
+        if (!cancelled) setLayer(lastGoodRef.current);
       }
     }
 
@@ -54,5 +85,5 @@ export function usePlanes(): WorldObject[] {
     };
   }, []);
 
-  return objects;
+  return layer;
 }

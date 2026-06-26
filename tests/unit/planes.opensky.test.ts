@@ -218,8 +218,11 @@ describe("planeToWorldObject", () => {
     expect(planeToWorldObject(onGround).label).toBe("4ca8ef");
   });
 
-  test("color is amber #f59e0b", () => {
-    expect(planeToWorldObject(cruiser).color).toBe("#f59e0b");
+  test("type is inferred from the flight profile (high+fast cruiser → airliner)", () => {
+    const obj = planeToWorldObject(cruiser);
+    expect(obj.color).toBe("#fbbf24"); // PLANE_META.airliner colour
+    expect(obj.icon).toBe("plane-airliner");
+    expect(obj.typeLabel).toBe("Airliner");
   });
 
   test("meta carries all required keys", () => {

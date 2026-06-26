@@ -5,6 +5,7 @@
 // image export. Renders body content only — it sits inside <FeedOverlay>'s panel.
 
 import type { WorldObject } from "@/lib/world";
+import { TypeIcon } from "@/lib/icons/Icon";
 
 /** Esri World Imagery single-image export for a box around (lat, lon). */
 function esriImagery(lat: number, lon: number, halfDeg = 0.4): string {
@@ -30,7 +31,7 @@ const styles: Record<string, React.CSSProperties> = {
   figure: { margin: 0, position: "relative", borderRadius: 10, overflow: "hidden", background: "#0b1220", aspectRatio: "1 / 1" },
   img: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
   cap: { position: "absolute", left: 8, bottom: 8, fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "rgba(5,7,13,0.7)", color: "#cbd5e1", letterSpacing: "0.02em" },
-  badge: { display: "inline-block", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.4)", borderRadius: 999, padding: "2px 10px" },
+  badge: { display: "inline-flex", alignItems: "center", gap: 7, alignSelf: "flex-start", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.4)", borderRadius: 999, padding: "3px 12px 3px 9px" },
   stats: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px 16px", margin: 0 },
   row: { display: "flex", flexDirection: "column", gap: 2 },
   dt: { fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b" },
@@ -45,7 +46,10 @@ export default function SatelliteDetail({ object }: { object: WorldObject }) {
 
   return (
     <div style={styles.wrap}>
-      <span style={styles.badge}>Satellite · live</span>
+      <span style={styles.badge}>
+        {object.icon && <TypeIcon icon={object.icon} color={object.color ?? "#a78bfa"} size={15} />}
+        {object.typeLabel ?? "Satellite"} · live
+      </span>
       <figure style={styles.figure}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img style={styles.img} src={img} alt={`Satellite imagery of the ground beneath ${object.label}`} loading="lazy" />
