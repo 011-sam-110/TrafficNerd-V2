@@ -132,14 +132,17 @@ export interface RegionMeta {
   source: string;
   label: string;
   color: string;
+  /** Globe camera position to fly to when jumping to this region. */
+  view?: { lat: number; lng: number; altitude: number };
 }
 
 // Region tint, keyed by source id. Cyan/green/teal family — distinct from the
-// satellite (violet) and plane (amber) layers.
+// satellite (violet) and plane (amber) layers. `view` powers the region
+// quick-jump (altitude tuned so the whole region's cluster is in frame).
 export const CAMERA_REGIONS: RegionMeta[] = [
-  { source: "tfl", label: "London (TfL)", color: "#22d3ee" },
-  { source: "caltrans", label: "California", color: "#4ade80" },
-  { source: "scdot", label: "South Carolina", color: "#2dd4bf" },
+  { source: "tfl", label: "London (TfL)", color: "#22d3ee", view: { lat: 51.5, lng: -0.12, altitude: 0.5 } },
+  { source: "caltrans", label: "California", color: "#4ade80", view: { lat: 36.8, lng: -119.7, altitude: 0.95 } },
+  { source: "scdot", label: "South Carolina", color: "#2dd4bf", view: { lat: 33.9, lng: -80.9, altitude: 0.6 } },
 ];
 
 export const CAMERA_DEFAULT_REGION: RegionMeta = {

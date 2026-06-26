@@ -20,6 +20,7 @@ import { useSatellites } from "@/lib/satellites/useSatellites";
 import { usePlanes } from "@/lib/planes/usePlanes";
 import { useLayers } from "@/lib/layers";
 import LayerControl from "@/components/LayerControl";
+import RegionJump, { type RegionView } from "@/components/RegionJump";
 import { satelliteSprite, planeIconMesh } from "@/lib/icons/sprite";
 import { cameraFeed } from "@/lib/cameras/classify";
 import { CAMERA_FEED_META, cameraRegionColor } from "@/lib/icons/svg";
@@ -154,6 +155,25 @@ export default function GlobeView() {
     [mapMode],
   );
 
+  // Per-region camera counts for the region quick-jump (grouped by source id).
+  const regionCounts = useMemo<Record<string, number>>(() => {
+    const counts: Record<string, number> = {};
+    for (const p of pts) counts[p.source] = (counts[p.source] ?? 0) + 1;
+    return counts;
+  }, [pts]);
+
+  const flyToRegion = useCallback((view: RegionView) => {
+    const g = globeRef.current;
+    if (!g) return;
+    // Leave map mode if we're in it, and ease the globe to the region overview.
+    suppressUntil.current = Date.now() + 1600;
+    setMapMode(false);
+    setFocus({ lat: view.lat, lng: view.lng });
+    g.pointOfView({ lat: view.lat, lng: view.lng, altitude: view.altitude }, 1200);
+    const c = g.controls();
+    if (c) c.autoRotate = false;
+  }, []);
+
   const returnToGlobe = useCallback(() => {
     suppressUntil.current = Date.now() + 1200;
     setMapMode(false);
@@ -183,6 +203,8 @@ export default function GlobeView() {
       <LayerControl
         counts={{ cameras: pts.length, satellites: satellites.length, planes: planes.length }}
       />
+
+      <RegionJump counts={regionCounts} onJump={flyToRegion} />
 
       <Globe
         ref={globeRef}
