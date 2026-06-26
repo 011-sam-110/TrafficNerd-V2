@@ -1,0 +1,16 @@
+[
+  { "cctv": { "index": "1",
+    "location": { "locationName": "SR-163 : Friars NEB", "nearbyPlace": "San Diego", "longitude": "-117.160577", "latitude": "32.772126", "direction": "South", "route": "SR-163" },
+    "inService": "true",
+    "imageData": { "streamingVideoURL": "https://wzmedia.dot.ca.gov/D11/CAM1.stream/playlist.m3u8",
+      "static": { "currentImageURL": "https://cwwp2.dot.ca.gov/data/d11/cctv/image/cam1/cam1.jpg", "currentImageUpdateFrequency": "2" } } } },
+  { "cctv": { "index": "2",
+    "location": { "locationName": "I-8 at Hotel Circle", "nearbyPlace": "San Diego", "longitude": "-117.18", "latitude": "32.76", "direction": "East", "route": "I-8" },
+    "inService": "false",
+    "imageData": { "streamingVideoURL": "",
+      "static": { "currentImageURL": "https://cwwp2.dot.ca.gov/data/d11/cctv/image/cam2/cam2.jpg", "currentImageUpdateFrequency": "2" } } } },
+  { "cctv": { "index": "3",
+    "location": { "nearbyPlace": "El Cajon", "longitude": "-116.9", "latitude": "32.79" },
+    "inService": "true",
+    "imageData": { "static": {} } } }
+]

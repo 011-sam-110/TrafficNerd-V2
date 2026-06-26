@@ -1,0 +1,12 @@
+{ "type": "FeatureCollection", "features": [
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [-79.062775, 33.845627] },
+    "properties": { "id": "uuid-1", "name": "50001", "description": "US 501 N @ 16th Ave", "route": "US 501", "direction": "NB",
+      "https_url": "https://s18.us-east-1.skyvdn.com:443/rtplive/50001/playlist.m3u8",
+      "ios_url": "https://s18.us-east-1.skyvdn.com:443/rtplive/50001/playlist.m3u8",
+      "image_url": "https://scdotsnap.us-east-1.skyvdn.com/thumbs/50001.flv.png", "active": true, "problem_stream": false } },
+  { "type": "Feature", "geometry": { "type": "Point", "coordinates": [-80.9, 32.8] },
+    "properties": { "id": "uuid-2", "name": "50002", "description": "I-26 @ Mile 5", "route": "I-26", "direction": "EB",
+      "https_url": "https://s19.us-east-1.skyvdn.com:443/rtplive/50002/playlist.m3u8",
+      "image_url": "https://scdotsnap.us-east-1.skyvdn.com/thumbs/50002.flv.png", "active": true, "problem_stream": true } },
+  { "type": "Feature", "geometry": null, "properties": { "name": "50003" } }
+] }
