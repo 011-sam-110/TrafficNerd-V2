@@ -15,17 +15,26 @@ export async function GET(req: NextRequest) {
   try { target = new URL(cam.imageUrl); } catch { return new Response("bad image url", { status: 500 }); }
   if (!isAllowed(target)) return new Response("forbidden host", { status: 403 });
 
-  const upstream = await fetch(target.toString(), {
-    headers: { "User-Agent": "TrafficNerd/2.0 (+https://github.com/011-sam-110/TrafficNerd-V2)" },
-    cache: "no-store",
-  });
+  let upstream: Response;
+  try {
+    upstream = await fetch(target.toString(), {
+      headers: { "User-Agent": "TrafficNerd/2.0 (+https://github.com/011-sam-110/TrafficNerd-V2)" },
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    return new Response("upstream fetch failed", { status: 502 });
+  }
   if (!upstream.ok) return new Response("upstream error", { status: 502 });
 
   const body = await upstream.arrayBuffer();
+  const ct = upstream.headers.get("content-type");
+  const contentType = ct && ct.startsWith("image/") ? ct : "image/jpeg";
   return new Response(body, {
     status: 200,
     headers: {
-      "Content-Type": upstream.headers.get("content-type") ?? "image/jpeg",
+      "Content-Type": contentType,
       // Never serve a camera faster than the source refresh (TfL = 300s).
       "Cache-Control": `public, max-age=${cam.refreshSeconds}, s-maxage=${cam.refreshSeconds}`,
     },

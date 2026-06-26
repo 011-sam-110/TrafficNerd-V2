@@ -13,3 +13,8 @@ test("rejects arbitrary hosts (SSRF guard)", () => {
   expect(isAllowed(new URL("http://169.254.169.254/latest/meta-data/"))).toBe(false);
   expect(isAllowed(new URL("https://evil.example.com/x.jpg"))).toBe(false);
 });
+
+test("rejects non-http(s) protocols", () => {
+  expect(isAllowed(new URL("file:///etc/passwd"))).toBe(false);
+  expect(isAllowed(new URL("gopher://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/x.jpg"))).toBe(false);
+});
