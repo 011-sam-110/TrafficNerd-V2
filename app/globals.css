@@ -1,0 +1,10 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #05070d; color: #e2e8f0;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+a { color: #22d3ee; }
+.stat-line { position: fixed; top: 16px; left: 16px; z-index: 10;
+  font-size: 14px; letter-spacing: 0.02em; opacity: 0.9; }
+main.globe { width: 100vw; height: 100vh; overflow: hidden; }
+.camera-detail { max-width: 760px; margin: 0 auto; padding: 24px; }
+.camera-detail img { width: 100%; border-radius: 8px; background: #0b1220; }
+.attribution { font-size: 12px; opacity: 0.7; }
