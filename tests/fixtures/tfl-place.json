@@ -1,0 +1,37 @@
+[
+  {
+    "id": "JamCams_00001.07450",
+    "commonName": "A40 Westway/Woodger Rd",
+    "placeType": "JamCam",
+    "lat": 51.5174,
+    "lon": -0.2126,
+    "additionalProperties": [
+      { "key": "available", "value": "true" },
+      { "key": "imageUrl", "value": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.07450.jpg" },
+      { "key": "videoUrl", "value": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.07450.mp4" },
+      { "key": "view", "value": "Looking west" }
+    ]
+  },
+  {
+    "id": "JamCams_00001.01251",
+    "commonName": "Tower Bridge Rd",
+    "placeType": "JamCam",
+    "lat": 51.5055,
+    "lon": -0.0754,
+    "additionalProperties": [
+      { "key": "available", "value": "true" },
+      { "key": "imageUrl", "value": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00001.01251.jpg" }
+    ]
+  },
+  {
+    "id": "JamCams_00002.99999",
+    "commonName": "Camera Offline Test",
+    "placeType": "JamCam",
+    "lat": 51.5033,
+    "lon": -0.1196,
+    "additionalProperties": [
+      { "key": "available", "value": "false" },
+      { "key": "imageUrl", "value": "https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/00002.99999.jpg" }
+    ]
+  }
+]
