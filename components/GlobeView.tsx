@@ -19,6 +19,7 @@ import { MapView } from "@/components/MapView";
 import { useSatellites } from "@/lib/satellites/useSatellites";
 import { usePlanes } from "@/lib/planes/usePlanes";
 import { useLayers } from "@/lib/layers";
+import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import LayerControl from "@/components/LayerControl";
 import RegionJump, { type RegionView } from "@/components/RegionJump";
 import { satelliteSprite, planeIconMesh } from "@/lib/icons/sprite";
@@ -119,9 +120,21 @@ export default function GlobeView() {
   const satellites = useSatellites();
   const planes = usePlanes();
   const layers = useLayers();
+  const camFilter = useCameraFilter();
 
-  // Apply the legend's show/hide toggles.
-  const visibleCameras = layers.cameras ? cameraObjects : EMPTY;
+  // Apply the camera sub-filters (region + live-only), then the top-level toggle.
+  const filteredCameras = useMemo<WorldObject[]>(
+    () =>
+      cameraObjects.filter((c) =>
+        cameraFilterStore.passes(
+          (c.meta?.source as string) ?? "",
+          Boolean(c.meta?.live),
+        ),
+      ),
+    // camFilter is the dependency that makes this recompute on toggle.
+    [cameraObjects, camFilter],
+  );
+  const visibleCameras = layers.cameras ? filteredCameras : EMPTY;
   const objects = useMemo<WorldObject[]>(
     () => [
       ...(layers.satellites ? satellites : []),
@@ -196,8 +209,10 @@ export default function GlobeView() {
   return (
     <div className="world-stage">
       <div className="stat-line" data-testid="stat-line">
-        {pts.length.toLocaleString()} cameras · 3 sources ·{" "}
-        {mapMode ? "satellite map" : "London live"}
+        {filteredCameras.length === pts.length
+          ? `${pts.length.toLocaleString()} cameras`
+          : `${filteredCameras.length.toLocaleString()} of ${pts.length.toLocaleString()} cameras`}{" "}
+        · 3 sources · {mapMode ? "satellite map" : "live"}
       </div>
 
       <LayerControl

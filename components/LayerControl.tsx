@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { useLayers, layersStore, type LayerKey } from "@/lib/layers";
+import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import { TypeIcon } from "@/lib/icons/Icon";
 import {
   SAT_META,
@@ -53,33 +54,111 @@ function KeyGrid({ items }: { items: SubtypeMeta[] }) {
 }
 
 function CameraKey() {
+  const filter = useCameraFilter();
   return (
     <div style={{ padding: "8px 2px 4px" }}>
       <div style={{ ...miniHeading }}>Feed</div>
-      <div style={{ display: "flex", gap: 14, marginBottom: 8 }}>
+      <div style={{ display: "flex", gap: 14, marginBottom: 6 }}>
         {CAMERA_FEEDS.map((m) => (
           <Chip key={m.key} meta={{ ...m, color: "#94a3b8" }} />
         ))}
       </div>
-      <div style={{ ...miniHeading }}>Region (colour)</div>
+      <button
+        onClick={() => cameraFilterStore.setLiveOnly(!filter.liveOnly)}
+        aria-pressed={filter.liveOnly}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          width: "100%",
+          padding: "4px 0 8px",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          font: "inherit",
+        }}
+      >
+        <MiniSwitch on={filter.liveOnly} color="#67e8f9" />
+        <span style={{ fontSize: 11.5, color: "#cbd5e1" }}>Live video only</span>
+      </button>
+      <div style={{ ...miniHeading }}>Region — click to filter</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px" }}>
-        {CAMERA_REGIONS.map((r) => (
-          <span key={r.source} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span
+        {CAMERA_REGIONS.map((r) => {
+          const on = filter.regions[r.source] ?? true;
+          return (
+            <button
+              key={r.source}
+              onClick={() => cameraFilterStore.toggleRegion(r.source)}
+              aria-pressed={on}
+              title={`${on ? "Hide" : "Show"} ${r.label}`}
               style={{
-                width: 9,
-                height: 9,
-                borderRadius: "50%",
-                background: r.color,
-                boxShadow: `0 0 6px ${r.color}`,
-                flexShrink: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: 0,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                font: "inherit",
+                opacity: on ? 1 : 0.4,
+                transition: "opacity .15s ease",
+                minWidth: 0,
               }}
-            />
-            <span style={{ fontSize: 11.5, color: "#cbd5e1", whiteSpace: "nowrap" }}>{r.label}</span>
-          </span>
-        ))}
+            >
+              <span
+                style={{
+                  width: 9,
+                  height: 9,
+                  borderRadius: "50%",
+                  background: r.color,
+                  boxShadow: on ? `0 0 6px ${r.color}` : "none",
+                  flexShrink: 0,
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 11.5,
+                  color: "#cbd5e1",
+                  whiteSpace: "nowrap",
+                  textDecoration: on ? "none" : "line-through",
+                }}
+              >
+                {r.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
+  );
+}
+
+function MiniSwitch({ on, color }: { on: boolean; color: string }) {
+  return (
+    <span
+      style={{
+        position: "relative",
+        width: 30,
+        height: 16,
+        flexShrink: 0,
+        background: on ? color : "rgba(255,255,255,0.15)",
+        borderRadius: 8,
+        transition: "background .2s ease",
+      }}
+    >
+      <span
+        style={{
+          position: "absolute",
+          top: 2,
+          left: on ? 16 : 2,
+          width: 12,
+          height: 12,
+          background: "#fff",
+          borderRadius: "50%",
+          transition: "left .2s cubic-bezier(.4,0,.2,1)",
+        }}
+      />
+    </span>
   );
 }
 
