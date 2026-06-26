@@ -20,3 +20,9 @@ test("uses description as name, lon/lat order, and problem_stream → unavailabl
   expect(a.available).toBe(true);
   expect(b.available).toBe(false); // problem_stream: true
 });
+
+test("pre-resolves the redirecting thumb URL to the real snapshot path", () => {
+  const [a] = normalizeScdot(fixture as never);
+  // /thumbs/50001.flv.png 301s to /50001.png — store the resolved form.
+  expect(a.imageUrl).toBe("https://scdotsnap.us-east-1.skyvdn.com/50001.png");
+});

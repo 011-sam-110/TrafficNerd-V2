@@ -28,7 +28,11 @@ export function normalizeScdot(geojson: { features?: ScFeature[] }): Camera[] {
     const lat = Number(coords[1]);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
     if (lat < -90 || lat > 90 || lon < -180 || lon > 180) continue;
-    const imageUrl = p.image_url?.trim() || undefined;
+    // The advertised thumb URL (/thumbs/<id>.flv.png) 301-redirects to the real
+    // snapshot at the host root (/<id>.png); pre-resolve it so our proxy (which
+    // refuses redirects for SSRF safety) fetches the image directly.
+    const rawImage = p.image_url?.trim() || undefined;
+    const imageUrl = rawImage?.replace("/thumbs/", "/").replace(/\.flv\.png$/, ".png");
     const streamUrl = p.https_url?.trim() || p.ios_url?.trim() || undefined;
     if (!imageUrl && !streamUrl) continue;
     const nativeId = (p.name ?? p.id ?? "").toString().trim();
