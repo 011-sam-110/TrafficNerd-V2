@@ -6,6 +6,8 @@
 // a layer's only job is to emit WorldObject[]; GlobeView renders them and
 // the overlay displays the clicked one. No layer imports another.
 
+import type { IconKey } from "@/lib/icons/svg";
+
 export type WorldObjectKind = "camera" | "satellite" | "plane";
 
 export interface WorldObject {
@@ -28,6 +30,10 @@ export interface WorldObject {
   label: string;
   /** Optional marker colour override (CSS hex). Layers may set their own palette. */
   color?: string;
+  /** Which type icon to render on the globe / map / legend (see lib/icons/svg.ts). */
+  icon?: IconKey;
+  /** Human-readable type label for the overlay, e.g. "Airliner", "Starlink". */
+  typeLabel?: string;
   /**
    * Kind-specific extras the detail view needs but the globe does not.
    * e.g. camera: { imageUrl }, plane: { callsign, origin, velocity },

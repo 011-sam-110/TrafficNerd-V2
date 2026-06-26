@@ -20,8 +20,20 @@ import { useSatellites } from "@/lib/satellites/useSatellites";
 import { usePlanes } from "@/lib/planes/usePlanes";
 import { useLayers } from "@/lib/layers";
 import LayerControl from "@/components/LayerControl";
+import { satelliteSprite, planeIconMesh } from "@/lib/icons/sprite";
+import { classifyCameraFeed } from "@/lib/cameras/classify";
+import { CAMERA_FEED_META, cameraRegionColor } from "@/lib/icons/svg";
 
-type Pt = { id: string; name: string; lat: number; lon: number; available: boolean };
+type Pt = {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  available: boolean;
+  source: string;
+  country: string;
+  mediaType: "jpeg" | "video" | "both";
+};
 
 // London — where P0's cameras are. Fly here on load so the points are front and
 // centre instead of a speck off the coast of Africa.
@@ -33,47 +45,12 @@ const MAP_THRESHOLD = 0.4;
 // immediately re-enter map mode mid-animation.
 const EXIT_ALTITUDE = 1.4;
 
-const CAMERA_ON = "#22d3ee";
 const CAMERA_OFF = "#64748b";
-const SAT_COLOR = "#e2e8f0";
+const SAT_COLOR = "#cbd5e1";
 const PLANE_COLOR = "#fbbf24";
 
 // Stable empty-array reference for hidden layers (avoids needless Globe re-diffs).
 const EMPTY: WorldObject[] = [];
-
-// --- 3D object builders (one fresh Object3D per datum) -----------------------
-
-function buildSatelliteObject(color: string): THREE.Object3D {
-  const group = new THREE.Group();
-  // MeshBasicMaterial is unlit → reads as "emissive" against the night globe
-  // without needing scene lights.
-  const core = new THREE.Mesh(
-    new THREE.OctahedronGeometry(1.5, 0),
-    new THREE.MeshBasicMaterial({ color }),
-  );
-  const glow = new THREE.Mesh(
-    new THREE.SphereGeometry(2.7, 12, 12),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.16 }),
-  );
-  group.add(core, glow);
-  return group;
-}
-
-function buildPlaneObject(color: string): THREE.Object3D {
-  // Flat arrowhead in the local XY plane (which, with objectFacesSurface, is the
-  // tangent plane: +X=East, +Y=North, +Z=radial-out). Nose points +Y (north);
-  // objectRotation spins it about +Z by -heading so it faces its compass course.
-  const shape = new THREE.Shape();
-  shape.moveTo(0, 2.6); // nose (north)
-  shape.lineTo(-1.7, -1.9); // back-left
-  shape.lineTo(0, -0.8); // tail notch
-  shape.lineTo(1.7, -1.9); // back-right
-  shape.closePath();
-  return new THREE.Mesh(
-    new THREE.ShapeGeometry(shape),
-    new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide }),
-  );
-}
 
 export default function GlobeView() {
   const [pts, setPts] = useState<Pt[]>([]);
@@ -102,17 +79,36 @@ export default function GlobeView() {
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  // Cameras → WorldObject[] (surface pins). Shared with the map markers.
+  // Cameras → WorldObject[] (surface pins). Shared with the map markers, which
+  // render the full per-type SVG icon (shape = feed, colour = region). On the
+  // globe itself cameras stay cheap region-coloured points (they can number in
+  // the thousands), so the icon detail appears the moment you zoom into the map.
   const cameraObjects = useMemo<WorldObject[]>(
     () =>
-      pts.map((p) => ({
-        kind: "camera",
-        id: p.id,
-        lat: p.lat,
-        lon: p.lon,
-        label: p.name,
-        meta: { available: p.available },
-      })),
+      pts.map((p) => {
+        const feed = classifyCameraFeed(p.mediaType);
+        const meta = CAMERA_FEED_META[feed];
+        const color = cameraRegionColor(p.source);
+        return {
+          kind: "camera",
+          id: p.id,
+          lat: p.lat,
+          lon: p.lon,
+          label: p.name,
+          color,
+          icon: meta.key,
+          typeLabel: meta.label,
+          meta: {
+            available: p.available,
+            source: p.source,
+            country: p.country,
+            mediaType: p.mediaType,
+            feed,
+            color,
+            icon: meta.key,
+          },
+        };
+      }),
     [pts],
   );
 
@@ -170,8 +166,10 @@ export default function GlobeView() {
 
   const objectThreeObject = useCallback((o: object) => {
     const w = o as WorldObject;
-    if (w.kind === "satellite") return buildSatelliteObject(w.color ?? SAT_COLOR);
-    if (w.kind === "plane") return buildPlaneObject(w.color ?? PLANE_COLOR);
+    if (w.kind === "satellite")
+      return satelliteSprite(w.icon ?? "sat-other", w.color ?? SAT_COLOR);
+    if (w.kind === "plane")
+      return planeIconMesh(w.icon ?? "plane-airliner", w.color ?? PLANE_COLOR);
     return new THREE.Object3D();
   }, []);
 
@@ -202,9 +200,11 @@ export default function GlobeView() {
         pointsData={visibleCameras}
         pointLat="lat"
         pointLng="lon"
-        pointColor={(o) =>
-          (o as WorldObject).meta?.available ? CAMERA_ON : CAMERA_OFF
-        }
+        pointColor={(o) => {
+          const w = o as WorldObject;
+          // Region colour when live; muted grey when the feed is down.
+          return w.meta?.available ? w.color ?? CAMERA_OFF : CAMERA_OFF;
+        }}
         pointAltitude={0.002}
         pointRadius={0.12}
         pointResolution={8}

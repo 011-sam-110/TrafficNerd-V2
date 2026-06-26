@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import type { SatRec } from "satellite.js";
 import type { WorldObject } from "@/lib/world";
 import { buildSatrec, propagateAt, orbitalPeriodMin } from "@/lib/satellites/propagate";
+import { classifySatellite } from "@/lib/satellites/classify";
+import { SAT_META } from "@/lib/icons/svg";
 
 interface ApiSat {
   name: string;
@@ -14,6 +16,9 @@ interface ApiSat {
 interface Built extends ApiSat {
   satrec: SatRec;
   periodMin: number;
+  icon: WorldObject["icon"];
+  color: string;
+  typeLabel: string;
 }
 
 /**
@@ -39,7 +44,15 @@ export function useSatellites(group = "visual", stepMs = 1000): WorldObject[] {
         builtRef.current = recs
           .map((r): Built | null => {
             try {
-              return { ...r, satrec: buildSatrec(r.line1, r.line2), periodMin: orbitalPeriodMin(r.line2) };
+              const meta = SAT_META[classifySatellite(r.name)];
+              return {
+                ...r,
+                satrec: buildSatrec(r.line1, r.line2),
+                periodMin: orbitalPeriodMin(r.line2),
+                icon: meta.key,
+                color: meta.color,
+                typeLabel: meta.label,
+              };
             } catch {
               return null;
             }
@@ -69,7 +82,9 @@ export function useSatellites(group = "visual", stepMs = 1000): WorldObject[] {
           lon: sp.lon,
           altKm: sp.altKm,
           label: b.name,
-          color: "#a78bfa",
+          color: b.color,
+          icon: b.icon,
+          typeLabel: b.typeLabel,
           meta: {
             noradId: b.noradId,
             objectName: b.name,
@@ -78,6 +93,7 @@ export function useSatellites(group = "visual", stepMs = 1000): WorldObject[] {
             altKm: sp.altKm,
             velocityKmS: sp.velocityKmS,
             periodMin: b.periodMin,
+            typeLabel: b.typeLabel,
           },
         });
       }

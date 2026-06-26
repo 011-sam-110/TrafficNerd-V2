@@ -1,6 +1,7 @@
 "use client";
 
 import type { WorldObject } from "@/lib/world";
+import { TypeIcon } from "@/lib/icons/Icon";
 
 interface Props {
   object: WorldObject;
@@ -147,8 +148,11 @@ export default function PlaneDetail({ object }: Props) {
             marginBottom: 4,
           }}
         >
-          {/* Plane icon as text — no external icon dep */}
-          <span style={{ fontSize: 18, color: "#f59e0b", lineHeight: 1 }}>✈</span>
+          {object.icon ? (
+            <TypeIcon icon={object.icon} color={object.color ?? "#f59e0b"} size={20} />
+          ) : (
+            <span style={{ fontSize: 18, color: "#f59e0b", lineHeight: 1 }}>✈</span>
+          )}
           <span
             style={{
               fontSize: 20,
@@ -159,6 +163,22 @@ export default function PlaneDetail({ object }: Props) {
           >
             {callsign}
           </span>
+          {object.typeLabel && (
+            <span
+              title="Type estimated from the live flight profile (no category in the OpenSky feed)"
+              style={{
+                background: "#1e293b",
+                color: object.color ?? "#fbbf24",
+                fontSize: 11,
+                padding: "2px 8px",
+                borderRadius: 4,
+                fontWeight: 600,
+                letterSpacing: "0.04em",
+              }}
+            >
+              {object.typeLabel} · est.
+            </span>
+          )}
           {onGround && (
             <span
               style={{

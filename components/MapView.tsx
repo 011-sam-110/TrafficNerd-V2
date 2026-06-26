@@ -12,6 +12,12 @@ import maplibregl, { type StyleSpecification, type GeoJSONSource } from "maplibr
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { WorldObject } from "@/lib/world";
 import { overlay } from "@/lib/overlay";
+import { ICON_SVG, cameraRegionColor, CAMERA_DEFAULT_REGION } from "@/lib/icons/svg";
+
+const KNOWN_REGIONS = ["tfl", "caltrans", "scdot"];
+function regionKeyOf(source: string | undefined): string {
+  return source && KNOWN_REGIONS.includes(source) ? source : "default";
+}
 
 const ESRI_STYLE: StyleSpecification = {
   version: 8,
@@ -35,16 +41,70 @@ const MAP_ZOOM = 13;
 function toFeatureCollection(cameras: WorldObject[]): GeoJSON.FeatureCollection {
   return {
     type: "FeatureCollection",
-    features: cameras.map((c) => ({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [c.lon, c.lat] },
-      properties: {
-        id: c.id,
-        name: c.label,
-        available: Boolean((c.meta as { available?: boolean } | undefined)?.available),
-      },
-    })),
+    features: cameras.map((c) => {
+      const m = (c.meta ?? {}) as { available?: boolean; source?: string; feed?: string };
+      return {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [c.lon, c.lat] },
+        properties: {
+          id: c.id,
+          name: c.label,
+          available: Boolean(m.available),
+          // icon name pieces: shape = feed, colour = region (see loadCameraIcons)
+          feed: m.feed === "video" ? "video" : "still",
+          regionKey: regionKeyOf(m.source),
+        },
+      };
+    }),
   };
+}
+
+// Rasterise an SVG pictogram into an image MapLibre can use as a symbol icon.
+function rasterizeIcon(
+  svg: string,
+  px = 80,
+): Promise<{ width: number; height: number; data: Uint8Array }> {
+  return new Promise((resolve, reject) => {
+    const sized = svg.replace("<svg ", `<svg width="${px}" height="${px}" `);
+    const image = new Image();
+    image.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = px;
+      canvas.height = px;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("no 2d context"));
+      ctx.drawImage(image, 0, 0, px, px);
+      const d = ctx.getImageData(0, 0, px, px);
+      resolve({ width: px, height: px, data: new Uint8Array(d.data.buffer.slice(0)) });
+    };
+    image.onerror = reject;
+    image.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(sized);
+  });
+}
+
+// Register one region-tinted icon per (feed shape × region colour) so the symbol
+// layer can pick the right one per camera with a data-driven expression.
+async function loadCameraIcons(map: maplibregl.Map): Promise<void> {
+  const feeds: [string, keyof typeof ICON_SVG][] = [
+    ["still", "cam-still"],
+    ["video", "cam-video"],
+  ];
+  const regions: [string, string][] = [
+    ["tfl", cameraRegionColor("tfl")],
+    ["caltrans", cameraRegionColor("caltrans")],
+    ["scdot", cameraRegionColor("scdot")],
+    ["default", CAMERA_DEFAULT_REGION.color],
+  ];
+  await Promise.all(
+    feeds.flatMap(([feed, iconKey]) =>
+      regions.map(async ([rk, color]) => {
+        const name = `cam-${feed}-${rk}`;
+        if (map.hasImage(name)) return;
+        const img = await rasterizeIcon(ICON_SVG[iconKey].replaceAll("currentColor", color));
+        if (!map.hasImage(name)) map.addImage(name, img, { pixelRatio: 2 });
+      }),
+    ),
+  );
 }
 
 export function MapView({
@@ -76,19 +136,24 @@ export function MapView({
     map.addControl(new maplibregl.AttributionControl({ compact: false }), "bottom-right");
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-left");
 
-    map.on("load", () => {
+    map.on("load", async () => {
+      await loadCameraIcons(map);
       readyRef.current = true;
       map.addSource(SRC, { type: "geojson", data: toFeatureCollection(camerasRef.current) });
       map.addLayer({
         id: LAYER,
-        type: "circle",
+        type: "symbol",
         source: SRC,
+        layout: {
+          // icon name = "cam-<feed>-<regionKey>" — matches loadCameraIcons().
+          "icon-image": ["concat", "cam-", ["get", "feed"], "-", ["get", "regionKey"]],
+          "icon-size": ["interpolate", ["linear"], ["zoom"], 9, 0.4, 13, 0.6, 17, 0.85],
+          "icon-allow-overlap": true,
+          "icon-ignore-placement": true,
+        },
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["zoom"], 9, 3, 14, 6, 17, 9],
-          "circle-color": ["case", ["get", "available"], "#22d3ee", "#64748b"],
-          "circle-stroke-width": 1.5,
-          "circle-stroke-color": "#04060c",
-          "circle-opacity": 0.95,
+          // Down feeds render faded; live ones full strength.
+          "icon-opacity": ["case", ["get", "available"], 1, 0.4],
         },
       });
 
