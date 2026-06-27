@@ -32,6 +32,8 @@ import { CAMERA_CLUSTER, WEBCAM_CLUSTER, expandCluster } from "@/lib/map/cluster
 import { SIGNALS } from "@/lib/signals/registry";
 import { useSignals, signalCountsStore } from "@/lib/signals/store";
 import type { SignalFeature, SignalSource } from "@/lib/signals/types";
+import { useTimeWindow, windowMsFor, withinWindow } from "@/lib/shell/timeWindow";
+import { useNow } from "@/lib/shell/useNow";
 import {
   readInitialViewState,
   scheduleUrlWrite,
@@ -127,6 +129,12 @@ export default function WorldMap() {
   const layers = useLayers();
   const camFilter = useCameraFilter();
   const signalsState = useSignals();
+  // Global time-window filter (M-final): trims time-stamped signals by recency.
+  // A coarse 30s clock re-evaluates the filter a couple of times a minute (the
+  // windows are ≥1h, so a fast clock would only churn renders for nothing).
+  const timeWindow = useTimeWindow();
+  const windowMs = windowMsFor(timeWindow);
+  const nowCoarse = useNow(30_000);
 
   // Cameras → WorldObject[] (shape = feed, colour = region).
   const cameraObjects = useMemo<WorldObject[]>(
@@ -196,8 +204,15 @@ export default function WorldMap() {
   satsRef.current = satellites;
   const webcamsRef = useRef<WorldObject[]>([]);
   webcamsRef.current = webcams;
+  // Time-window-filtered signals — what the map actually renders. Untimed features
+  // (no `ts`) pass through unconditionally (withinWindow returns true), so the
+  // filter only ever hides timed events that are older than the chosen window.
+  const visibleSignals = useMemo(
+    () => signals.filter((s) => withinWindow(s.meta?.ts as string | undefined, windowMs, nowCoarse)),
+    [signals, windowMs, nowCoarse],
+  );
   const signalsRef = useRef<WorldObject[]>([]);
-  signalsRef.current = signals;
+  signalsRef.current = visibleSignals;
   const layersRef = useRef<LayerState>(layers);
   layersRef.current = layers;
 
@@ -869,10 +884,10 @@ export default function WorldMap() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
-    (map.getSource(SIGNAL_SRC) as GeoJSONSource | undefined)?.setData(toSignalFC(signals));
-    (map.getSource(SIGNAL_LINE_SRC) as GeoJSONSource | undefined)?.setData(toSignalLineFC(signals));
-    (map.getSource(SIGNAL_FILL_SRC) as GeoJSONSource | undefined)?.setData(toSignalFillFC(signals));
-  }, [signals]);
+    (map.getSource(SIGNAL_SRC) as GeoJSONSource | undefined)?.setData(toSignalFC(visibleSignals));
+    (map.getSource(SIGNAL_LINE_SRC) as GeoJSONSource | undefined)?.setData(toSignalLineFC(visibleSignals));
+    (map.getSource(SIGNAL_FILL_SRC) as GeoJSONSource | undefined)?.setData(toSignalFillFC(visibleSignals));
+  }, [visibleSignals]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -898,7 +913,7 @@ export default function WorldMap() {
       overlay.open(found);
       pendingObjRef.current = null;
     }
-  }, [filteredCameras, planesLayer, satellites, webcams, signals]);
+  }, [filteredCameras, planesLayer, satellites, webcams, visibleSignals]);
 
   // Debug handle for live tuning (basemap / terrain).
   useEffect(() => {
@@ -994,6 +1009,9 @@ function SignalFeed({
               attribution: source.attribution,
               sourceLabel: source.label,
               link: f.link,
+              // ISO timestamp (when known) — the global time-window filter reads
+              // this; untimed features have no ts and are always shown.
+              ts: f.ts,
               // Carries line/area geometry (cables, jamming) through to the
               // line/fill builders in lib/map/features; absent for point signals.
               ...(f.geometry ? { geometry: f.geometry } : {}),

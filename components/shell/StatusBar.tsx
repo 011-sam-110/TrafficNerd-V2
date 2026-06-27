@@ -12,14 +12,17 @@ import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { uiStore, useUI } from "@/lib/shell/ui";
 import { useNow } from "@/lib/shell/useNow";
 import { copyShareLink } from "@/lib/share/deepLink";
+import { useT } from "@/lib/i18n/store";
+import type { StringKey } from "@/lib/i18n/catalog";
+import LangSwitcher from "@/components/shell/LangSwitcher";
 
-type Health = { label: string; tone: "live" | "degraded" | "down" | "connecting" };
+type Health = { labelKey: StringKey; tone: "live" | "degraded" | "down" | "connecting" };
 
 function deriveHealth(states: FreshState[]): Health {
-  if (states.some((s) => s === "down" || s === "stale")) return { label: "Degraded", tone: "degraded" };
-  if (states.every((s) => s === "unknown")) return { label: "Connecting", tone: "connecting" };
-  if (states.some((s) => s === "lagging")) return { label: "Lagging", tone: "degraded" };
-  return { label: "Live", tone: "live" };
+  if (states.some((s) => s === "down" || s === "stale")) return { labelKey: "healthDegraded", tone: "degraded" };
+  if (states.every((s) => s === "unknown")) return { labelKey: "healthConnecting", tone: "connecting" };
+  if (states.some((s) => s === "lagging")) return { labelKey: "healthLagging", tone: "degraded" };
+  return { labelKey: "healthLive", tone: "live" };
 }
 
 function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
@@ -39,6 +42,7 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
   const fresh = useFreshness();
   const view = useMapView();
   const ui = useUI();
+  const t = useT();
   const now = useNow(5000); // re-evaluate health a couple of times a minute
 
   const health = deriveHealth(fresh.map((r) => classifyFreshness(r, now)));
@@ -72,22 +76,22 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
         <span className="tn-wordmark">
           Traffic<span className="tn-wordmark-accent">Nerd</span>
         </span>
-        <span className="tn-tagline">travel the planet, live</span>
+        <span className="tn-tagline">{t("appTagline")}</span>
       </div>
 
       <div className="tn-topbar-metrics">
         <Metric
-          label="cameras online"
+          label={t("metricCamerasOnline")}
           value={m.camerasTotal ? m.camerasOnline.toLocaleString() : "—"}
           sub={m.camerasTotal ? m.camerasTotal.toLocaleString() : undefined}
         />
         <span className="tn-dot-sep" aria-hidden />
-        <Metric label="planes" value={m.planes.toLocaleString()} />
+        <Metric label={t("metricPlanes")} value={m.planes.toLocaleString()} />
         <span className="tn-dot-sep" aria-hidden />
-        <Metric label="satellites" value={m.satellites.toLocaleString()} />
+        <Metric label={t("metricSatellites")} value={m.satellites.toLocaleString()} />
         <span className={`tn-health tn-health-${health.tone}`} title="Overall data health">
           <span className="tn-health-dot" aria-hidden />
-          {health.label}
+          {t(health.labelKey)}
         </span>
       </div>
 
@@ -113,6 +117,8 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
             OS UK
           </button>
         </div>
+
+        <LangSwitcher />
 
         <button
           type="button"
