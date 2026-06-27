@@ -12,6 +12,7 @@ import { watchlistStore } from "@/lib/shell/watchlist";
 import { timeWindowStore } from "@/lib/shell/timeWindow";
 import { registerServiceWorker } from "@/lib/pwa/register";
 import { variantStore } from "@/lib/variants/store";
+import { useWorkspace } from "@/lib/shell/workspace";
 import StatusBar from "@/components/shell/StatusBar";
 import CommandPalette from "@/components/shell/CommandPalette";
 import PlaceSearch from "@/components/shell/PlaceSearch";
@@ -22,9 +23,12 @@ import BreakingBanner from "@/components/shell/BreakingBanner";
 import { FeedOverlay } from "@/components/FeedOverlay";
 import PanelHost from "@/components/shell/PanelHost";
 import VariantSwitcher from "@/components/shell/VariantSwitcher";
+import WorkspaceBar from "@/components/shell/WorkspaceBar";
+import DockableWorkspace from "@/components/shell/DockableWorkspace";
 
 export default function ConsoleShell({ children }: { children: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const ws = useWorkspace();
 
   // Re-hydrate persisted view state once, client-side (render defaults on the
   // server, reconcile after mount → no hydration mismatch).
@@ -56,14 +60,16 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
     <div className="tn-shell">
       {children}
       <StatusBar onOpenPalette={() => setPaletteOpen(true)} />
-      <div className="tn-topbar-variant"><VariantSwitcher /></div>
+      <div className="tn-topbar-variant"><VariantSwitcher /><WorkspaceBar /></div>
       <BreakingBanner />
       <PlaceSearch />
       <PanelHost />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <CoveragePanel />
-      <MarketsPanel />
-      <WatchlistPanel />
+      {/* Dockable slide-ins are suppressed while the workspace dock owns them. */}
+      {!ws.open && <CoveragePanel />}
+      {!ws.open && <MarketsPanel />}
+      {!ws.open && <WatchlistPanel />}
+      <DockableWorkspace />
       <FeedOverlay />
     </div>
   );

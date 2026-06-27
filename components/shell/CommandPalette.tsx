@@ -9,6 +9,7 @@ import { mapViewStore } from "@/lib/mapView";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { coverageStore } from "@/lib/shell/coverage";
 import { marketsStore } from "@/lib/shell/markets";
+import { workspaceStore } from "@/lib/shell/workspace";
 import { CAMERA_REGIONS } from "@/lib/icons/svg";
 
 interface Command {
@@ -96,6 +97,18 @@ function buildCommands(close: () => void): Command[] {
     hint: "panel",
     run: () => {
       marketsStore.open();
+      close();
+    },
+  });
+
+  cmds.push({
+    id: "toggle-workspace",
+    label: "Toggle workspace dock",
+    hint: "layout",
+    run: () => {
+      const ws = workspaceStore.get();
+      if (ws.open) workspaceStore.closeWorkspace();
+      else workspaceStore.openWorkspace();
       close();
     },
   });
