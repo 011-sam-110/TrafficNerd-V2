@@ -681,3 +681,54 @@ a { color: var(--tn-accent); }
 .tn-variant-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
   border: 0; background: none; font: inherit; text-align: left; border-radius: 6px; cursor: pointer; }
 .tn-variant-menu button:hover, .tn-variant-menu button.is-active { background: var(--tn-hover, #f1f5f9); }
+
+/* ── SP1b dockable workspace ─────────────────────────────────────────── */
+.tn-workspace {
+  position: fixed; top: calc(var(--tn-topbar-h) + 8px); right: 8px;
+  bottom: calc(var(--tn-ticker-h) + 8px);
+  width: min(480px, 44vw); z-index: 38; overflow: auto; pointer-events: auto;
+}
+.tn-workspace-inner { min-height: 100%; }
+.tn-workspace-empty { color: var(--tn-text-muted); font-size: 12.5px; padding: 16px; }
+
+.tn-tile {
+  height: 100%; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--tn-surface); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--tn-border); border-radius: 14px; box-shadow: var(--tn-shadow-sm);
+  color: var(--tn-text);
+}
+.tn-tile-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 7px 12px; border-bottom: 1px solid var(--tn-border);
+  font: 600 11.5px/1 var(--tn-sans); letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--tn-text-muted); user-select: none;
+}
+.tn-tile-drag { cursor: move; }
+.tn-tile-grip { color: var(--tn-text-faint); font-size: 13px; }
+.tn-tile-body { flex: 1; overflow: auto; padding: 0; }
+
+/* Docked panels render inline inside a tile body: strip the slide-in chrome. */
+.tn-docked {
+  position: static; inset: auto; top: auto; right: auto; left: auto;
+  width: auto; max-height: none; height: auto; z-index: auto;
+  background: transparent; border: none; border-radius: 0; box-shadow: none;
+  backdrop-filter: none; -webkit-backdrop-filter: none; animation: none; padding: 12px 14px;
+}
+
+/* react-grid-layout placeholder + handle, tuned to the light identity. */
+.tn-workspace .react-grid-item.react-grid-placeholder { background: var(--tn-accent-soft); border-radius: 14px; opacity: 0.5; }
+.tn-workspace .react-resizable-handle { opacity: 0.55; }
+
+/* The dock toolbar (WorkspaceBar). */
+.tn-ws-bar { display: flex; gap: 6px; }
+.tn-ws-btn {
+  font: 600 11.5px/1 var(--tn-sans); padding: 6px 10px; border-radius: 9px;
+  background: var(--tn-surface); border: 1px solid var(--tn-border); color: var(--tn-text);
+  box-shadow: var(--tn-shadow-sm); cursor: pointer;
+}
+.tn-ws-btn:hover { background: var(--tn-hover); }
+
+@media (max-width: 640px) { .tn-workspace { width: auto; left: 8px; } }
+
+/* Variant switcher + workspace toggle share the top-left chrome row. */
+.tn-topbar-variant { display: flex; align-items: center; gap: 8px; }

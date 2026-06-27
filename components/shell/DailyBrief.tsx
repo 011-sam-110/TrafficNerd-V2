@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import type { BriefPayload } from "@/lib/brief";
 
-export default function DailyBrief() {
+export default function DailyBrief({ docked = false }: { docked?: boolean } = {}) {
   const [data, setData] = useState<BriefPayload | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +33,7 @@ export default function DailyBrief() {
   // Dormant (no gateway key) — show the honest "what unlocks this" note, not a fake brief.
   if (!data || data.dormant) {
     return (
-      <div className="tn-brief tn-brief-dormant">
+      <div className={`tn-brief tn-brief-dormant${docked ? " tn-docked" : ""}`}>
         <span className="tn-brief-label">AI daily brief</span>
         <p className="tn-brief-text">
           A written world brief appears here once the freellmapi gateway is configured
@@ -47,7 +47,7 @@ export default function DailyBrief() {
   if (!data.brief) return null; // configured but nothing to say right now
 
   return (
-    <div className="tn-brief">
+    <div className={`tn-brief${docked ? " tn-docked" : ""}`}>
       <span className="tn-brief-label">AI daily brief · grounded in the Instability Index</span>
       <p className="tn-brief-text">{data.brief}</p>
     </div>

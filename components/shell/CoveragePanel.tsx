@@ -21,8 +21,9 @@ function sourceLabel(source: string): string {
   return REGION_LABEL[source] ?? source.replace(/^\w/, (c) => c.toUpperCase());
 }
 
-export default function CoveragePanel() {
+export default function CoveragePanel({ docked = false }: { docked?: boolean } = {}) {
   const open = useCoverageOpen();
+  const active = open || docked; // docked = rendered as a workspace tile
   const [data, setData] = useState<Coverage | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
 
@@ -32,9 +33,9 @@ export default function CoveragePanel() {
   const camState = camFresh ? classifyFreshness(camFresh, now) : "unknown";
   const camAge = camFresh ? freshnessAgeMs(camFresh, now) : null;
 
-  // Fetch once per open (the registry rollup is cheap + cached server-side).
+  // Fetch once per open/dock (the registry rollup is cheap + cached server-side).
   useEffect(() => {
-    if (!open) return;
+    if (!active) return;
     let alive = true;
     setStatus("loading");
     fetch("/api/coverage")
@@ -51,7 +52,7 @@ export default function CoveragePanel() {
     return () => {
       alive = false;
     };
-  }, [open]);
+  }, [active]);
 
   // Esc closes.
   useEffect(() => {
@@ -63,12 +64,10 @@ export default function CoveragePanel() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  if (!open) return null;
+  if (!active) return null;
 
-  return (
-    <div className="tn-coverage-root" role="dialog" aria-modal="true" aria-label="Camera coverage">
-      <div className="tn-coverage-backdrop" onClick={() => coverageStore.close()} />
-      <div className="tn-coverage">
+  const inner = (
+    <div className={`tn-coverage${docked ? " tn-docked" : ""}`}>
         <header className="tn-coverage-head">
           <div>
             <h2 className="tn-coverage-title">Camera coverage</h2>
@@ -78,14 +77,16 @@ export default function CoveragePanel() {
                 : "Live counts per source"}
             </p>
           </div>
-          <button
-            type="button"
-            className="tn-coverage-close"
-            onClick={() => coverageStore.close()}
-            aria-label="Close"
-          >
-            ×
-          </button>
+          {!docked && (
+            <button
+              type="button"
+              className="tn-coverage-close"
+              onClick={() => coverageStore.close()}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          )}
         </header>
 
         <p className="tn-coverage-note">
@@ -131,7 +132,15 @@ export default function CoveragePanel() {
         <p className="tn-coverage-foot">
           Every source is a real, live, attributable public feed. Nothing here is synthetic.
         </p>
-      </div>
+    </div>
+  );
+
+  if (docked) return inner;
+
+  return (
+    <div className="tn-coverage-root" role="dialog" aria-modal="true" aria-label="Camera coverage">
+      <div className="tn-coverage-backdrop" onClick={() => coverageStore.close()} />
+      {inner}
     </div>
   );
 }

@@ -16,8 +16,9 @@ import {
 } from "@/lib/shell/watchlist";
 import { useT } from "@/lib/i18n/store";
 
-export default function WatchlistPanel() {
+export default function WatchlistPanel({ docked = false }: { docked?: boolean } = {}) {
   const open = useWatchlistPanelOpen();
+  const active = open || docked; // docked = rendered as a workspace tile
   const places = useWatchlist();
   const t = useT();
 
@@ -31,23 +32,29 @@ export default function WatchlistPanel() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  if (!open) return null;
+  if (!active) return null;
 
   return (
-    <aside className="tn-markets tn-saved" role="dialog" aria-label={t("sectionSaved")}>
+    <aside
+      className={`tn-markets tn-saved${docked ? " tn-docked" : ""}`}
+      role={docked ? "region" : "dialog"}
+      aria-label={t("sectionSaved")}
+    >
       <header className="tn-markets-head">
         <div>
           <h2 className="tn-markets-title">{t("sectionSaved")}</h2>
           <p className="tn-markets-sub">Bookmark a view, fly back any time</p>
         </div>
-        <button
-          type="button"
-          className="tn-markets-close"
-          onClick={() => watchlistPanelStore.close()}
-          aria-label="Close saved places"
-        >
-          ×
-        </button>
+        {!docked && (
+          <button
+            type="button"
+            className="tn-markets-close"
+            onClick={() => watchlistPanelStore.close()}
+            aria-label="Close saved places"
+          >
+            ×
+          </button>
+        )}
       </header>
 
       <button type="button" className="tn-saved-add" onClick={() => saveCurrentView()}>

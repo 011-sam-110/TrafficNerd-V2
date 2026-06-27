@@ -43,15 +43,16 @@ function MarketRowItem({ row }: { row: MarketRow }) {
   );
 }
 
-export default function MarketsPanel() {
+export default function MarketsPanel({ docked = false }: { docked?: boolean } = {}) {
   const open = useMarketsOpen();
+  const active = open || docked; // docked = rendered as a workspace tile (always live)
   const [data, setData] = useState<MarketsPayload | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const now = useNow(1000);
 
-  // Fetch on open, then poll on the cache cadence while open.
+  // Fetch on open/dock, then poll on the cache cadence while active.
   useEffect(() => {
-    if (!open) return;
+    if (!active) return;
     let alive = true;
     const load = () => {
       setStatus((s) => (data ? s : "loading"));
@@ -74,9 +75,9 @@ export default function MarketsPanel() {
       clearInterval(id);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [active]);
 
-  // Esc closes.
+  // Esc closes (slide-in only; a docked tile has no close affordance).
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -86,25 +87,31 @@ export default function MarketsPanel() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  if (!open) return null;
+  if (!active) return null;
 
   const ageMs = data ? Math.max(0, now - data.generatedAt) : null;
 
   return (
-    <aside className="tn-markets" role="dialog" aria-label="Crypto markets">
+    <aside
+      className={`tn-markets${docked ? " tn-docked" : ""}`}
+      role={docked ? "region" : "dialog"}
+      aria-label="Crypto markets"
+    >
       <header className="tn-markets-head">
         <div>
           <h2 className="tn-markets-title">Markets</h2>
           <p className="tn-markets-sub">Crypto · FX · Equities · Macro</p>
         </div>
-        <button
-          type="button"
-          className="tn-markets-close"
-          onClick={() => marketsStore.close()}
-          aria-label="Close markets"
-        >
-          ×
-        </button>
+        {!docked && (
+          <button
+            type="button"
+            className="tn-markets-close"
+            onClick={() => marketsStore.close()}
+            aria-label="Close markets"
+          >
+            ×
+          </button>
+        )}
       </header>
 
       {status === "error" && !data && (
