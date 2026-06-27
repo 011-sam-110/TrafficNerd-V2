@@ -39,13 +39,14 @@ function applyVariant(v: Variant, override?: OverrideDelta, sigFromUrl?: string[
     layersStore.applyExact(layers);
 
     let signals: SignalState = { ...resolveSignals(v.signals), ...override?.signals };
+    // URL sig= is the authoritative on-set for a shared view — replace rather than merge with any local override.
     if (sigFromUrl) { signals = {}; for (const id of sigFromUrl) signals[id] = true; }
     signalsStore.applyExact(signals);
 
     uiStore.setTheme(override?.theme ?? v.theme);
     cameraFilterStore.setLiveOnly(v.cameraFilter?.liveOnly ?? false);
     if (typeof document !== "undefined") document.documentElement.style.setProperty("--accent", v.accent);
-    if (v.view) mapViewStore.flyToPoint({ lat: v.view.lat, lon: v.view.lon, zoom: v.view.zoom });
+    if (v.view && typeof window !== "undefined") mapViewStore.flyToPoint({ lat: v.view.lat, lon: v.view.lon, zoom: v.view.zoom });
   } finally {
     applying = false;
   }
