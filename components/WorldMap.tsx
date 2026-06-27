@@ -18,6 +18,7 @@ import type { WorldObject } from "@/lib/world";
 import { overlay } from "@/lib/overlay";
 import { cinematic } from "@/lib/cinematic/store";
 import { computeDive } from "@/lib/cinematic/dive";
+import { loadedCamerasStore } from "@/lib/cameras/loaded";
 import { useSatellites } from "@/lib/satellites/useSatellites";
 import { usePlanes, type PlaneTrail, type PlanesLayer } from "@/lib/planes/usePlanes";
 import { useLayers, layersStore, ACTIVE_LAYERS, type LayerState } from "@/lib/layers";
@@ -1086,6 +1087,7 @@ function CamerasFeed({ onData }: { onData: (pts: Pt[]) => void }) {
         if (!alive) return;
         const cams = (d.cameras as Pt[]) ?? [];
         onData(cams);
+        loadedCamerasStore.set(cams);
         freshnessStore.record("cameras", { count: cams.length, ok: true });
       })
       .catch(() => {

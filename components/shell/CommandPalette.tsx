@@ -11,6 +11,9 @@ import { coverageStore } from "@/lib/shell/coverage";
 import { marketsStore } from "@/lib/shell/markets";
 import { workspaceStore } from "@/lib/shell/workspace";
 import { CAMERA_REGIONS } from "@/lib/icons/svg";
+import { cinematic } from "@/lib/cinematic/store";
+import { pickLiveCamera } from "@/lib/cinematic/livePick";
+import { loadedCamerasStore } from "@/lib/cameras/loaded";
 
 interface Command {
   id: string;
@@ -109,6 +112,26 @@ function buildCommands(close: () => void): Command[] {
       const ws = workspaceStore.get();
       if (ws.open) workspaceStore.closeWorkspace();
       else workspaceStore.openWorkspace();
+      close();
+    },
+  });
+
+  cmds.push({
+    id: "dive-live",
+    label: "Dive to a live feed",
+    hint: "live",
+    run: () => {
+      const cam = pickLiveCamera(loadedCamerasStore.get());
+      if (cam) {
+        cinematic.dive({
+          kind: "camera",
+          id: cam.id,
+          lat: cam.lat,
+          lon: cam.lon,
+          label: cam.name,
+          meta: { available: true },
+        });
+      }
       close();
     },
   });
