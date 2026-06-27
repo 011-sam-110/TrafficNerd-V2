@@ -17,15 +17,15 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type { WorldObject } from "@/lib/world";
 import { overlay } from "@/lib/overlay";
 import { useSatellites } from "@/lib/satellites/useSatellites";
-import { usePlanes, type PlaneTrail } from "@/lib/planes/usePlanes";
+import { usePlanes, type PlaneTrail, type PlanesLayer } from "@/lib/planes/usePlanes";
 import { useLayers, type LayerState } from "@/lib/layers";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
-import LayerControl from "@/components/LayerControl";
-import RegionJump, { type RegionView } from "@/components/RegionJump";
-import BasemapControl from "@/components/BasemapControl";
+import { metricsStore } from "@/lib/metrics";
+import { freshnessStore } from "@/lib/freshness";
+import { mapViewStore, useMapView, type RegionView } from "@/lib/mapView";
 import { cameraFeed } from "@/lib/cameras/classify";
 import { CAMERA_FEED_META, cameraRegionColor } from "@/lib/icons/svg";
-import { BASEMAPS, DEFAULT_BASEMAP, type BasemapKey } from "@/lib/basemaps";
+import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC } from "@/lib/map/features";
 import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons } from "@/lib/map/icons";
 
@@ -54,7 +54,7 @@ const SAT_LAYER = "satellite-core";
 const DEM_SRC = "terrain-dem";
 const HILLSHADE_LAYER = "hillshade";
 
-// Start zoomed out so the spinning globe is the hero. RegionJump flies inward.
+// Start zoomed out so the spinning globe is the hero. The palette / rail fly inward.
 const HOME = { center: [-30, 28] as [number, number], zoom: 1.4 };
 const SPIN_MAX_ZOOM = 4; // only auto-rotate while zoomed out this far
 const SPIN_DEG_PER_SEC = 4; // calm rotation
@@ -72,22 +72,19 @@ export default function WorldMap() {
   const terrainRef = useRef(true);
 
   const [pts, setPts] = useState<Pt[]>([]);
-  const [basemap, setBasemap] = useState<BasemapKey>(DEFAULT_BASEMAP);
-  const [terrainOn, setTerrainOn] = useState(true);
 
-  // Live layers (already emit WorldObject[]).
-  const satellites = useSatellites();
-  const planesLayer = usePlanes();
+  // Live-layer data is lifted into state from gating <…Feed> children so that a
+  // hidden layer's hook (and its fetch/tick) is unmounted entirely — see the
+  // bottom of this file. basemap + terrain are shared via the mapView store so
+  // the top bar can drive them.
+  const [satellites, setSatellites] = useState<WorldObject[]>([]);
+  const [planesLayer, setPlanesLayer] = useState<PlanesLayer>({ objects: [], trails: [] });
+
+  const view = useMapView();
+  const basemap = view.basemap;
+  const terrainOn = view.terrain;
   const layers = useLayers();
   const camFilter = useCameraFilter();
-
-  // Fetch the camera registry once.
-  useEffect(() => {
-    fetch("/api/cameras")
-      .then((r) => r.json())
-      .then((d) => setPts(d.cameras as Pt[]))
-      .catch(() => setPts([]));
-  }, []);
 
   // Cameras → WorldObject[] (shape = feed, colour = region).
   const cameraObjects = useMemo<WorldObject[]>(
@@ -119,6 +116,28 @@ export default function WorldMap() {
       ),
     [cameraObjects, camFilter],
   );
+
+  // --- Shared stores the calm shell reads (counts + freshness) ----------------
+  // Cameras "online" = feeds currently reachable. Camera freshness is recorded by
+  // <CamerasFeed> on fetch; planes/satellites are recorded here as their data
+  // arrives. Satellites are local (propagated in-browser) so we only stamp them
+  // on a count change, never per 1s tick — keeps the chrome from re-rendering.
+  const camerasOnline = useMemo(() => pts.filter((p) => p.available).length, [pts]);
+  useEffect(() => {
+    metricsStore.set({ camerasOnline, camerasTotal: pts.length });
+  }, [camerasOnline, pts.length]);
+  useEffect(() => {
+    metricsStore.set({ planes: planesLayer.objects.length });
+    freshnessStore.record("planes", { count: planesLayer.objects.length, ok: true });
+  }, [planesLayer]);
+  const satCountRef = useRef(-1);
+  useEffect(() => {
+    metricsStore.set({ satellites: satellites.length });
+    if (satellites.length !== satCountRef.current) {
+      satCountRef.current = satellites.length;
+      freshnessStore.record("satellites", { count: satellites.length, ok: true });
+    }
+  }, [satellites]);
 
   // Refs holding the latest data so addAppLayers (called on every style.load,
   // i.e. each basemap swap) can re-seed sources, and clicks can resolve objects.
@@ -373,7 +392,7 @@ export default function WorldMap() {
     if (mapRef.current || !containerRef.current) return;
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: BASEMAPS[DEFAULT_BASEMAP].style,
+      style: BASEMAPS[mapViewStore.get().basemap].style,
       center: HOME.center,
       zoom: HOME.zoom,
       maxZoom: 18,
@@ -486,49 +505,78 @@ export default function WorldMap() {
       window as unknown as {
         __worldmap?: { setBasemap: (k: BasemapKey) => void; setTerrain: (on: boolean) => void };
       }
-    ).__worldmap = { setBasemap, setTerrain: setTerrainOn };
+    ).__worldmap = { setBasemap: mapViewStore.setBasemap, setTerrain: mapViewStore.setTerrain };
   }, []);
 
-  // Per-region camera counts for the region quick-jump.
-  const regionCounts = useMemo<Record<string, number>>(() => {
-    const counts: Record<string, number> = {};
-    for (const p of pts) counts[p.source] = (counts[p.source] ?? 0) + 1;
-    return counts;
-  }, [pts]);
-
-  const flyToRegion = useCallback((view: RegionView) => {
+  // Fly the globe to a region (called from the ⌘K palette via mapView.flyTo).
+  const flyToRegion = useCallback((target: RegionView) => {
     const map = mapRef.current;
     if (!map) return;
     // Suppress the idle spin through the fly animation.
     interactUntilRef.current = performance.now() + 2400;
-    const zoom = Math.max(3, Math.min(9, 9.5 - view.altitude * 4));
-    map.flyTo({ center: [view.lng, view.lat], zoom, duration: 1600, essential: true });
+    const zoom = Math.max(3, Math.min(9, 9.5 - target.altitude * 4));
+    map.flyTo({ center: [target.lng, target.lat], zoom, duration: 1600, essential: true });
   }, []);
+
+  useEffect(() => {
+    mapViewStore.registerFlyTo(flyToRegion);
+    return () => mapViewStore.registerFlyTo(null);
+  }, [flyToRegion]);
 
   return (
     <div className="world-map">
       <div ref={containerRef} className="map-canvas" />
 
-      <div className="stat-line" data-testid="stat-line">
-        {filteredCameras.length === pts.length
-          ? `${pts.length.toLocaleString()} cameras`
-          : `${filteredCameras.length.toLocaleString()} of ${pts.length.toLocaleString()} cameras`}{" "}
-        · {planesLayer.objects.length.toLocaleString()} planes ·{" "}
-        {satellites.length.toLocaleString()} satellites
-      </div>
-
-      <LayerControl
-        counts={{ cameras: pts.length, satellites: satellites.length, planes: planesLayer.objects.length }}
-      />
-
-      <RegionJump counts={regionCounts} onJump={flyToRegion} />
-
-      <BasemapControl
-        basemap={basemap}
-        onBasemap={setBasemap}
-        terrainOn={terrainOn}
-        onTerrain={setTerrainOn}
-      />
+      {/* Gating feeds: a layer's data hook is mounted only while it is visible,
+          so a hidden layer does not fetch or tick. They render no DOM. */}
+      {layers.cameras && <CamerasFeed onData={setPts} />}
+      {layers.planes && <PlanesFeed onData={setPlanesLayer} />}
+      {layers.satellites && <SatellitesFeed onData={setSatellites} />}
     </div>
   );
+}
+
+// --- Gating data feeds -------------------------------------------------------
+// Each mounts a live-data hook and lifts the result into WorldMap state. Because
+// WorldMap only renders these while the matching layer is on, toggling a layer
+// off unmounts the hook and tears down its fetch/interval (the hidden-don't-fetch
+// contract), without any edit to the data hooks themselves.
+
+function CamerasFeed({ onData }: { onData: (pts: Pt[]) => void }) {
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/cameras")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        const cams = (d.cameras as Pt[]) ?? [];
+        onData(cams);
+        freshnessStore.record("cameras", { count: cams.length, ok: true });
+      })
+      .catch(() => {
+        if (!alive) return;
+        onData([]);
+        freshnessStore.record("cameras", { count: 0, ok: false });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [onData]);
+  return null;
+}
+
+function PlanesFeed({ onData }: { onData: (layer: PlanesLayer) => void }) {
+  const layer = usePlanes();
+  useEffect(() => {
+    onData(layer);
+  }, [layer, onData]);
+  return null;
+}
+
+function SatellitesFeed({ onData }: { onData: (sats: WorldObject[]) => void }) {
+  const sats = useSatellites();
+  useEffect(() => {
+    onData(sats);
+  }, [sats, onData]);
+  return null;
 }

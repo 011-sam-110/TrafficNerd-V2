@@ -41,7 +41,7 @@ function StatCard({
   label,
   primary,
   secondary,
-  primaryColor = "#f59e0b",
+  primaryColor = "var(--tn-plane)",
 }: {
   label: string;
   primary: React.ReactNode;
@@ -51,7 +51,7 @@ function StatCard({
   return (
     <div
       style={{
-        background: "#0b1220",
+        background: "var(--tn-surface-2)",
         borderRadius: 8,
         padding: "12px 14px",
         minHeight: 72,
@@ -60,7 +60,7 @@ function StatCard({
       <div
         style={{
           fontSize: 11,
-          color: "#22d3ee",
+          color: "var(--tn-accent)",
           textTransform: "uppercase",
           letterSpacing: "0.08em",
           marginBottom: 4,
@@ -73,7 +73,7 @@ function StatCard({
         {primary}
       </div>
       {secondary && (
-        <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{secondary}</div>
+        <div style={{ fontSize: 12, color: "var(--tn-text-faint)", marginTop: 2 }}>{secondary}</div>
       )}
     </div>
   );
@@ -109,16 +109,17 @@ export default function PlaneDetail({ object }: Props) {
   if (verticalRateMs != null) {
     if (verticalRateMs > 0.5) {
       climbLabel = `+${Math.round(verticalRateMs)} m/s`;
-      climbColor = "#22d3ee"; // cyan for climb
+      climbColor = "var(--tn-accent)"; // accent for climb
     } else if (verticalRateMs < -0.5) {
       climbLabel = `${Math.round(verticalRateMs)} m/s`;
-      climbColor = "#f59e0b"; // amber for descent
+      climbColor = "var(--tn-plane)"; // amber for descent
     } else {
       climbLabel = "Level";
-      climbColor = "#94a3b8";
+      climbColor = "var(--tn-text-faint)";
     }
   }
 
+  const mutedColor = "var(--tn-text-faint)";
   const altPrimary = onGround
     ? "On ground"
     : altM < 50
@@ -133,8 +134,8 @@ export default function PlaneDetail({ object }: Props) {
   return (
     <div
       style={{
-        color: "#e2e8f0",
-        fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
+        color: "var(--tn-text)",
+        fontFamily: "var(--tn-sans)",
       }}
     >
       {/* ── Header ── */}
@@ -158,17 +159,17 @@ export default function PlaneDetail({ object }: Props) {
               fontSize: 20,
               fontWeight: 700,
               letterSpacing: "0.06em",
-              color: "#f1f5f9",
+              color: "var(--tn-text)",
             }}
           >
             {callsign}
           </span>
           {object.typeLabel && (
             <span
-              title="Type estimated from the live flight profile (no category in the OpenSky feed)"
+              title="Type estimated from the live flight profile"
               style={{
-                background: "#1e293b",
-                color: object.color ?? "#fbbf24",
+                background: "var(--tn-chip-bg)",
+                color: object.color ?? "#b45309",
                 fontSize: 11,
                 padding: "2px 8px",
                 borderRadius: 4,
@@ -182,8 +183,8 @@ export default function PlaneDetail({ object }: Props) {
           {onGround && (
             <span
               style={{
-                background: "#1e293b",
-                color: "#94a3b8",
+                background: "var(--tn-chip-bg)",
+                color: "var(--tn-text-muted)",
                 fontSize: 11,
                 padding: "2px 8px",
                 borderRadius: 4,
@@ -195,7 +196,7 @@ export default function PlaneDetail({ object }: Props) {
             </span>
           )}
         </div>
-        <div style={{ fontSize: 13, color: "#94a3b8" }}>{country}</div>
+        <div style={{ fontSize: 13, color: "var(--tn-text-muted)" }}>{country}</div>
       </div>
 
       {/* ── Stat grid ── */}
@@ -210,7 +211,7 @@ export default function PlaneDetail({ object }: Props) {
           label="Altitude"
           primary={altPrimary}
           secondary={altSecondary}
-          primaryColor={onGround || altM < 50 ? "#94a3b8" : "#f59e0b"}
+          primaryColor={onGround || altM < 50 ? mutedColor : "var(--tn-plane)"}
         />
 
         <StatCard
@@ -221,7 +222,7 @@ export default function PlaneDetail({ object }: Props) {
               : "—"
           }
           secondary={velocityMs != null ? `${msToKnots(velocityMs)} kn` : undefined}
-          primaryColor={velocityMs != null ? "#f59e0b" : "#94a3b8"}
+          primaryColor={velocityMs != null ? "var(--tn-plane)" : mutedColor}
         />
 
         <StatCard
@@ -247,12 +248,12 @@ export default function PlaneDetail({ object }: Props) {
         style={{
           marginTop: 14,
           fontSize: 11,
-          color: "#475569",
-          borderTop: "1px solid #1e293b",
+          color: "var(--tn-text-faint)",
+          borderTop: "1px solid var(--tn-border)",
           paddingTop: 8,
         }}
       >
-        Data from The OpenSky Network
+        Data from adsb.lol
       </div>
     </div>
   );

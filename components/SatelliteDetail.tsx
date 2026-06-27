@@ -27,16 +27,16 @@ interface SatMeta {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  wrap: { display: "flex", flexDirection: "column", gap: 14, color: "#e2e8f0" },
-  figure: { margin: 0, position: "relative", borderRadius: 10, overflow: "hidden", background: "#0b1220", aspectRatio: "1 / 1" },
+  wrap: { display: "flex", flexDirection: "column", gap: 14, color: "var(--tn-text)" },
+  figure: { margin: 0, position: "relative", borderRadius: 10, overflow: "hidden", background: "var(--tn-surface-2)", aspectRatio: "1 / 1" },
   img: { width: "100%", height: "100%", objectFit: "cover", display: "block" },
-  cap: { position: "absolute", left: 8, bottom: 8, fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "rgba(5,7,13,0.7)", color: "#cbd5e1", letterSpacing: "0.02em" },
-  badge: { display: "inline-flex", alignItems: "center", gap: 7, alignSelf: "flex-start", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.4)", borderRadius: 999, padding: "3px 12px 3px 9px" },
+  cap: { position: "absolute", left: 8, bottom: 8, fontSize: 11, padding: "2px 8px", borderRadius: 999, background: "rgba(255,255,255,0.85)", color: "var(--tn-text-muted)", letterSpacing: "0.02em" },
+  badge: { display: "inline-flex", alignItems: "center", gap: 7, alignSelf: "flex-start", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--tn-sat)", border: "1px solid rgba(124,58,237,0.35)", borderRadius: 999, padding: "3px 12px 3px 9px" },
   stats: { display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px 16px", margin: 0 },
   row: { display: "flex", flexDirection: "column", gap: 2 },
-  dt: { fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b" },
-  dd: { margin: 0, fontSize: 15, fontVariantNumeric: "tabular-nums", color: "#f8fafc" },
-  note: { margin: 0, fontSize: 12, color: "#94a3b8", lineHeight: 1.5 },
+  dt: { fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--tn-text-faint)" },
+  dd: { margin: 0, fontSize: 15, fontVariantNumeric: "tabular-nums", color: "var(--tn-text)" },
+  note: { margin: 0, fontSize: 12, color: "var(--tn-text-muted)", lineHeight: 1.5 },
 };
 
 export default function SatelliteDetail({ object }: { object: WorldObject }) {

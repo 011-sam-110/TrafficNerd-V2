@@ -1,8 +1,9 @@
 "use client";
-// The feed overlay. Subscribes to the overlay store; when an object is open it
-// renders a panel ON TOP of the still-running globe with a dimmed backdrop.
-// Closes via the X button, the Esc key, and a backdrop click. The globe keeps
-// spinning behind it (it's never unmounted).
+// The dossier — TrafficNerd's right-side slide-in detail panel. Subscribes to the
+// overlay store; when an object is open it slides in from the right with a shared
+// section layout (header → live media/preview → key facts → context), restyled
+// calm + light. Non-modal: the globe stays interactive behind it. Closes via the
+// × button and the Esc key; focus moves into the panel and restores on close.
 
 import { useEffect, useRef } from "react";
 import { overlay, useOverlay } from "@/lib/overlay";
@@ -15,7 +16,6 @@ export function FeedOverlay() {
 
   useEffect(() => {
     if (!object) return;
-    // Remember what was focused, move focus into the panel, restore on close.
     restoreRef.current = (document.activeElement as HTMLElement) ?? null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") overlay.close();
@@ -31,18 +31,13 @@ export function FeedOverlay() {
   if (!object) return null;
 
   return (
-    <div className="overlay-root" role="dialog" aria-modal="true" aria-label={object.label}>
-      <div className="overlay-backdrop" onClick={() => overlay.close()} />
-      <div className="overlay-panel" ref={panelRef} tabIndex={-1}>
-        <button
-          className="overlay-close"
-          aria-label="Close feed"
-          onClick={() => overlay.close()}
-        >
-          ×
-        </button>
+    <aside className="tn-dossier" role="dialog" aria-label={object.label}>
+      <button className="tn-dossier-close" aria-label="Close" onClick={() => overlay.close()}>
+        ×
+      </button>
+      <div className="tn-dossier-body" ref={panelRef} tabIndex={-1}>
         <OverlayBody object={object} />
       </div>
-    </div>
+    </aside>
   );
 }
