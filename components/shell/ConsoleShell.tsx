@@ -21,6 +21,7 @@ import MarketsPanel from "@/components/shell/MarketsPanel";
 import WatchlistPanel from "@/components/shell/WatchlistPanel";
 import BreakingBanner from "@/components/shell/BreakingBanner";
 import { FeedOverlay } from "@/components/FeedOverlay";
+import { CinematicDive } from "@/components/CinematicDive";
 import PanelHost from "@/components/shell/PanelHost";
 import DockableWorkspace from "@/components/shell/DockableWorkspace";
 
@@ -68,6 +69,7 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
       {!ws.open && <WatchlistPanel />}
       <DockableWorkspace />
       <FeedOverlay />
+      <CinematicDive />
     </div>
   );
 }
