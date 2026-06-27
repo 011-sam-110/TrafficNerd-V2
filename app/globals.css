@@ -9,7 +9,10 @@ main.globe { width: 100vw; height: 100vh; overflow: hidden; }
 .camera-detail img { width: 100%; border-radius: 8px; background: #0b1220; }
 .attribution { font-size: 12px; opacity: 0.7; }
 
-/* ---- Live world stage: globe + cross-fading satellite map ---- */
+/* ---- Live world: single MapLibre globe engine (M1) ---- */
+.world-map { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+
+/* ---- Live world stage: globe + cross-fading satellite map (legacy) ---- */
 .world-stage { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
 
 .map-layer {
