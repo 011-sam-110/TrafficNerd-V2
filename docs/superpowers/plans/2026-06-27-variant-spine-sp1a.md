@@ -592,13 +592,13 @@ git commit -m "feat(share): carry variant id + signal divergence in the URL"
 
 ```ts
 // tests/unit/variants-store.test.ts
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { variantStore, resolveVariant } from "@/lib/variants/store";
 import { layersStore } from "@/lib/layers";
 import { signalsStore } from "@/lib/signals/store";
 
-beforeEach(() => { localStorage.clear(); });
-
+// Node env: persist.ts no-ops without window.localStorage, so each bootstrap
+// starts from defaults — no reset hook needed.
 describe("variantStore", () => {
   it("bootstraps the default explore variant when no URL/persisted state", () => {
     variantStore.bootstrap(new URLSearchParams(""));
@@ -621,7 +621,7 @@ describe("variantStore", () => {
 });
 ```
 
-> The store touches `document`/`localStorage`; vitest's default jsdom-like env or the existing `tests/unit/persist.test.ts` setup provides them. If a test file runs in the node env, add `// @vitest-environment jsdom` at the top.
+> Runs in the node env. `applyVariant` guards every `document`/`window` access and `persist.ts` no-ops without `localStorage`, so no DOM shim is needed. The persistence round-trip is covered by `persist.test.ts`; this test covers resolution + fallback.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -658,6 +658,7 @@ const PERSIST_VERSION = 1;
 
 let state: VariantStoreState = { activeId: DEFAULT_VARIANT_ID, userVariants: [], overrides: {}, layoutOverrides: {} };
 let applying = false; // guard: suppress override-capture while seeding
+let subscribed = false; // guard: subscribe captureOverride exactly once
 const listeners = new Set<() => void>();
 
 export function resolveVariant(id: string): Variant {
@@ -712,10 +713,14 @@ export const variantStore = {
       : DEFAULT_VARIANT_ID;
     state = { ...state, activeId: id };
     applyVariant(resolveVariant(id), state.overrides[id], url.sig);
-    // Subscribe AFTER the initial seed so we don't capture the seed as an override.
-    layersStore.subscribe(captureOverride);
-    signalsStore.subscribe(captureOverride);
-    uiStore.subscribe(captureOverride);
+    // Subscribe ONCE, after the initial seed, so the seed isn't mis-captured as an
+    // override and listeners don't stack on re-bootstrap (StrictMode / tests).
+    if (!subscribed) {
+      subscribed = true;
+      layersStore.subscribe(captureOverride);
+      signalsStore.subscribe(captureOverride);
+      uiStore.subscribe(captureOverride);
+    }
     persist();
     emit();
   },
@@ -771,7 +776,6 @@ git commit -m "feat(variants): variantStore — single hydration authority + ove
 
 ```ts
 // tests/unit/ui-store.test.ts
-// @vitest-environment jsdom
 import { describe, it, expect } from "vitest";
 import { uiStore } from "@/lib/shell/ui";
 
@@ -859,7 +863,7 @@ git commit -m "refactor(shell): uiStore is theme-only; rail collapse local; news
 **Files:**
 - Modify: `components/shell/MarketsPanel.tsx` (remove import line 14 + usage line 111)
 - Read first: `components/shell/DailyBrief.tsx` (confirm it renders standalone — it is `export default function DailyBrief()` with no dependency on `marketsStore`)
-- Test: `tests/unit/markets-no-brief.test.tsx`
+- Test: `tests/unit/markets-no-brief.test.ts`
 
 **Interfaces:**
 - Produces: `DailyBrief` usable as an independent panel (registered in Task 9). `MarketsPanel` no longer renders it.
@@ -867,8 +871,7 @@ git commit -m "refactor(shell): uiStore is theme-only; rail collapse local; news
 - [ ] **Step 1: Write the failing test**
 
 ```tsx
-// tests/unit/markets-no-brief.test.tsx
-// @vitest-environment jsdom
+// tests/unit/markets-no-brief.test.ts
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 
@@ -882,7 +885,7 @@ describe("DailyBrief extraction", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run tests/unit/markets-no-brief.test.tsx`
+Run: `npx vitest run tests/unit/markets-no-brief.test.ts`
 Expected: FAIL — `DailyBrief` still referenced.
 
 - [ ] **Step 3: Edit `MarketsPanel.tsx`**
@@ -891,11 +894,11 @@ Delete line 14 (`import DailyBrief from "@/components/shell/DailyBrief";`) and l
 
 - [ ] **Step 4: Run tests + commit**
 
-Run: `npx vitest run tests/unit/markets-no-brief.test.tsx`
+Run: `npx vitest run tests/unit/markets-no-brief.test.ts`
 Expected: PASS.
 
 ```bash
-git add components/shell/MarketsPanel.tsx tests/unit/markets-no-brief.test.tsx
+git add components/shell/MarketsPanel.tsx tests/unit/markets-no-brief.test.ts
 git commit -m "refactor(shell): extract DailyBrief so 'brief' is an independent panel"
 ```
 
@@ -1008,7 +1011,7 @@ git commit -m "feat(shell): panel registry + PanelHost (variant-driven persisten
 **Files:**
 - Create: `components/shell/VariantSwitcher.tsx`
 - Modify: `app/globals.css` (append `.tn-variant-*` styles)
-- Test: `tests/unit/variant-switcher.test.tsx`
+- Test: `tests/unit/variant-switcher.test.ts`
 
 **Interfaces:**
 - Consumes: `BUILTIN_VARIANTS` (T1), `useVariant`/`variantStore` (T6).
@@ -1016,32 +1019,26 @@ git commit -m "feat(shell): panel registry + PanelHost (variant-driven persisten
 
 - [ ] **Step 1: Write the failing test**
 
-```tsx
-// tests/unit/variant-switcher.test.tsx
-// @vitest-environment jsdom
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import VariantSwitcher from "@/components/shell/VariantSwitcher";
-import { variantStore } from "@/lib/variants/store";
+The repo's vitest is node-env with NO `@testing-library/react` — keep it that way (no new test deps). VariantSwitcher is a thin presentational component verified by build + manual (Task 11 Step 4); the switch *logic* is already covered by `variantStore` (Task 6). This is an import + data smoke test only.
 
-beforeEach(() => { localStorage.clear(); variantStore.bootstrap(new URLSearchParams("")); });
+```ts
+// tests/unit/variant-switcher.test.ts
+import { describe, it, expect } from "vitest";
+import VariantSwitcher from "@/components/shell/VariantSwitcher";
+import { BUILTIN_VARIANTS } from "@/lib/variants/builtins";
 
 describe("VariantSwitcher", () => {
-  it("shows the active variant and switches on select", () => {
-    render(<VariantSwitcher />);
-    fireEvent.click(screen.getByRole("button", { name: /variant/i }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Intel" }));
-    expect(variantStore.get().activeId).toBe("intel");
+  it("imports as a component and has every built-in variant to render", () => {
+    expect(typeof VariantSwitcher).toBe("function");
+    expect(BUILTIN_VARIANTS.length).toBe(13);
   });
 });
 ```
 
-> Uses `@testing-library/react`. If absent, install as a dev dep: `npm i -D @testing-library/react @testing-library/dom` (both keyless, dev-only). Confirm with `npx vitest run` that other component tests already use it before adding.
-
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run tests/unit/variant-switcher.test.tsx`
-Expected: FAIL — module not found.
+Run: `npx vitest run tests/unit/variant-switcher.test.ts`
+Expected: FAIL — cannot find module `@/components/shell/VariantSwitcher`.
 
 - [ ] **Step 3: Implement the switcher**
 
@@ -1104,11 +1101,11 @@ export default function VariantSwitcher() {
 
 - [ ] **Step 5: Run tests + commit**
 
-Run: `npx vitest run tests/unit/variant-switcher.test.tsx`
+Run: `npx vitest run tests/unit/variant-switcher.test.ts`
 Expected: PASS.
 
 ```bash
-git add components/shell/VariantSwitcher.tsx app/globals.css tests/unit/variant-switcher.test.tsx
+git add components/shell/VariantSwitcher.tsx app/globals.css tests/unit/variant-switcher.test.ts
 git commit -m "feat(shell): variant switcher pill with reset/edited affordance"
 ```
 
