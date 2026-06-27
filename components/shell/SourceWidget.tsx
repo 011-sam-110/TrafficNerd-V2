@@ -5,7 +5,7 @@
 // Footer: attribution + the mirrored ◇ on-map toggle. Reads existing stores only.
 
 import { getCatalogSource } from "@/lib/sources/catalog";
-import { useSourceLive, toggleSourceMap } from "@/lib/sources/live";
+import { useSourceLive, toggleSourceMap, type SourceLive } from "@/lib/sources/live";
 import { useCountHistory, deltaOf, trendOf } from "@/lib/widgets/history";
 import { constituentIds, rollupCount, rollupFresh } from "@/lib/widgets/rollup";
 import { placementStore } from "@/lib/widgets/placement";
@@ -30,8 +30,7 @@ function Sparkline({ points }: { points: number[] }) {
   );
 }
 
-function LeafBody({ id }: { id: string }) {
-  const live = useSourceLive(id);
+function LeafBody({ id, live }: { id: string; live: SourceLive }) {
   const hist = useCountHistory(id);
   const delta = deltaOf(hist);
   if (!live.hasData) {
@@ -114,7 +113,7 @@ export default function SourceWidget({ widget }: { widget: WidgetDescriptor }) {
         >×</button>
       </header>
       <div className="tn-widget-body">
-        {isRollup ? <RollupBody group={id} /> : <LeafBody id={id} />}
+        {isRollup ? <RollupBody group={id} /> : <LeafBody id={id} live={live} />}
       </div>
       <footer className="tn-widget-foot">
         <span className="tn-widget-attr">{source?.attribution ?? `${constituentIds(id).length} sources`}</span>
