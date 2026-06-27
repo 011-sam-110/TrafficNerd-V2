@@ -15,7 +15,7 @@ export interface CameraFilterState {
 }
 
 let state: CameraFilterState = {
-  regions: { tfl: true, caltrans: true, scdot: true, digitraffic: true, castlerock: true, tripcheck: true, drivebc: true },
+  regions: { tfl: true, caltrans: true, scdot: true, digitraffic: true, castlerock: true, tripcheck: true, drivebc: true, nzta: true, iceland: true, estonia: true, trafficscotland: true },
   liveOnly: false,
 };
 const listeners = new Set<() => void>();

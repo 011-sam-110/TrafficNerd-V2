@@ -1,0 +1,56 @@
+{
+  "features": [
+    {
+      "attributes": {
+        "objectid": 11,
+        "site_name": "Jõhvi",
+        "weather_station_id": 56,
+        "image_path": "94/94_202606270441.jpg",
+        "image_time": 1782524510000
+      },
+      "geometry": {
+        "x": 27.440670000618645,
+        "y": 59.36535999924768
+      }
+    },
+    {
+      "attributes": {
+        "objectid": 20,
+        "site_name": "Kärevere",
+        "weather_station_id": 93,
+        "image_path": "44/44_202606270440.jpg",
+        "image_time": 1782524414000
+      },
+      "geometry": {
+        "x": 26.431889999949107,
+        "y": 58.44767999953261
+      }
+    },
+    {
+      "attributes": {
+        "objectid": 48,
+        "site_name": "Mäo",
+        "weather_station_id": 62,
+        "image_path": "808/808_202606270441.jpg",
+        "image_time": 1782524486000
+      },
+      "geometry": {
+        "x": 25.619230000450408,
+        "y": 58.918459999026844
+      }
+    },
+    {
+      "attributes": {
+        "objectid": 99999,
+        "site_name": "Tatra",
+        "weather_station_id": 55,
+        "image_path": null,
+        "image_time": 1782524511000
+      },
+      "geometry": {
+        "x": 26.685979999927095,
+        "y": 58.241819998856776
+      }
+    }
+  ]
+}

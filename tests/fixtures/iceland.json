@@ -1,0 +1,72 @@
+[
+  {
+    "Maelist_nr": 7001,
+    "Myndavel": "Hellisheiði",
+    "Vegheiti": "Hringvegur",
+    "NrVegur": "1",
+    "Skyring": "Hellisheiði séð til vesturs",
+    "Slod": "https://www.vegagerdin.is/vgdata/vefmyndavelar/hellisheidi_1.jpg",
+    "Breidd": 64.018296,
+    "Lengd": -21.342636
+  },
+  {
+    "Maelist_nr": 7001,
+    "Myndavel": "Hellisheiði",
+    "Vegheiti": "Hringvegur",
+    "NrVegur": "1",
+    "Skyring": "Hellisheiði séð niður á veg",
+    "Slod": "https://www.vegagerdin.is/vgdata/vefmyndavelar/hellisheidi_2.jpg",
+    "Breidd": 64.018296,
+    "Lengd": -21.342636
+  },
+  {
+    "Maelist_nr": 7001,
+    "Myndavel": "Hellisheiði",
+    "Vegheiti": "Hringvegur",
+    "NrVegur": "1",
+    "Skyring": "Hellisheiði séð til austurs",
+    "Slod": "https://www.vegagerdin.is/vgdata/vefmyndavelar/hellisheidi_3.jpg",
+    "Breidd": 64.018296,
+    "Lengd": -21.342636
+  },
+  {
+    "Maelist_nr": 7002,
+    "Myndavel": "Holtavörðuheiði",
+    "Vegheiti": "Hringvegur",
+    "NrVegur": "1",
+    "Skyring": "Holtavörðuheiði séð til norðurs",
+    "Slod": "https://www.vegagerdin.is/vgdata/vefmyndavelar/holtavorduheidi_1.jpg",
+    "Breidd": 64.989933,
+    "Lengd": -21.057783
+  },
+  {
+    "Maelist_nr": 7002,
+    "Myndavel": "Holtavörðuheiði",
+    "Vegheiti": "Hringvegur",
+    "NrVegur": "1",
+    "Skyring": "Holtavörðuheiði séð niður á veg",
+    "Slod": "https://www.vegagerdin.is/vgdata/vefmyndavelar/holtavorduheidi_2.jpg",
+    "Breidd": 64.989933,
+    "Lengd": -21.057783
+  },
+  {
+    "Maelist_nr": 7002,
+    "Myndavel": "Holtavörðuheiði",
+    "Vegheiti": "Hringvegur",
+    "NrVegur": "1",
+    "Skyring": "Holtavörðuheiði séð til suðurs",
+    "Slod": "https://www.vegagerdin.is/vgdata/vefmyndavelar/holtavorduheidi_3.jpg",
+    "Breidd": 64.989933,
+    "Lengd": -21.057783
+  },
+  {
+    "Maelist_nr": 9999,
+    "Myndavel": "Tom stod",
+    "Vegheiti": "Hringvegur",
+    "NrVegur": "1",
+    "Skyring": "engin mynd",
+    "Slod": "",
+    "Breidd": 65.0,
+    "Lengd": -19.0
+  }
+]

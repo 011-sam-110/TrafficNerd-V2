@@ -1,0 +1,85 @@
+{
+  "response": {
+    "camera": [
+      {
+        "id": 714,
+        "imageUrl": "/camera/714.jpg",
+        "latitude": -43.919632,
+        "longitude": 171.721055,
+        "name": "SH1 Tinwald ",
+        "description": "South along Hinds Highway from Lagmhor Rd",
+        "direction": "Southbound",
+        "highway": "SH1",
+        "region": {
+          "id": 11,
+          "name": "Canterbury"
+        },
+        "offline": false,
+        "underMaintenance": false
+      },
+      {
+        "id": 831,
+        "imageUrl": "/camera/831.jpg",
+        "latitude": -43.919508,
+        "longitude": 171.721221,
+        "name": "SH1 Tinwald North",
+        "description": "North along Hinds Highway from Lagmhor Rd",
+        "direction": "Northbound",
+        "highway": "SH1",
+        "region": {
+          "id": 11,
+          "name": "Canterbury"
+        },
+        "offline": false,
+        "underMaintenance": false
+      },
+      {
+        "id": 617,
+        "imageUrl": "/camera/617.jpg",
+        "latitude": -43.32437,
+        "longitude": 172.59879,
+        "name": "Southbrook North",
+        "description": "North along Southbrook Rd from Southbrook Retail Centre",
+        "direction": "Northbound",
+        "highway": "SH71",
+        "region": {
+          "id": 11,
+          "name": "Canterbury"
+        },
+        "offline": true,
+        "underMaintenance": false
+      },
+      {
+        "id": 704,
+        "imageUrl": "/camera/704.jpg",
+        "latitude": -43.464903,
+        "longitude": 172.582345,
+        "name": "SH1 Wilkinsons Rd",
+        "description": "North along Johns Rd from Wilkinsons Rd",
+        "direction": "Northbound",
+        "highway": "SH1",
+        "region": {
+          "id": 11,
+          "name": "Canterbury"
+        },
+        "offline": true,
+        "underMaintenance": true
+      },
+      {
+        "id": 999999,
+        "latitude": -43.919632,
+        "longitude": 171.721055,
+        "name": "SH1 Tinwald ",
+        "description": "South along Hinds Highway from Lagmhor Rd",
+        "direction": "Southbound",
+        "highway": "SH1",
+        "region": {
+          "id": 11,
+          "name": "Canterbury"
+        },
+        "offline": false,
+        "underMaintenance": false
+      }
+    ]
+  }
+}
