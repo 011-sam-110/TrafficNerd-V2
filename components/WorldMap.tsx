@@ -32,6 +32,7 @@ import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC, toWebcamFC, toSignalFC, toSignalLineFC, toSignalFillFC } from "@/lib/map/features";
 import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons, loadWebcamIcons } from "@/lib/map/icons";
 import { CAMERA_CLUSTER, WEBCAM_CLUSTER, expandCluster } from "@/lib/map/cluster";
+import { createThumbnailManager } from "@/lib/map/liveThumbnails";
 import { SIGNALS } from "@/lib/signals/registry";
 import { useSignals, signalCountsStore } from "@/lib/signals/store";
 import { signalFreshnessStore } from "@/lib/signals/freshness";
@@ -103,6 +104,7 @@ const vis = (on: boolean): "visible" | "none" => (on ? "visible" : "none");
 export default function WorldMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const thumbMgrRef = useRef<{ update(): void; destroy(): void } | null>(null);
   const readyRef = useRef(false);
   const rafRef = useRef(0);
   const interactUntilRef = useRef(0);
@@ -774,6 +776,26 @@ export default function WorldMap() {
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
 
     wireInteractions(map);
+
+    // SP6 — live thumbnail markers: a capped pool of poster thumbnails over the
+    // in-viewport cameras above THUMB_MIN_ZOOM, so streams are visible at a glance.
+    const thumbMgr = createThumbnailManager({
+      map,
+      layerId: CAM_LAYER,
+      onPick: (c) =>
+        cinematic.dive({ kind: "camera", id: c.id, lat: c.lat, lon: c.lon, label: c.name, meta: { available: true } }),
+    });
+    thumbMgrRef.current = thumbMgr;
+    const onThumbRefresh = () => thumbMgr.update();
+    const onThumbSource = (e: maplibregl.MapSourceDataEvent) => {
+      // Re-evaluate when the camera source finishes loading (cameras can arrive
+      // after the user has already stopped moving over a dense region).
+      if (e.sourceId === CAM_SRC && e.isSourceLoaded) thumbMgr.update();
+    };
+    map.on("moveend", onThumbRefresh);
+    map.on("zoomend", onThumbRefresh);
+    map.on("sourcedata", onThumbSource);
+
     map.on("style.load", () => {
       void addAppLayers(map);
     });
@@ -829,6 +851,11 @@ export default function WorldMap() {
       unsubLayers();
       unsubView();
       unsubOverlay();
+      map.off("moveend", onThumbRefresh);
+      map.off("zoomend", onThumbRefresh);
+      map.off("sourcedata", onThumbSource);
+      thumbMgr.destroy();
+      thumbMgrRef.current = null;
       map.remove();
       mapRef.current = null;
       readyRef.current = false;
