@@ -46,6 +46,7 @@ import { AIRPORTS_SOURCE } from "@/lib/signals/airports";
 import { PORTS_SOURCE } from "@/lib/signals/ports";
 import { CONFLICT_SOURCE, PROTESTS_SOURCE } from "@/lib/signals/gdelt";
 import { GDACS_SOURCE } from "@/lib/signals/gdacs";
+import { FIRE_FIRMS_SOURCE } from "@/lib/signals/fire-firms";
 import { WEATHER_SOURCE } from "@/lib/signals/weather";
 import { AIR_QUALITY_SOURCE } from "@/lib/signals/airquality";
 import { UK_CRIME_SOURCE } from "@/lib/signals/crime";
@@ -63,6 +64,7 @@ export const SIGNALS: SignalSource[] = [
   SEVERE_STORMS_SOURCE,
   FLOODS_SOURCE,
   GDACS_SOURCE, // multi-hazard GDACS alerts (EQ/TC/FL/VO/DR/WF), alert-coloured
+  FIRE_FIRMS_SOURCE, // NASA FIRMS active-fire detections (key-gated: FIRMS_MAP_KEY)
   AURORA_SOURCE,
   // Space
   LAUNCHES_SOURCE,
