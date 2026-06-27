@@ -5,39 +5,38 @@
 // global ⌘K shortcut and the one-time client hydration of the persisted stores.
 
 import { useEffect, useState } from "react";
-import { layersStore } from "@/lib/layers";
-import { signalsStore } from "@/lib/signals/store";
 import { uiStore } from "@/lib/shell/ui";
 import { alertStore } from "@/lib/shell/alert";
 import { langStore } from "@/lib/i18n/store";
 import { watchlistStore } from "@/lib/shell/watchlist";
 import { timeWindowStore } from "@/lib/shell/timeWindow";
 import { registerServiceWorker } from "@/lib/pwa/register";
+import { variantStore } from "@/lib/variants/store";
 import StatusBar from "@/components/shell/StatusBar";
-import LayerRail from "@/components/shell/LayerRail";
-import FreshnessTicker from "@/components/shell/FreshnessTicker";
 import CommandPalette from "@/components/shell/CommandPalette";
 import PlaceSearch from "@/components/shell/PlaceSearch";
 import CoveragePanel from "@/components/shell/CoveragePanel";
 import MarketsPanel from "@/components/shell/MarketsPanel";
 import WatchlistPanel from "@/components/shell/WatchlistPanel";
-import NewsTicker from "@/components/shell/NewsTicker";
 import BreakingBanner from "@/components/shell/BreakingBanner";
 import { FeedOverlay } from "@/components/FeedOverlay";
+import PanelHost from "@/components/shell/PanelHost";
+import VariantSwitcher from "@/components/shell/VariantSwitcher";
 
 export default function ConsoleShell({ children }: { children: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Re-hydrate persisted view state once, client-side (render defaults on the
   // server, reconcile after mount → no hydration mismatch).
+  // uiStore.hydrate() applies the persisted data-theme before paint; variantStore
+  // then re-asserts the variant's theme. Order matters.
   useEffect(() => {
-    layersStore.hydrate();
-    signalsStore.hydrate();
     uiStore.hydrate();
-    alertStore.hydrate();
-    langStore.hydrate();
+    variantStore.bootstrap(new URLSearchParams(window.location.search));
     watchlistStore.hydrate();
     timeWindowStore.hydrate();
+    alertStore.hydrate();
+    langStore.hydrate();
     registerServiceWorker(); // production-only; a no-op under `next dev`
   }, []);
 
@@ -57,11 +56,10 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
     <div className="tn-shell">
       {children}
       <StatusBar onOpenPalette={() => setPaletteOpen(true)} />
+      <div className="tn-topbar-variant"><VariantSwitcher /></div>
       <BreakingBanner />
       <PlaceSearch />
-      <LayerRail />
-      <NewsTicker />
-      <FreshnessTicker />
+      <PanelHost />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <CoveragePanel />
       <MarketsPanel />

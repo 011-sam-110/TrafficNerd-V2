@@ -99,6 +99,11 @@ export const variantStore = {
     applyVariant(v, state.overrides[v.id]);
     persist();
     emit();
+    if (typeof window !== "undefined") {
+      const p = new URLSearchParams(window.location.search);
+      p.set("v", v.id);
+      window.history.replaceState(null, "", `?${p.toString()}`);
+    }
   },
   resetToVariant() {
     const next = { ...state.overrides };
