@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { pushSample, deltaOf, trendOf, type CountSample } from "@/lib/widgets/history";
+import { pushSample, deltaOf, trendOf, countHistoryStore, type CountSample } from "@/lib/widgets/history";
 
 const s = (t: number, n: number): CountSample => ({ t, n });
 
@@ -30,4 +30,20 @@ test("trendOf returns the last `slots` counts normalized 0..1", () => {
   expect(trendOf(buf, 3)).toEqual([0, 0.5, 1]);
   // all-equal → flat 0.5 line, never divide-by-zero
   expect(trendOf([s(1, 4), s(2, 4)], 2)).toEqual([0.5, 0.5]);
+});
+
+test("countHistoryStore.record skips a stable count (no subscriber churn)", () => {
+  let notifications = 0;
+  const unsub = countHistoryStore.subscribe(() => { notifications++; });
+  countHistoryStore.record("t-stable", 5, 1000);
+  countHistoryStore.record("t-stable", 5, 2000); // same count → ignored
+  countHistoryStore.record("t-stable", 7, 3000); // changed → recorded
+  unsub();
+  const buf = countHistoryStore.get()["t-stable"];
+  expect(buf.map((s) => s.n)).toEqual([5, 7]);
+  expect(notifications).toBe(2); // only the two real changes notified
+});
+
+test("trendOf returns [] for non-positive slots", () => {
+  expect(trendOf([{ t: 1, n: 5 }], 0)).toEqual([]);
 });

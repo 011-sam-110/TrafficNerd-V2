@@ -33,6 +33,7 @@ export function deltaOf(buf: CountSample[]): number {
 
 /** Pure: last `slots` counts normalized to 0..1 (flat 0.5 line when all equal). */
 export function trendOf(buf: CountSample[], slots: number): number[] {
+  if (slots <= 0) return [];
   const tail = buf.slice(-slots).map((x) => x.n);
   if (tail.length === 0) return [];
   const min = Math.min(...tail);
@@ -48,8 +49,13 @@ const listeners = new Set<() => void>();
 export const countHistoryStore = {
   record(id: string, n: number, at: number = Date.now()) {
     const prev = hist[id] ?? [];
+    const last = prev[prev.length - 1];
+    // Stable count → the history (count-only delta + sparkline) is visually
+    // unchanged, so skip the update entirely. This is the real anti-churn guard
+    // the dead `next === prev` check intended: the live hook calls record on every
+    // ~1s tick, so a stable source must not re-render its widgets each second.
+    if (last && last.n === n) return;
     const next = pushSample(prev, { t: at, n });
-    if (next === prev) return;
     hist = { ...hist, [id]: next };
     for (const l of listeners) l();
   },
