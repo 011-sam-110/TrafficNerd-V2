@@ -733,3 +733,52 @@ a { color: var(--tn-accent); }
 /* Variant switcher + workspace toggle live in the header's left cluster. */
 .tn-topbar-variant { display: flex; align-items: center; gap: 8px; align-self: center; }
 @media (max-width: 900px) { .tn-tagline { display: none; } }
+
+/* Intel widgets (dock data panels) ------------------------------------------ */
+.tn-widget { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.tn-widget-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; margin-bottom: 6px;
+}
+.tn-widget-title { font-size: 13px; font-weight: 650; margin: 0; color: var(--tn-text, #0f172a); }
+.tn-widget-source { font-size: 11px; color: var(--tn-text-dim, #64748b); white-space: nowrap; }
+.tn-widget-status { font-size: 12px; color: var(--tn-text-dim, #64748b); margin: 8px 2px; }
+.tn-widget-list { list-style: none; margin: 0; padding: 0; overflow: auto; flex: 1; min-height: 0; }
+.tn-widget-row {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 5px 6px; border: none; background: transparent; cursor: pointer;
+  border-radius: 7px; text-align: left; color: inherit;
+  border-bottom: 1px solid var(--tn-border, #e7edf3);
+}
+.tn-widget-row:hover { background: var(--tn-surface-2, #f1f5f9); }
+.tn-widget-rank {
+  flex: 0 0 auto; width: 18px; text-align: right;
+  font-size: 11px; color: var(--tn-text-dim, #94a3b8); font-variant-numeric: tabular-nums;
+}
+.tn-widget-row-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.tn-widget-row-title {
+  font-size: 12.5px; color: var(--tn-text, #0f172a); font-weight: 550;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tn-widget-row-sub {
+  font-size: 11px; color: var(--tn-text-dim, #64748b);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tn-widget-metric { flex: 0 0 auto; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tn-widget-metric-unit { font-size: 10px; font-weight: 500; color: var(--tn-text-dim, #94a3b8); margin-left: 3px; }
+.tn-widget-chip {
+  flex: 0 0 auto; font-size: 10px; font-weight: 600; color: #fff;
+  padding: 1px 6px; border-radius: 999px; line-height: 1.5;
+}
+.tn-widget-foot {
+  font-size: 10.5px; color: var(--tn-text-dim, #94a3b8); margin: 6px 2px 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Strategic risk gauge */
+.tn-widget-risk { align-items: stretch; }
+.tn-risk-gauge { display: flex; align-items: baseline; gap: 10px; padding: 6px 2px; }
+.tn-risk-score { font-size: 38px; font-weight: 800; line-height: 1; color: var(--tn-text, #0f172a); }
+.tn-risk-gauge[data-level="elevated"] .tn-risk-score { color: #f59e0b; }
+.tn-risk-gauge[data-level="high"] .tn-risk-score { color: #ea580c; }
+.tn-risk-gauge[data-level="severe"] .tn-risk-score { color: #dc2626; }
+.tn-risk-level { font-size: 13px; font-weight: 600; color: var(--tn-text-dim, #64748b); text-transform: uppercase; letter-spacing: 0.04em; }

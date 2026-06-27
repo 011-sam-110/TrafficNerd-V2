@@ -4,7 +4,9 @@ import type { Theme } from "@/lib/shell/ui";
 
 export type PanelKey =
   | "layerRail" | "markets" | "brief"
-  | "freshness" | "news" | "watchlist" | "coverage";
+  | "freshness" | "news" | "watchlist" | "coverage"
+  // Intel widgets (data panels surfaced in the dock)
+  | "instability" | "conflict" | "topEvents" | "risk";
 // NOTE: 'dossier' is intentionally NOT a panel — it is the FeedOverlay slide-in
 // (transient, deep-linked via ?obj=), kept as overlay chrome.
 

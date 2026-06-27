@@ -20,7 +20,10 @@ import type { PanelKey, PanelPlacement } from "@/lib/variants/types";
 // Panels that belong in the dock (the intelligence/markets panels). The persistent
 // chrome — layerRail, freshness AND news — stays as calm SP1a chrome rendered by
 // PanelHost, never docked (docking `news` would double-mount the ticker).
-const DOCKABLE = new Set<PanelKey>(["markets", "brief", "watchlist", "coverage"]);
+const DOCKABLE = new Set<PanelKey>([
+  "markets", "brief", "watchlist", "coverage",
+  "instability", "conflict", "topEvents", "risk",
+]);
 
 export default function DockableWorkspace() {
   const { activeId } = useVariant();
