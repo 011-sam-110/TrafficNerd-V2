@@ -285,6 +285,56 @@ a { color: var(--tn-accent); }
 .tn-palette-foot { display: flex; gap: 14px; padding: 8px 14px; border-top: 1px solid var(--tn-border); color: var(--tn-text-faint); font-size: 11px; }
 .tn-palette-foot .tn-kbd { background: var(--tn-chip-bg); border-radius: 5px; padding: 1px 5px; margin-right: 4px; }
 
+/* ===================== Place search + near-me (M5) ===================== */
+.tn-explore {
+  position: fixed; top: calc(var(--tn-topbar-h) + 12px); left: 50%; transform: translateX(-50%);
+  z-index: 28; width: min(440px, 92vw); color: var(--tn-text);
+}
+.tn-explore-bar {
+  display: flex; align-items: center; gap: 8px; padding: 5px 6px 5px 12px;
+  background: var(--tn-surface); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--tn-border); border-radius: 12px; box-shadow: var(--tn-shadow);
+}
+.tn-explore-icon { color: var(--tn-text-faint); font-size: 15px; line-height: 1; }
+.tn-explore-input {
+  flex: 1; min-width: 0; border: none; background: transparent; color: var(--tn-text);
+  font: inherit; font-size: 14px; padding: 6px 2px; outline: none;
+}
+.tn-explore-input::placeholder { color: var(--tn-text-faint); }
+.tn-explore-input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.tn-explore-locate {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; font-weight: 600;
+  color: var(--tn-accent); background: var(--tn-accent-soft);
+  border: 1px solid var(--tn-border); border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tn-explore-locate:hover { background: var(--tn-chip-bg); color: var(--tn-accent-strong); }
+.tn-explore-locate:disabled { opacity: 0.6; cursor: default; }
+
+.tn-explore-results {
+  margin-top: 8px; max-height: min(48vh, 420px); overflow: auto;
+  background: var(--tn-surface-solid); border: 1px solid var(--tn-border); border-radius: 12px;
+  box-shadow: var(--tn-shadow); padding: 6px; animation: tn-pop 0.16s ease;
+}
+.tn-explore-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; font: inherit; cursor: pointer;
+  background: transparent; border: none; border-radius: 9px; padding: 9px 11px; color: var(--tn-text);
+}
+.tn-explore-item:hover, .tn-explore-item:focus-visible { background: var(--tn-accent-soft); outline: none; }
+.tn-explore-item-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tn-explore-item-name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tn-explore-item-meta { font-size: 11px; color: var(--tn-text-faint); white-space: nowrap; flex-shrink: 0; }
+.tn-explore-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--tn-text-faint); }
+.tn-explore-dot.on { background: var(--tn-live); box-shadow: 0 0 6px var(--tn-live); }
+.tn-explore-status { padding: 11px 12px; font-size: 12.5px; color: var(--tn-text-faint); }
+
+@media (max-width: 720px) {
+  .tn-explore { left: auto; right: 12px; transform: none; width: min(360px, calc(100vw - 24px)); }
+}
+@media (max-width: 460px) { .tn-explore-locate-label { display: none; } }
+@media (prefers-reduced-motion: reduce) { .tn-explore-results { animation: none; } }
+
 /* ===================== Dossier bodies (camera) ===================== */
 .cam-detail h2 { margin: 0 30px 4px 0; font-size: 18px; letter-spacing: 0.01em; color: var(--tn-text); }
 .cam-detail .cam-sub { margin: 0 0 14px; font-size: 12.5px; color: var(--tn-text-muted); }
@@ -305,3 +355,102 @@ a { color: var(--tn-accent); }
 .camera-detail dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 14px; }
 .camera-detail dt { color: var(--tn-text-faint); }
 .attribution { font-size: 12px; color: var(--tn-text-muted); }
+
+/* ===================== Share button (deep links) ===================== */
+.tn-share-btn { font-size: 12px; font-weight: 600; padding: 0 10px; white-space: nowrap; }
+.tn-share-btn.is-copied { color: var(--tn-live); border-color: var(--tn-live); }
+
+/* ===================== Coverage panel (honest counts) ===================== */
+.tn-coverage-open {
+  font: inherit; font-size: 11.5px; font-weight: 600; color: var(--tn-accent);
+  background: var(--tn-accent-soft); border: 1px solid var(--tn-border); border-radius: 9px;
+  padding: 8px 11px; margin-top: 12px; width: 100%; text-align: left; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tn-coverage-open:hover { background: var(--tn-chip-bg); color: var(--tn-accent-strong); }
+
+.tn-coverage-root { position: fixed; inset: 0; z-index: 60; display: grid; place-items: start center; padding-top: 11vh; }
+.tn-coverage-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.28); backdrop-filter: blur(2px); }
+.tn-coverage {
+  position: relative; z-index: 1; width: min(560px, 92vw); max-height: 78vh; overflow: auto;
+  background: var(--tn-surface-solid); border: 1px solid var(--tn-border-strong); border-radius: 14px;
+  box-shadow: var(--tn-shadow); color: var(--tn-text); padding: 18px 18px 16px;
+  animation: tn-pop 0.16s ease;
+}
+.tn-coverage-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.tn-coverage-title { margin: 0; font-size: 17px; letter-spacing: 0.01em; }
+.tn-coverage-sub { margin: 3px 0 0; font-size: 12.5px; color: var(--tn-text-muted); }
+.tn-coverage-close {
+  flex-shrink: 0; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+  background: var(--tn-chip-bg); color: var(--tn-text-muted); border: 1px solid var(--tn-border);
+  font-size: 19px; line-height: 1; cursor: pointer;
+}
+.tn-coverage-close:hover { color: var(--tn-down); border-color: var(--tn-down); }
+.tn-coverage-note { margin: 12px 0 6px; font-size: 11.5px; color: var(--tn-text-faint); line-height: 1.5; }
+.tn-coverage-status { padding: 10px 2px; font-size: 12.5px; color: var(--tn-text-faint); }
+.tn-coverage-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.tn-coverage-row {
+  display: grid; grid-template-columns: auto 1fr 80px auto; align-items: center; gap: 10px;
+  padding: 8px 2px; border-top: 1px solid var(--tn-border);
+}
+.tn-coverage-row:first-child { border-top: none; }
+.tn-coverage-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.tn-coverage-name { font-size: 13px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn-coverage-bar { height: 5px; border-radius: 3px; background: var(--tn-chip-bg); overflow: hidden; }
+.tn-coverage-bar-fill { display: block; height: 100%; background: var(--tn-live); border-radius: 3px; }
+.tn-coverage-count { font-size: 12.5px; font-weight: 650; color: var(--tn-text); white-space: nowrap; text-align: right; }
+.tn-coverage-count-total { color: var(--tn-text-faint); font-weight: 500; }
+.tn-coverage-foot { margin: 14px 2px 2px; font-size: 10.5px; color: var(--tn-text-faint); line-height: 1.45; }
+@media (prefers-reduced-motion: reduce) { .tn-coverage { animation: none; } }
+
+/* ===========================================================================
+   Responsive / mobile shell (M6).
+   The globe stays the full-bleed hero; the left rail and right dossier become
+   bottom sheets so the console is usable one-handed. Pure CSS over the existing
+   stores/components — no component rebuild.
+   =========================================================================== */
+@media (max-width: 768px) {
+  /* Top bar compacts; the ⌘K trigger is desktop-only (no mobile palette). */
+  .tn-topbar { gap: 10px; padding: 0 10px; }
+  .tn-topbar-metrics { gap: 8px; }
+  .tn-palette-trigger { display: none; }
+  .tn-icon-btn { height: 36px; min-width: 40px; }
+  .tn-basemap-btn { padding: 8px 10px; }
+
+  /* Left rail → bottom sheet. */
+  .tn-rail {
+    top: auto; left: 0; right: 0; bottom: 0; width: auto;
+    max-height: 60vh; padding-bottom: calc(var(--tn-ticker-h) + 12px);
+    border-radius: 16px 16px 0 0; border-left: none; border-right: none; border-bottom: none;
+    box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.20);
+    animation: tn-sheet-up 0.26s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  .tn-rail-fab { top: auto; bottom: calc(var(--tn-ticker-h) + 12px); left: 12px; padding: 11px 15px; }
+  .tn-preset-btn { padding: 9px 12px; }
+  .tn-coverage-open { padding: 11px 12px; }
+
+  /* Right dossier → bottom sheet. */
+  .tn-dossier {
+    top: auto; left: 0; right: 0; bottom: 0; width: auto;
+    max-height: 82vh; border-radius: 16px 16px 0 0;
+    border-left: none; border-right: none; border-bottom: none;
+    box-shadow: 0 -14px 44px rgba(15, 23, 42, 0.22);
+    animation: tn-sheet-up 0.26s cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  .tn-dossier-close { width: 40px; height: 40px; }
+
+  /* A subtle grab handle reads the panels as draggable sheets. */
+  .tn-rail::before, .tn-dossier::before {
+    content: ""; position: sticky; top: 0; display: block;
+    width: 38px; height: 4px; margin: 0 auto 8px; border-radius: 999px;
+    background: var(--tn-border-strong);
+  }
+
+  /* Coverage modal anchors to the bottom too, and gets room for thumbs. */
+  .tn-coverage-root { place-items: end center; padding: 0; }
+  .tn-coverage { width: 100%; max-height: 86vh; border-radius: 16px 16px 0 0; }
+}
+@keyframes tn-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+  .tn-rail, .tn-dossier { animation: none; }
+}

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { layersStore, LAYER_PRESETS, ACTIVE_LAYERS, type LayerKey } from "@/lib/layers";
 import { mapViewStore } from "@/lib/mapView";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
+import { coverageStore } from "@/lib/shell/coverage";
 import { CAMERA_REGIONS } from "@/lib/icons/svg";
 
 interface Command {
@@ -77,6 +78,16 @@ function buildCommands(close: () => void): Command[] {
       },
     });
   }
+
+  cmds.push({
+    id: "coverage",
+    label: "Coverage details",
+    hint: "info",
+    run: () => {
+      coverageStore.open();
+      close();
+    },
+  });
 
   return cmds;
 }

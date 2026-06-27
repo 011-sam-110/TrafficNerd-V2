@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { WorldObject } from "@/lib/world";
 import { TypeIcon } from "@/lib/icons/Icon";
+import type { FlightEnrichment, FlightAirport } from "@/lib/sources/adsbdb";
 
 interface Props {
   object: WorldObject;
@@ -79,6 +81,40 @@ function StatCard({
   );
 }
 
+/** One end of a route: the airport code (bold) over its city/name. */
+function Endpoint({
+  port,
+  fallback,
+  align = "left",
+}: {
+  port: FlightAirport | null;
+  fallback: string;
+  align?: "left" | "right";
+}) {
+  const code = port ? port.iata || port.icao : "";
+  const sub = port ? port.municipality || port.name : "";
+  return (
+    <div style={{ flex: 1, textAlign: align, minWidth: 0 }}>
+      <div style={{ fontSize: 17, fontWeight: 700, color: "var(--tn-text)", letterSpacing: "0.04em" }}>
+        {code || fallback}
+      </div>
+      {sub && (
+        <div
+          style={{
+            fontSize: 11,
+            color: "var(--tn-text-faint)",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // PlaneDetail — renders inside an existing overlay panel body
 // No full-screen layout, no fixed positioning.
@@ -96,6 +132,36 @@ export default function PlaneDetail({ object }: Props) {
 
   const callsign = (meta.callsign as string | undefined) ?? object.label;
   const country = (meta.country as string | undefined) ?? "—";
+  const hex = object.id.startsWith("plane:") ? object.id.slice("plane:".length) : "";
+
+  // Enrich with adsbdb (origin/destination + airframe) server-side. Optional —
+  // the dossier shows the live telemetry immediately and grafts this in if/when
+  // it resolves; a miss or failure leaves the panel exactly as it was.
+  const [flight, setFlight] = useState<FlightEnrichment | null>(null);
+  useEffect(() => {
+    setFlight(null);
+    const cs = callsign && callsign !== hex ? callsign : "";
+    if (!cs && !hex) return;
+    const params = new URLSearchParams();
+    if (cs) params.set("callsign", cs);
+    if (hex && hex !== "unknown") params.set("hex", hex);
+    let alive = true;
+    fetch(`/api/flight?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: FlightEnrichment | null) => {
+        if (alive) setFlight(d);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [callsign, hex]);
+
+  const route = flight?.route ?? null;
+  const aircraft = flight?.aircraft ?? null;
+  const registration =
+    aircraft?.registration ?? (meta.registration as string | undefined) ?? null;
+  const airframe = [aircraft?.manufacturer, aircraft?.type].filter(Boolean).join(" ") || aircraft?.icaoType || null;
   const altKm = (meta.altKm as number | undefined) ?? 0;
   const altM = altKm * 1000;
   const velocityMs = meta.velocityMs as number | null | undefined;
@@ -243,6 +309,52 @@ export default function PlaneDetail({ object }: Props) {
         />
       </div>
 
+      {/* ── Route (adsbdb) ── */}
+      {route && (route.origin || route.destination) && (
+        <div
+          style={{
+            marginTop: 12,
+            background: "var(--tn-surface-2)",
+            borderRadius: 8,
+            padding: "12px 14px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--tn-accent)",
+              textTransform: "uppercase",
+              letterSpacing: "0.08em",
+              marginBottom: 8,
+              fontWeight: 600,
+            }}
+          >
+            Route{route.airline ? ` · ${route.airline}` : ""}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Endpoint port={route.origin} fallback="—" />
+            <span style={{ color: "var(--tn-text-faint)", fontSize: 16 }}>→</span>
+            <Endpoint port={route.destination} fallback="—" align="right" />
+          </div>
+        </div>
+      )}
+
+      {/* ── Aircraft (adsbdb) ── */}
+      {(airframe || registration || aircraft?.owner) && (
+        <div style={{ marginTop: 10, fontSize: 13, color: "var(--tn-text-muted)", lineHeight: 1.5 }}>
+          {airframe && (
+            <div>
+              <span style={{ color: "var(--tn-text)", fontWeight: 600 }}>{airframe}</span>
+              {registration ? <span style={{ color: "var(--tn-text-faint)" }}> · {registration}</span> : null}
+            </div>
+          )}
+          {!airframe && registration && (
+            <div style={{ color: "var(--tn-text)", fontWeight: 600 }}>{registration}</div>
+          )}
+          {aircraft?.owner && <div style={{ color: "var(--tn-text-faint)" }}>{aircraft.owner}</div>}
+        </div>
+      )}
+
       {/* ── Attribution ── */}
       <div
         style={{
@@ -253,7 +365,7 @@ export default function PlaneDetail({ object }: Props) {
           paddingTop: 8,
         }}
       >
-        Data from adsb.lol
+        Live data from adsb.lol{route || aircraft ? " · enrichment from adsbdb.com" : ""}
       </div>
     </div>
   );

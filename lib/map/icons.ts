@@ -10,6 +10,7 @@ import {
   ICON_SVG,
   cameraRegionColor,
   CAMERA_DEFAULT_REGION,
+  CAMERA_OFFLINE_COLOR,
   PLANE_META,
   SAT_META,
   WEBCAM_COLOR,
@@ -55,8 +56,8 @@ export async function loadCameraIcons(map: maplibregl.Map): Promise<void> {
     ["drivebc", cameraRegionColor("drivebc")],
     ["default", CAMERA_DEFAULT_REGION.color],
   ];
-  await Promise.all(
-    feeds.flatMap(([feed, iconKey]) =>
+  await Promise.all([
+    ...feeds.flatMap(([feed, iconKey]) =>
       regions.map(async ([rk, color]) => {
         const name = `cam-${feed}-${rk}`;
         if (map.hasImage(name)) return;
@@ -64,7 +65,16 @@ export async function loadCameraIcons(map: maplibregl.Map): Promise<void> {
         if (!map.hasImage(name)) map.addImage(name, img, { pixelRatio: 2 });
       }),
     ),
-  );
+    // One muted-slate "offline" variant per feed shape so unavailable cameras
+    // drop their live region colour (the honesty signal). Picked by icon-image
+    // when a feature's `available` is false.
+    ...feeds.map(async ([feed, iconKey]) => {
+      const name = `cam-${feed}-offline`;
+      if (map.hasImage(name)) return;
+      const img = await rasterizeIcon(ICON_SVG[iconKey].replaceAll("currentColor", CAMERA_OFFLINE_COLOR));
+      if (!map.hasImage(name)) map.addImage(name, img, { pixelRatio: 2 });
+    }),
+  ]);
 }
 
 /** Register one heading-up plane icon per type (coloured by PLANE_META). */

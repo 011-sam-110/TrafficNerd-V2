@@ -21,6 +21,7 @@ import { useMetrics } from "@/lib/metrics";
 import { useFreshness, classifyFreshness, freshnessAgeMs, type FreshSourceId } from "@/lib/freshness";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import { uiStore, useUI } from "@/lib/shell/ui";
+import { coverageStore } from "@/lib/shell/coverage";
 import { useNow, formatAge } from "@/lib/shell/useNow";
 import { CAMERA_REGIONS, CAMERA_FEED_META } from "@/lib/icons/svg";
 
@@ -228,6 +229,10 @@ export default function LayerRail() {
           <LayerRow key={k} layerKey={k} count={null} />
         ))}
       </div>
+
+      <button type="button" className="tn-coverage-open" onClick={() => coverageStore.open()}>
+        Coverage details — live counts per source
+      </button>
 
       <p className="tn-rail-foot">Only layers you can see are fetched. Everything here is a real, live, attributable feed.</p>
     </aside>
