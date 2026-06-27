@@ -47,6 +47,8 @@ import { PORTS_SOURCE } from "@/lib/signals/ports";
 import { CONFLICT_SOURCE, PROTESTS_SOURCE } from "@/lib/signals/gdelt";
 import { GDACS_SOURCE } from "@/lib/signals/gdacs";
 import { FIRE_FIRMS_SOURCE } from "@/lib/signals/fire-firms";
+import { EMSC_SOURCE } from "@/lib/signals/emsc";
+import { ACLED_SOURCE } from "@/lib/signals/acled";
 import { WEATHER_SOURCE } from "@/lib/signals/weather";
 import { AIR_QUALITY_SOURCE } from "@/lib/signals/airquality";
 import { UK_CRIME_SOURCE } from "@/lib/signals/crime";
@@ -65,6 +67,7 @@ export const SIGNALS: SignalSource[] = [
   FLOODS_SOURCE,
   GDACS_SOURCE, // multi-hazard GDACS alerts (EQ/TC/FL/VO/DR/WF), alert-coloured
   FIRE_FIRMS_SOURCE, // NASA FIRMS active-fire detections (key-gated: FIRMS_MAP_KEY)
+  EMSC_SOURCE, // EMSC quakes — a 2nd, faster Euro-Med catalogue alongside USGS
   AURORA_SOURCE,
   // Space
   LAUNCHES_SOURCE,
@@ -77,6 +80,8 @@ export const SIGNALS: SignalSource[] = [
   // Intel (GDELT geolocated news coverage)
   CONFLICT_SOURCE,
   PROTESTS_SOURCE,
+  // Conflict events (ACLED — key-gated: ACLED_EMAIL + ACLED_PASSWORD)
+  ACLED_SOURCE,
   // Environment & civic (keyless Open-Meteo + data.police.uk)
   WEATHER_SOURCE,
   AIR_QUALITY_SOURCE,

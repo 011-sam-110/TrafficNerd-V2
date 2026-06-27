@@ -21,7 +21,7 @@ registration or an email request. Until a key is set, its layer stays **dormant*
 | 2 | **ENTSO‑E Transparency** | EU electricity‑grid load / generation mix / cross‑border flows / outages | Free w/ registration | `ENTSOE_API_TOKEN` |
 | 3 | **OpenAQ** | Real air‑quality **station** measurements (upgrades the modelled CAMS layer) | Free | `OPENAQ_API_KEY` |
 | 4 | **UCDP** (Uppsala) | Geocoded conflict events + fatalities (structural conflict history) | Free token | `UCDP_API_TOKEN` |
-| 5 | **ACLED** | Real‑time armed‑conflict & protest events w/ actor attribution | Free, registered | `ACLED_API_KEY` + `ACLED_EMAIL` |
+| 5 | **ACLED** | Real‑time armed‑conflict & protest events w/ actor attribution | Free — **must activate API access** | `ACLED_EMAIL` + `ACLED_PASSWORD` |
 | 6 | **NASA FIRMS** | VIIRS/MODIS thermal active‑fire detections | Free MAP_KEY | `FIRMS_MAP_KEY` |
 | 7 | **ReliefWeb** (OCHA) | Humanitarian situation reports + disaster declarations | Free *approved appname* (not a secret) | `RELIEFWEB_APPNAME` |
 
@@ -38,8 +38,11 @@ registration or an email request. Until a key is set, its layer stays **dormant*
    generate an API key in your account. (v3 sends it as the `X‑API‑Key` header.)
 4. **UCDP** — request a free API access token via the UCDP API docs at
    <https://ucdp.uu.se> (the GED REST API now needs an `x‑ucdp‑access‑token` header).
-5. **ACLED** — register at <https://acleddata.com/register> → "Access" → generate an
-   API key. You'll use the key **and** the email you registered with.
+5. **ACLED** — register a free myACLED account at <https://acleddata.com/register>,
+   then **activate API access** in your dashboard (accept the access agreement /
+   select an access type). Auth is an OAuth2 password grant (your email + password,
+   `scope=authenticated`). ⚠️ Until API access is activated the read returns
+   `403 "Access denied"` even though login succeeds — the layer stays dormant.
 6. **NASA FIRMS** — request a free **MAP_KEY** at
    <https://firms.modaps.eosdis.nasa.gov/api/area/> (instant, just an email).
 
@@ -94,8 +97,8 @@ AISSTREAM_API_KEY=
 ENTSOE_API_TOKEN=
 OPENAQ_API_KEY=
 UCDP_API_TOKEN=
-ACLED_API_KEY=
 ACLED_EMAIL=
+ACLED_PASSWORD=
 FIRMS_MAP_KEY=
 RELIEFWEB_APPNAME=
 
