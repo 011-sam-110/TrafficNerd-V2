@@ -1,0 +1,41 @@
+{
+  "kp": [
+    {
+      "time_tag": "2026-06-27T00:00:00",
+      "Kp": 2.67,
+      "a_running": 12,
+      "station_count": 8
+    },
+    {
+      "time_tag": "2026-06-27T03:00:00",
+      "Kp": 2.0,
+      "a_running": 7,
+      "station_count": 8
+    },
+    {
+      "time_tag": "2026-06-27T06:00:00",
+      "Kp": 2.0,
+      "a_running": 7,
+      "station_count": 8
+    }
+  ],
+  "scales0": {
+    "DateStamp": "2026-06-27",
+    "TimeStamp": "09:30:00",
+    "R": {
+      "Scale": "0",
+      "Text": "none",
+      "MinorProb": null,
+      "MajorProb": null
+    },
+    "S": {
+      "Scale": "0",
+      "Text": "none",
+      "Prob": null
+    },
+    "G": {
+      "Scale": "0",
+      "Text": "none"
+    }
+  }
+}
