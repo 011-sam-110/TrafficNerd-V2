@@ -39,6 +39,10 @@ export const signalsStore = {
     state = { ...state, [id]: on };
     emit();
   },
+  applyExact(next: SignalState) {
+    state = { ...next };
+    emit();
+  },
   get(): SignalState {
     return state;
   },

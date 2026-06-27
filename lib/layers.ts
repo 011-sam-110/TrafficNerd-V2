@@ -79,6 +79,10 @@ export const layersStore = {
     state = presetState(id);
     emit();
   },
+  applyExact(next: LayerState) {
+    state = { ...DEFAULT_STATE, ...next };
+    emit();
+  },
   get(): LayerState {
     return state;
   },
