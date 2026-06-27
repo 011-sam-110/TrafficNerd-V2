@@ -22,8 +22,6 @@ import WatchlistPanel from "@/components/shell/WatchlistPanel";
 import BreakingBanner from "@/components/shell/BreakingBanner";
 import { FeedOverlay } from "@/components/FeedOverlay";
 import PanelHost from "@/components/shell/PanelHost";
-import VariantSwitcher from "@/components/shell/VariantSwitcher";
-import WorkspaceBar from "@/components/shell/WorkspaceBar";
 import DockableWorkspace from "@/components/shell/DockableWorkspace";
 
 export default function ConsoleShell({ children }: { children: React.ReactNode }) {
@@ -60,7 +58,6 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
     <div className="tn-shell">
       {children}
       <StatusBar onOpenPalette={() => setPaletteOpen(true)} />
-      <div className="tn-topbar-variant"><VariantSwitcher /><WorkspaceBar /></div>
       <BreakingBanner />
       <PlaceSearch />
       <PanelHost />

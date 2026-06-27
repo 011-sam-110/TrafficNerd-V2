@@ -15,6 +15,8 @@ import { copyShareLink } from "@/lib/share/deepLink";
 import { useT } from "@/lib/i18n/store";
 import type { StringKey } from "@/lib/i18n/catalog";
 import LangSwitcher from "@/components/shell/LangSwitcher";
+import VariantSwitcher from "@/components/shell/VariantSwitcher";
+import WorkspaceBar from "@/components/shell/WorkspaceBar";
 
 type Health = { labelKey: StringKey; tone: "live" | "degraded" | "down" | "connecting" };
 
@@ -77,6 +79,10 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
           Traffic<span className="tn-wordmark-accent">Nerd</span>
         </span>
         <span className="tn-tagline">{t("appTagline")}</span>
+        <div className="tn-topbar-variant">
+          <VariantSwitcher />
+          <WorkspaceBar />
+        </div>
       </div>
 
       <div className="tn-topbar-metrics">

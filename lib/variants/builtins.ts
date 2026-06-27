@@ -2,23 +2,29 @@ import type { PanelKey, Variant } from "@/lib/variants/types";
 
 export const DEFAULT_VARIANT_ID = "explore";
 
-// Helper: persistent panels live in fixed slots in SP1a; grid is for SP1b.
+// Helper: persistent chrome panels (layerRail/freshness/news) — grid is unused
+// for these (they render as fixed SP1a chrome, never in the dock).
 const slot = (panel: PanelKey, visible = true): { panel: PanelKey; grid: { x: number; y: number; w: number; h: number }; visible: boolean } =>
   ({ panel, grid: { x: 0, y: 0, w: 3, h: 4 }, visible });
+
+// Helper: a dockable intelligence panel (markets/brief/watchlist/coverage) — a
+// full-width tile stacked at row `y`. These are what the SP1b workspace docks.
+const dock = (panel: PanelKey, y: number, h = 5): { panel: PanelKey; grid: { x: number; y: number; w: number; h: number }; visible: boolean } =>
+  ({ panel, grid: { x: 0, y, w: 12, h }, visible: true });
 
 export const BUILTIN_VARIANTS: Variant[] = [
   { id: "explore", builtin: true, title: "Explore", accent: "#2563eb", theme: "light",
     layers: { cameras: true, planes: true, satellites: false, webcams: false },
-    panels: [slot("layerRail")], tone: "calm" },
+    panels: [slot("layerRail"), dock("coverage", 0, 6), dock("markets", 6, 6)], tone: "calm" },
 
   { id: "intel", builtin: true, title: "Intel", accent: "#0f172a", theme: "light",
     layers: { cameras: true, planes: true, satellites: true },
     signals: { groups: ["*"] },
-    panels: [slot("layerRail"), slot("freshness"), slot("brief"), slot("markets"), slot("news")] },
+    panels: [slot("layerRail"), slot("freshness"), dock("brief", 0, 4), dock("markets", 4, 6), slot("news")] },
 
   { id: "cameras", builtin: true, title: "Cameras", accent: "#7c3aed", theme: "light",
     layers: { cameras: true, webcams: true, planes: false, satellites: false },
-    cameraFilter: { liveOnly: true }, panels: [slot("layerRail")] },
+    cameraFilter: { liveOnly: true }, panels: [slot("layerRail"), dock("coverage", 0, 6)] },
 
   { id: "aviation", builtin: true, title: "Aviation", accent: "#0891b2", theme: "light",
     layers: { planes: true, cameras: false, satellites: false },
@@ -43,12 +49,12 @@ export const BUILTIN_VARIANTS: Variant[] = [
   { id: "geopolitics", builtin: true, title: "Geopolitics", accent: "#b91c1c", theme: "light",
     layers: { cameras: false, planes: false, satellites: false },
     signals: { groups: ["Conflict", "Intel", "Military"], ids: ["displacement", "instability"] },
-    panels: [slot("layerRail"), slot("brief"), slot("news"), slot("freshness")] },
+    panels: [slot("layerRail"), dock("brief", 0, 6), slot("news"), slot("freshness")] },
 
   { id: "humanitarian", builtin: true, title: "Humanitarian", accent: "#047857", theme: "light",
     layers: { cameras: false, planes: false, satellites: false },
     signals: { groups: ["Human cost"], ids: ["airquality", "instability"] },
-    panels: [slot("layerRail"), slot("brief"), slot("freshness")] },
+    panels: [slot("layerRail"), dock("brief", 0, 6), slot("freshness")] },
 
   { id: "infrastructure", builtin: true, title: "Infrastructure", accent: "#6d28d9", theme: "light",
     layers: { cameras: false, planes: false, satellites: false },
@@ -68,7 +74,7 @@ export const BUILTIN_VARIANTS: Variant[] = [
   { id: "markets", builtin: true, title: "Markets", accent: "#15803d", theme: "light",
     layers: { cameras: false, planes: false, satellites: false },
     signals: { ids: ["instability"] },
-    panels: [slot("layerRail"), slot("markets"), slot("brief")] },
+    panels: [slot("layerRail"), dock("markets", 0, 6), dock("brief", 6, 5)] },
 ];
 
 export const BUILTIN_BY_ID: Record<string, Variant> = Object.fromEntries(

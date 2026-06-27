@@ -730,5 +730,6 @@ a { color: var(--tn-accent); }
 
 @media (max-width: 640px) { .tn-workspace { width: auto; left: 8px; } }
 
-/* Variant switcher + workspace toggle share the top-left chrome row. */
-.tn-topbar-variant { display: flex; align-items: center; gap: 8px; }
+/* Variant switcher + workspace toggle live in the header's left cluster. */
+.tn-topbar-variant { display: flex; align-items: center; gap: 8px; align-self: center; }
+@media (max-width: 900px) { .tn-tagline { display: none; } }
