@@ -8,12 +8,16 @@ import { useEffect, useState } from "react";
 import { layersStore } from "@/lib/layers";
 import { signalsStore } from "@/lib/signals/store";
 import { uiStore } from "@/lib/shell/ui";
+import { alertStore } from "@/lib/shell/alert";
 import StatusBar from "@/components/shell/StatusBar";
 import LayerRail from "@/components/shell/LayerRail";
 import FreshnessTicker from "@/components/shell/FreshnessTicker";
 import CommandPalette from "@/components/shell/CommandPalette";
 import PlaceSearch from "@/components/shell/PlaceSearch";
 import CoveragePanel from "@/components/shell/CoveragePanel";
+import MarketsPanel from "@/components/shell/MarketsPanel";
+import NewsTicker from "@/components/shell/NewsTicker";
+import BreakingBanner from "@/components/shell/BreakingBanner";
 import { FeedOverlay } from "@/components/FeedOverlay";
 
 export default function ConsoleShell({ children }: { children: React.ReactNode }) {
@@ -25,6 +29,7 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
     layersStore.hydrate();
     signalsStore.hydrate();
     uiStore.hydrate();
+    alertStore.hydrate();
   }, []);
 
   // Global ⌘K / Ctrl-K toggles the palette.
@@ -43,11 +48,14 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
     <div className="tn-shell">
       {children}
       <StatusBar onOpenPalette={() => setPaletteOpen(true)} />
+      <BreakingBanner />
       <PlaceSearch />
       <LayerRail />
+      <NewsTicker />
       <FreshnessTicker />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <CoveragePanel />
+      <MarketsPanel />
       <FeedOverlay />
     </div>
   );

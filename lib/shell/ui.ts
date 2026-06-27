@@ -14,12 +14,14 @@ export type Theme = "light" | "dark";
 export interface UIState {
   railOpen: boolean;
   theme: Theme;
+  /** Whether the bottom news ticker is shown (dismissible, persisted). */
+  newsTicker: boolean;
 }
 
 const PERSIST_KEY = "tn.ui.v1";
 const PERSIST_VERSION = 1;
 
-let state: UIState = { railOpen: true, theme: "light" };
+let state: UIState = { railOpen: true, theme: "light", newsTicker: true };
 const listeners = new Set<() => void>();
 
 function applyTheme(theme: Theme) {
@@ -49,6 +51,14 @@ export const uiStore = {
   },
   toggleTheme() {
     uiStore.setTheme(state.theme === "light" ? "dark" : "light");
+  },
+  setNewsTicker(on: boolean) {
+    if (state.newsTicker === on) return;
+    state = { ...state, newsTicker: on };
+    emit();
+  },
+  toggleNewsTicker() {
+    uiStore.setNewsTicker(!state.newsTicker);
   },
   get(): UIState {
     return state;

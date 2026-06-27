@@ -1,0 +1,40 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [44.3661, 33.3152] },
+      "properties": {
+        "name": "Baghdad, Iraq",
+        "count": 42,
+        "shareimage": "https://example.com/img1.jpg",
+        "html": "<a href=\"https://example.com/baghdad-clashes\" target=\"_blank\">Clashes reported in Baghdad</a><br><a href=\"https://example.com/two\">More</a>"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [-0.1276, 51.5072] },
+      "properties": {
+        "name": "London, United Kingdom",
+        "count": 7,
+        "shareimage": "",
+        "html": "Demonstration outside parliament &amp; nearby"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [null, 40.0] },
+      "properties": { "name": "Bad Coords", "count": 99, "html": "" }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [500, 12] },
+      "properties": { "name": "Out Of Range", "count": 99, "html": "" }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [10, 20] },
+      "properties": { "name": "", "count": 5, "html": "" }
+    }
+  ]
+}
