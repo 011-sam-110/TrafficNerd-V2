@@ -63,6 +63,8 @@ import { SPACE_WEATHER_SOURCE } from "@/lib/signals/space-weather";
 import { INSTABILITY_SOURCE } from "@/lib/signals/instability";
 import { AIR_QUALITY_STATIONS_SOURCE } from "@/lib/signals/airquality-stations";
 import { TROPICAL_CYCLONES_SOURCE } from "@/lib/signals/tropical-cyclones";
+import { RELIEFWEB_SOURCE } from "@/lib/signals/reliefweb";
+import { GRID_LOAD_SOURCE } from "@/lib/signals/entsoe";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
@@ -105,6 +107,9 @@ export const SIGNALS: SignalSource[] = [
   // Human cost (keyless UNHCR displacement + WFP HungerMap, country-aggregated)
   DISPLACEMENT_SOURCE,
   FOOD_SECURITY_SOURCE,
+  RELIEFWEB_SOURCE, // UN OCHA humanitarian emergencies (key-gated: RELIEFWEB_APPNAME)
+  // Energy / grid (key-gated: ENTSOE_API_TOKEN)
+  GRID_LOAD_SOURCE,
   // Military (keyless unfiltered military ADS-B)
   MILITARY_AIR_SOURCE,
   // Maritime (real-time AIS vessel positions at strategic chokepoints; key-gated: AISSTREAM_API_KEY)
