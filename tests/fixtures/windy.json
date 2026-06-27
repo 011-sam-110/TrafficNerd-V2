@@ -1,0 +1,103 @@
+{
+  "total": 1299,
+  "webcams": [
+    {
+      "title": "London: Trafalgar Square",
+      "viewCount": 41434,
+      "webcamId": 1420893641,
+      "status": "active",
+      "lastUpdatedOn": "2026-06-27T02:38:39.000Z",
+      "categories": [{ "id": "city", "name": "City" }, { "id": "traffic", "name": "Traffic" }],
+      "images": {
+        "current": {
+          "icon": "https://imgproxy.windy.com/_/icon/plain/current/1420893641/original.jpg",
+          "thumbnail": "https://imgproxy.windy.com/_/thumbnail/plain/current/1420893641/original.jpg",
+          "preview": "https://imgproxy.windy.com/_/preview/plain/current/1420893641/original.jpg"
+        },
+        "daylight": {
+          "icon": "https://imgproxy.windy.com/_/icon/plain/daylight/1420893641/original.jpg",
+          "thumbnail": "https://imgproxy.windy.com/_/thumbnail/plain/daylight/1420893641/original.jpg",
+          "preview": "https://imgproxy.windy.com/_/preview/plain/daylight/1420893641/original.jpg"
+        },
+        "sizes": {
+          "icon": { "width": 48, "height": 48 },
+          "thumbnail": { "width": 200, "height": 112 },
+          "preview": { "width": 352, "height": 224 }
+        }
+      },
+      "location": {
+        "city": "London",
+        "region": "England",
+        "region_code": "GB.ENG",
+        "country": "United Kingdom",
+        "country_code": "GB",
+        "continent": "Europe",
+        "continent_code": "EU",
+        "latitude": 51.508,
+        "longitude": -0.128
+      },
+      "urls": {
+        "detail": "https://windy.com/webcams/1420893641",
+        "edit": "https://windy.com/webcams/edit/1420893641",
+        "provider": "http://www.example-provider.org/"
+      }
+    },
+    {
+      "title": "Tokyo: Shibuya Crossing",
+      "viewCount": 99000,
+      "webcamId": 1888000002,
+      "status": "inactive",
+      "lastUpdatedOn": "2026-06-26T18:00:00.000Z",
+      "categories": [{ "id": "city", "name": "City" }],
+      "images": {
+        "current": {
+          "icon": "https://imgproxy.windy.com/_/icon/plain/current/1888000002/original.jpg",
+          "thumbnail": "https://imgproxy.windy.com/_/thumbnail/plain/current/1888000002/original.jpg",
+          "preview": "https://imgproxy.windy.com/_/preview/plain/current/1888000002/original.jpg"
+        }
+      },
+      "location": {
+        "city": "Tokyo",
+        "region": "Tokyo",
+        "country": "Japan",
+        "country_code": "JP",
+        "continent": "Asia",
+        "latitude": 35.6595,
+        "longitude": 139.7005
+      },
+      "urls": {
+        "detail": "https://windy.com/webcams/1888000002"
+      }
+    },
+    {
+      "title": "No-image cam (marker only, detail fetched on click)",
+      "webcamId": 1777000003,
+      "status": "active",
+      "location": {
+        "country_code": "es",
+        "latitude": 40.0,
+        "longitude": -3.0
+      },
+      "urls": { "detail": "https://windy.com/webcams/1777000003" }
+    },
+    {
+      "title": "Broken: no location at all",
+      "webcamId": 1999000001,
+      "status": "active",
+      "images": {
+        "current": { "preview": "https://imgproxy.windy.com/_/preview/plain/current/1999000001/original.jpg" }
+      }
+    },
+    {
+      "title": "Broken: missing webcamId",
+      "status": "active",
+      "location": { "country_code": "FR", "latitude": 48.85, "longitude": 2.35 }
+    },
+    {
+      "title": "Broken: out-of-range coordinates",
+      "webcamId": 1666000004,
+      "status": "active",
+      "location": { "country_code": "DE", "latitude": 200, "longitude": 9 }
+    }
+  ]
+}

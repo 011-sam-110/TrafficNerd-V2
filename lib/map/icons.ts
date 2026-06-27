@@ -12,6 +12,7 @@ import {
   CAMERA_DEFAULT_REGION,
   PLANE_META,
   SAT_META,
+  WEBCAM_COLOR,
 } from "@/lib/icons/svg";
 
 /** Rasterise an SVG pictogram into an image MapLibre can use as a symbol icon. */
@@ -75,6 +76,13 @@ export async function loadPlaneIcons(map: maplibregl.Map): Promise<void> {
       if (!map.hasImage(meta.key)) map.addImage(meta.key, img, { pixelRatio: 2 });
     }),
   );
+}
+
+/** Register the single rose-tinted Windy webcam icon. */
+export async function loadWebcamIcons(map: maplibregl.Map): Promise<void> {
+  if (map.hasImage("webcam")) return;
+  const img = await rasterizeIcon(ICON_SVG.webcam.replaceAll("currentColor", WEBCAM_COLOR));
+  if (!map.hasImage("webcam")) map.addImage("webcam", img, { pixelRatio: 2 });
 }
 
 /** Register one icon per satellite category (coloured by SAT_META). */

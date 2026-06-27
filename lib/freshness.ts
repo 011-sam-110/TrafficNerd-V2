@@ -13,7 +13,7 @@
 import { useSyncExternalStore } from "react";
 
 export type FreshState = "unknown" | "live" | "lagging" | "stale" | "down";
-export type FreshSourceId = "cameras" | "planes" | "satellites";
+export type FreshSourceId = "cameras" | "planes" | "satellites" | "webcams";
 
 export interface SourceRecord {
   id: FreshSourceId;
@@ -29,13 +29,15 @@ export interface SourceRecord {
   local: boolean;
 }
 
-const ORDER: FreshSourceId[] = ["cameras", "planes", "satellites"];
+const ORDER: FreshSourceId[] = ["cameras", "planes", "satellites", "webcams"];
 
 function seed(): Record<FreshSourceId, SourceRecord> {
   return {
     cameras: { id: "cameras", label: "Cameras", count: 0, ok: true, lastUpdate: null, refreshMs: 300_000, local: false },
     planes: { id: "planes", label: "Planes", count: 0, ok: true, lastUpdate: null, refreshMs: 12_000, local: false },
     satellites: { id: "satellites", label: "Satellites", count: 0, ok: true, lastUpdate: null, refreshMs: 1_000, local: true },
+    // Windy free-tier image tokens last ~10 min, so the layer re-pulls on that cadence.
+    webcams: { id: "webcams", label: "Webcams", count: 0, ok: true, lastUpdate: null, refreshMs: 600_000, local: false },
   };
 }
 

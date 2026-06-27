@@ -6,8 +6,8 @@ import { layersStore, presetState, ACTIVE_LAYERS, PLANNED_LAYERS } from "@/lib/l
 afterEach(() => layersStore.applyPreset("all"));
 
 test("active and planned layer sets are disjoint and complete", () => {
-  expect(ACTIVE_LAYERS).toEqual(["cameras", "planes", "satellites"]);
-  expect(PLANNED_LAYERS).toEqual(["ships", "webcams", "weather"]);
+  expect(ACTIVE_LAYERS).toEqual(["cameras", "planes", "satellites", "webcams"]);
+  expect(PLANNED_LAYERS).toEqual(["ships", "weather"]);
 });
 
 test("presets only ever switch active layers; planned stay off", () => {

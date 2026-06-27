@@ -71,6 +71,18 @@ export function toTrailFC(trails: PlaneTrail[]): GeoJSON.FeatureCollection {
   };
 }
 
+/** Webcams (Windy) → point features. Single hue/icon, so only id + name ride along. */
+export function toWebcamFC(webcams: WorldObject[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: webcams.map((w) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [w.lon, w.lat] },
+      properties: { id: w.id, name: w.label },
+    })),
+  };
+}
+
 /** Satellites → sub-satellite point features (altitude lives in the dossier). */
 export function toSatelliteFC(sats: WorldObject[]): GeoJSON.FeatureCollection {
   return {

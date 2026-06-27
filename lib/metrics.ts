@@ -16,9 +16,11 @@ export interface Metrics {
   camerasTotal: number;
   planes: number;
   satellites: number;
+  /** Windy webcams currently loaded (a DISTINCT layer from the road cameras). */
+  webcams: number;
 }
 
-let state: Metrics = { camerasOnline: 0, camerasTotal: 0, planes: 0, satellites: 0 };
+let state: Metrics = { camerasOnline: 0, camerasTotal: 0, planes: 0, satellites: 0, webcams: 0 };
 const listeners = new Set<() => void>();
 
 function shallowEqual(a: Metrics, b: Metrics): boolean {
@@ -26,7 +28,8 @@ function shallowEqual(a: Metrics, b: Metrics): boolean {
     a.camerasOnline === b.camerasOnline &&
     a.camerasTotal === b.camerasTotal &&
     a.planes === b.planes &&
-    a.satellites === b.satellites
+    a.satellites === b.satellites &&
+    a.webcams === b.webcams
   );
 }
 
