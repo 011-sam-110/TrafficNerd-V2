@@ -667,3 +667,17 @@ a { color: var(--tn-accent); }
   font-size: 15px; line-height: 1; cursor: pointer;
 }
 .tn-saved-remove:hover { color: var(--tn-down); border-color: var(--tn-down); }
+
+/* Variant switcher (SP1a) */
+.tn-variant { position: relative; }
+.tn-variant-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border-radius: 999px; border: 1px solid var(--tn-border, #e2e8f0); background: var(--tn-surface, #fff);
+  font: inherit; cursor: pointer; }
+.tn-variant-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.tn-variant-edited { opacity: .6; }
+.tn-variant-menu { position: absolute; top: 110%; left: 0; margin: 0; padding: 4px; list-style: none;
+  background: var(--tn-surface, #fff); border: 1px solid var(--tn-border, #e2e8f0); border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 180px; z-index: 50; max-height: 60vh; overflow: auto; }
+.tn-variant-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px;
+  border: 0; background: none; font: inherit; text-align: left; border-radius: 6px; cursor: pointer; }
+.tn-variant-menu button:hover, .tn-variant-menu button.is-active { background: var(--tn-hover, #f1f5f9); }
