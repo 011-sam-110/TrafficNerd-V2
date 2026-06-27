@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Allow an isolated build dir so a verification `next build` doesn't fight a
+  // concurrently-running `next dev` over `.next` (defaults to `.next`).
+  distDir: process.env.TN_DIST_DIR || ".next",
   webpack: (config, { isServer, webpack }) => {
     if (!isServer) {
       // satellite.js v7's barrel re-exports a WASM threading runtime

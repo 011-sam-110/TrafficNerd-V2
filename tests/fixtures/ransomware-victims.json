@@ -1,0 +1,58 @@
+[
+  {
+    "victim": "Aptora",
+    "group": "dragonforce",
+    "activity": "Technology",
+    "attackdate": "2026-06-27T00:40:24.116536+00:00",
+    "country": "US",
+    "claim_url": "http://z3wqggtxft7id3ibr7srivv5gjof5fwg76slewnzwwakjuf3nlhukdid.onion/blog/?post_uuid=5d3ee0c2-d584-4a80-86ae-53328d19f87c"
+  },
+  {
+    "victim": "NSW Rural Fire Service",
+    "group": "nova",
+    "activity": "Public Sector",
+    "attackdate": "2026-06-26T11:28:22.302892+00:00",
+    "country": "AU",
+    "claim_url": "http://novadmrkp4vbk2padk5t6pbxolndceuc7hrcq4mjaoyed6nxsqiuzyyd.onion/nsw-rural-fire-service"
+  },
+  {
+    "victim": "Cl\u00ednica La Sabana",
+    "group": "payload",
+    "activity": "Healthcare",
+    "attackdate": "2026-06-26T10:59:14.549312+00:00",
+    "country": "CR",
+    "claim_url": "http://payloadrz5yw227brtbvdqpnlhq3rdcdekdnn3rgucbcdeawq2v6vuyd.onion/posts/988ba95d-5c4b-49d2-8a14-3f14d9e4b785"
+  },
+  {
+    "victim": "Software Arge",
+    "group": "payload",
+    "activity": "Technology",
+    "attackdate": "2026-06-26T10:58:14.535288+00:00",
+    "country": "TR",
+    "claim_url": "http://payloadrz5yw227brtbvdqpnlhq3rdcdekdnn3rgucbcdeawq2v6vuyd.onion/posts/3a53575b-d253-4694-811a-81abfa9a48e5"
+  },
+  {
+    "victim": "Mosaic Partners",
+    "group": "payload",
+    "activity": "Business Services",
+    "attackdate": "2026-06-26T10:28:37.550377+00:00",
+    "country": "CH",
+    "claim_url": "http://payloadrz5yw227brtbvdqpnlhq3rdcdekdnn3rgucbcdeawq2v6vuyd.onion/posts/1dd5a657-4b5f-49f0-9e0b-26cde29148ca"
+  },
+  {
+    "victim": "ingerman.com",
+    "group": "chaos",
+    "activity": "Business Services",
+    "attackdate": "2026-06-26T09:24:00.987345+00:00",
+    "country": "DE",
+    "claim_url": "http://hptqq2o2qjva7lcaaq67w36jihzivkaitkexorauw7b2yul2z6zozpqd.onion/post/eFnDbkPSi9k9g3lgEso7e118pg6iqv7A"
+  },
+  {
+    "victim": "Edge Co",
+    "group": "testgroup",
+    "activity": null,
+    "attackdate": "2026-06-20T00:00:00+00:00",
+    "country": "",
+    "claim_url": null
+  }
+]
