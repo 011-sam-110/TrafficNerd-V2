@@ -1,0 +1,52 @@
+{
+  "type": "FeatureCollection",
+  "metadata": { "title": "USGS test slice", "count": 5 },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "mag": 2.46,
+        "place": "5 km NNW of Redwood Valley, CA",
+        "time": 1782535654940,
+        "url": "https://earthquake.usgs.gov/earthquakes/eventpage/nc75385091",
+        "title": "M 2.5 - 5 km NNW of Redwood Valley, CA",
+        "magType": "md",
+        "type": "earthquake"
+      },
+      "geometry": { "type": "Point", "coordinates": [-123.231002807617, 39.3004989624023, 0.0799999982118607] },
+      "id": "nc75385091"
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "mag": 6.3,
+        "place": "Banda Sea",
+        "time": 1782530000000,
+        "url": "https://earthquake.usgs.gov/earthquakes/eventpage/big1",
+        "title": "M 6.3 - Banda Sea",
+        "magType": "mww",
+        "type": "earthquake"
+      },
+      "geometry": { "type": "Point", "coordinates": [129.5, -6.2, 120.4] },
+      "id": "big1"
+    },
+    {
+      "type": "Feature",
+      "properties": { "mag": 1.1, "place": "quarry", "time": 1782520000000, "type": "quarry blast" },
+      "geometry": null,
+      "id": "nullgeom"
+    },
+    {
+      "type": "Feature",
+      "properties": { "mag": 0.8, "place": "bad coords", "time": 1782510000000, "type": "earthquake" },
+      "geometry": { "type": "Point", "coordinates": [null, null, 2.6] },
+      "id": "badcoords"
+    },
+    {
+      "type": "Feature",
+      "properties": { "mag": 3.0, "place": "no id", "time": 1782500000000, "type": "earthquake" },
+      "geometry": { "type": "Point", "coordinates": [10, 20, 5] },
+      "id": ""
+    }
+  ]
+}

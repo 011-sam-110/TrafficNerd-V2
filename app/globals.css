@@ -360,6 +360,19 @@ a { color: var(--tn-accent); }
 .tn-share-btn { font-size: 12px; font-weight: 600; padding: 0 10px; white-space: nowrap; }
 .tn-share-btn.is-copied { color: var(--tn-live); border-color: var(--tn-live); }
 
+/* ===================== Global signals (opt-in hazard layers) ===================== */
+.tn-signals-header {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  background: none; border: none; padding: 2px 2px; cursor: pointer; font: inherit; color: inherit;
+}
+.tn-signals-title { font-size: 13px; font-weight: 600; color: var(--tn-text); display: flex; align-items: center; gap: 7px; }
+.tn-signals-badge {
+  font-size: 10px; font-weight: 700; color: #fff; background: var(--tn-accent);
+  border-radius: 999px; padding: 1px 7px; min-width: 18px; text-align: center;
+}
+.tn-signals-body { margin-top: 4px; }
+.tn-signals-body .tn-rail-section + .tn-rail-section { margin-top: 6px; }
+
 /* ===================== Coverage panel (honest counts) ===================== */
 .tn-coverage-open {
   font: inherit; font-size: 11.5px; font-weight: 600; color: var(--tn-accent);

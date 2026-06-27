@@ -83,6 +83,37 @@ export function toWebcamFC(webcams: WorldObject[]): GeoJSON.FeatureCollection {
   };
 }
 
+/**
+ * Global signals (earthquakes, wildfires, aurora, …) → point features for the
+ * ONE data-driven circle+label layer. Every signal source funnels through this:
+ * the per-feature `color` paints the dot, `radius` sizes it, and `label`/`signalId`
+ * ride along for the label layer + click resolution. `radius` is derived here
+ * from the documented `meta.props.magnitude` convention (see lib/signals/types.ts)
+ * so the WorldMap layer needs no per-source knowledge.
+ */
+export function toSignalFC(signals: WorldObject[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: signals.map((s) => {
+      const props = (s.meta?.props ?? {}) as Record<string, unknown>;
+      const mag = Number(props.magnitude);
+      // magnitude (≈0–10) scales the marker; everything else gets a calm fixed dot.
+      const radius = Number.isFinite(mag) ? Math.max(4, Math.min(26, 4 + mag * 1.6)) : 7;
+      return {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [s.lon, s.lat] },
+        properties: {
+          id: s.id,
+          signalId: (s.meta?.signalId as string) ?? "",
+          label: s.label,
+          color: s.color ?? "#64748b",
+          radius,
+        },
+      };
+    }),
+  };
+}
+
 /** Satellites → sub-satellite point features (altitude lives in the dossier). */
 export function toSatelliteFC(sats: WorldObject[]): GeoJSON.FeatureCollection {
   return {
