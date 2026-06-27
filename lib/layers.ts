@@ -19,7 +19,7 @@ export type LayerState = Record<LayerKey, boolean>;
 export const ACTIVE_LAYERS: readonly LayerKey[] = ["cameras", "planes", "satellites", "webcams"];
 export const PLANNED_LAYERS: readonly LayerKey[] = ["ships", "weather"];
 
-const DEFAULT_STATE: LayerState = {
+export const DEFAULT_STATE: LayerState = {
   cameras: true,
   satellites: true,
   planes: true,
