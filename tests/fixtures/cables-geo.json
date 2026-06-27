@@ -1,0 +1,88 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       146.24997063108842,
+       -39.68895338487733
+      ],
+      [
+       146.6315081258882,
+       -40.29628248782328
+      ],
+      [
+       146.85017020590166,
+       -41.033054194589326
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "id": "bernacchi-1",
+    "name": "Bernacchi-1",
+    "color": "#939597",
+    "feature_id": "bernacchi-1-0",
+    "coordinates": [
+     146.63868175101123,
+     -40.32045368396887
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "MultiLineString",
+    "coordinates": [
+     [
+      [
+       -159.40532650000003,
+       22.215110945271654
+      ],
+      [
+       -159.11459846491226,
+       22.15096072058392
+      ],
+      [
+       -158.79461333774822,
+       21.91281631303456
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "id": "kunoa-north",
+    "name": "Kunoa North",
+    "color": "#939597",
+    "feature_id": "kunoa-north-0",
+    "coordinates": [
+     -156.96656308826877,
+     21.295721056114605
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     0,
+     0
+    ]
+   },
+   "properties": {
+    "id": "bogus",
+    "name": "Not a line",
+    "feature_id": "bogus-0",
+    "coordinates": [
+     0,
+     0
+    ]
+   }
+  }
+ ]
+}

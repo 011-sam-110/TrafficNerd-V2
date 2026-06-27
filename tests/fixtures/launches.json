@@ -1,0 +1,117 @@
+{
+ "count": 4,
+ "results": [
+  {
+   "id": "f596ad48-881e-47d6-806d-113c6dd97427",
+   "url": "https://lldev.thespacedevs.com/2.2.0/launch/f596ad48-881e-47d6-806d-113c6dd97427/",
+   "name": "Pegasus XL | Swift Boost Mission",
+   "net": "2026-06-27T09:00:00Z",
+   "status": {
+    "name": "Go for Launch"
+   },
+   "launch_service_provider": {
+    "name": "Northrop Grumman Space Systems"
+   },
+   "rocket": {
+    "configuration": {
+     "name": "Pegasus XL"
+    }
+   },
+   "mission": {
+    "name": "Swift Boost Mission"
+   },
+   "pad": {
+    "name": "Kwajalein Atoll",
+    "latitude": "8.716667",
+    "longitude": "167.733333",
+    "location": {
+     "name": "Air launch to orbit"
+    }
+   }
+  },
+  {
+   "id": "0740c699-9877-4331-8aef-4e29ea6281c0",
+   "url": "https://lldev.thespacedevs.com/2.2.0/launch/0740c699-9877-4331-8aef-4e29ea6281c0/",
+   "name": "Falcon 9 Block 5 | Starlink Group 17-40",
+   "net": "2026-06-28T14:00:00Z",
+   "status": {
+    "name": "Go for Launch"
+   },
+   "launch_service_provider": {
+    "name": "SpaceX"
+   },
+   "rocket": {
+    "configuration": {
+     "name": "Falcon 9"
+    }
+   },
+   "mission": {
+    "name": "Starlink Group 17-40"
+   },
+   "pad": {
+    "name": "Space Launch Complex 4E",
+    "latitude": "34.632",
+    "longitude": "-120.611",
+    "location": {
+     "name": "Vandenberg SFB, CA, USA"
+    }
+   }
+  },
+  {
+   "id": "add0a5be-1cf0-49cb-975a-e8c8e18d37ec",
+   "url": "https://lldev.thespacedevs.com/2.2.0/launch/add0a5be-1cf0-49cb-975a-e8c8e18d37ec/",
+   "name": "Electron | Ten Owl Of Ten (StriX Launch 10)",
+   "net": "2026-06-30T00:00:00Z",
+   "status": {
+    "name": "To Be Determined"
+   },
+   "launch_service_provider": {
+    "name": "Rocket Lab"
+   },
+   "rocket": {
+    "configuration": {
+     "name": "Electron"
+    }
+   },
+   "mission": {
+    "name": "Ten Owl Of Ten (StriX Launch 10)"
+   },
+   "pad": {
+    "name": "Unknown Pad",
+    "latitude": "-39.260881",
+    "longitude": "177.865826",
+    "location": {
+     "name": "Rocket Lab Launch Complex 1, Mahia Peninsula, New Zealand"
+    }
+   }
+  },
+  {
+   "id": "no-pad-x",
+   "url": "https://example.test/x",
+   "name": "Test | No Pad",
+   "net": "2026-07-01T00:00:00Z",
+   "status": {
+    "name": "TBD"
+   },
+   "launch_service_provider": {
+    "name": "Nobody"
+   },
+   "rocket": {
+    "configuration": {
+     "name": "Paper"
+    }
+   },
+   "mission": {
+    "name": "None"
+   },
+   "pad": {
+    "name": "Unknown",
+    "latitude": null,
+    "longitude": null,
+    "location": {
+     "name": "Unknown"
+    }
+   }
+  }
+ ]
+}

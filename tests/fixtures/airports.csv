@@ -1,0 +1,6 @@
+"id","ident","type","name","latitude_deg","longitude_deg","elevation_ft","continent","iso_country","iso_region","municipality","scheduled_service","icao_code","iata_code","gps_code","local_code","home_link","wikipedia_link","keywords"
+1,"KSFO","large_airport","San Francisco International Airport, Bay","37.619","-122.375","13","NA","US","US-CA","San Francisco","yes","KSFO","SFO","KSFO","","","",""
+2,"EGLL","large_airport","London Heathrow Airport","51.4706","-0.461941","83","EU","GB","GB-ENG","London","yes","EGLL","LHR","EGLL","","","",""
+3,"XXSM","small_airport","Tiny Strip","10.0","10.0","100","AF","KE","KE-XX","Nowhere","no","","","","","","",""
+4,"NOIA","large_airport","No IATA International","-9.428","160.0549","28","OC","SB","SB-CT","Honiara","yes","AGGH","","AGGH","","","",""
+5,"HELI","heliport","City Heliport","40.0","-74.0","10","NA","US","US-NY","NYC","no","","","","","","",""

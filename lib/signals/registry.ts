@@ -21,8 +21,12 @@
 //   • Dossier   components/SignalDetail.tsx via lib/overlay-content.tsx (kind:"signal")
 //   • Rail      components/shell/LayerRail.tsx — auto-grouped "Global signals" section
 //
-// POINT-only for now. Lines/polygons would extend SignalFeature with a geometry
-// variant + a matching line/fill layer in WorldMap; everything else is unchanged.
+// POINTS, LINES and POLYGONS are all supported. A source whose features carry a
+// `geometry` (SignalFeature.geometry: LineString/MultiLineString → line layer,
+// Polygon/MultiPolygon → fill layer) renders on the dedicated line/fill sources
+// in WorldMap; plain points keep the circle layer. lat/lon stays the click /
+// label / dossier anchor for every kind. The registry/store/route/dossier
+// plumbing is identical regardless of geometry — see lib/signals/types.ts.
 // ===========================================================================
 
 import type { SignalSource } from "@/lib/signals/types";
@@ -34,6 +38,12 @@ import {
   FLOODS_SOURCE,
 } from "@/lib/signals/eonet";
 import { AURORA_SOURCE } from "@/lib/signals/aurora";
+import { LAUNCHES_SOURCE } from "@/lib/signals/launches";
+import { CABLES_SOURCE } from "@/lib/signals/cables";
+import { GPS_JAMMING_SOURCE } from "@/lib/signals/gpsjam";
+import { NUCLEAR_SOURCE } from "@/lib/signals/nuclear";
+import { AIRPORTS_SOURCE } from "@/lib/signals/airports";
+import { PORTS_SOURCE } from "@/lib/signals/ports";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
@@ -43,6 +53,14 @@ export const SIGNALS: SignalSource[] = [
   SEVERE_STORMS_SOURCE,
   FLOODS_SOURCE,
   AURORA_SOURCE,
+  // Space
+  LAUNCHES_SOURCE,
+  // Infrastructure (cables = line layer, gpsJamming = fill layer)
+  CABLES_SOURCE,
+  GPS_JAMMING_SOURCE,
+  NUCLEAR_SOURCE,
+  AIRPORTS_SOURCE,
+  PORTS_SOURCE,
 ];
 
 /** Lookup a source by id (the dynamic route + store key). */

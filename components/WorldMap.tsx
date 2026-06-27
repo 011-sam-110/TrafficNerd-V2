@@ -26,7 +26,7 @@ import { mapViewStore, useMapView, type RegionView, type PointView } from "@/lib
 import { cameraFeed } from "@/lib/cameras/classify";
 import { CAMERA_FEED_META, cameraRegionColor, WEBCAM_COLOR } from "@/lib/icons/svg";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
-import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC, toWebcamFC, toSignalFC } from "@/lib/map/features";
+import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC, toWebcamFC, toSignalFC, toSignalLineFC, toSignalFillFC } from "@/lib/map/features";
 import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons, loadWebcamIcons } from "@/lib/map/icons";
 import { CAMERA_CLUSTER, WEBCAM_CLUSTER, expandCluster } from "@/lib/map/cluster";
 import { SIGNALS } from "@/lib/signals/registry";
@@ -69,11 +69,21 @@ const WEBCAM_CLUSTER_LAYER = "webcam-clusters"; // soft rose count badges
 const WEBCAM_CLUSTER_COUNT = "webcam-cluster-count"; // numeric label on each cluster
 const DEM_SRC = "terrain-dem";
 const HILLSHADE_LAYER = "hillshade";
-// Global signals — ONE aggregated source carrying the union of every ON signal's
-// points; rendered by ONE data-driven circle layer + a label layer (see Part 1).
+// Global signals — THREE aggregated sources carrying the union of every ON
+// signal's features, split by geometry so each MapLibre layer type gets its own:
+//   • SIGNAL_SRC   — points  → circle + label layers
+//   • SIGNAL_LINE_SRC — LineString/MultiLineString → line layer (e.g. cables)
+//   • SIGNAL_FILL_SRC — Polygon/MultiPolygon → fill + outline layers (e.g. jamming)
+// The point circle layer is unaffected by line/area features (toSignalFC excludes
+// them), and a click on ANY of them resolves to the SAME signal dossier.
 const SIGNAL_SRC = "signals";
 const SIGNAL_LAYER = "signal-dots";
 const SIGNAL_LABEL = "signal-labels";
+const SIGNAL_LINE_SRC = "signal-lines";
+const SIGNAL_LINE_LAYER = "signal-line-paths";
+const SIGNAL_FILL_SRC = "signal-fills";
+const SIGNAL_FILL_LAYER = "signal-fill-areas";
+const SIGNAL_FILL_OUTLINE = "signal-fill-outline";
 
 // Start zoomed out so the spinning globe is the hero. The palette / rail fly inward.
 const HOME = { center: [-30, 28] as [number, number], zoom: 1.4 };
@@ -321,6 +331,8 @@ export default function WorldMap() {
       ensureGeoJSON(map, CAM_SRC, toCameraFC(camerasRef.current), CAMERA_CLUSTER);
       ensureGeoJSON(map, WEBCAM_SRC, toWebcamFC(webcamsRef.current), WEBCAM_CLUSTER);
       ensureGeoJSON(map, PLANE_SRC, toPlaneFC(planesRef.current));
+      ensureGeoJSON(map, SIGNAL_FILL_SRC, toSignalFillFC(signalsRef.current));
+      ensureGeoJSON(map, SIGNAL_LINE_SRC, toSignalLineFC(signalsRef.current));
       ensureGeoJSON(map, SIGNAL_SRC, toSignalFC(signalsRef.current));
 
       // Layers, bottom → top.
@@ -531,7 +543,48 @@ export default function WorldMap() {
           },
         });
       }
-      // Global signals — ONE data-driven circle layer for ALL signal sources.
+      // Global signals — AREA fill (Polygon/MultiPolygon, e.g. GPS jamming). Added
+      // first so it sits beneath the line + circle layers; per-feature `color`
+      // tints both the fill and its outline. Always visible (source = ON signals).
+      if (!map.getLayer(SIGNAL_FILL_LAYER)) {
+        map.addLayer({
+          id: SIGNAL_FILL_LAYER,
+          type: "fill",
+          source: SIGNAL_FILL_SRC,
+          paint: {
+            "fill-color": ["get", "color"],
+            "fill-opacity": 0.28,
+          },
+        });
+      }
+      if (!map.getLayer(SIGNAL_FILL_OUTLINE)) {
+        map.addLayer({
+          id: SIGNAL_FILL_OUTLINE,
+          type: "line",
+          source: SIGNAL_FILL_SRC,
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": 1,
+            "line-opacity": 0.7,
+          },
+        });
+      }
+      // Global signals — LINE layer (LineString/MultiLineString, e.g. submarine
+      // cables). Thin, per-feature coloured, gently thickening with zoom.
+      if (!map.getLayer(SIGNAL_LINE_LAYER)) {
+        map.addLayer({
+          id: SIGNAL_LINE_LAYER,
+          type: "line",
+          source: SIGNAL_LINE_SRC,
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.1, 10, 2],
+            "line-opacity": 0.75,
+          },
+        });
+      }
+      // Global signals — ONE data-driven circle layer for ALL POINT signal sources.
       // Colour + radius come straight from the per-feature props (see toSignalFC),
       // so a new signal source renders here with zero changes. The source only ever
       // holds the union of ON signals' points, so the layer stays visible always.
@@ -627,11 +680,15 @@ export default function WorldMap() {
     map.on("click", WEBCAM_LAYER, webcamClick);
     map.on("click", WEBCAM_DOT_LAYER, webcamClick);
 
-    map.on("click", SIGNAL_LAYER, (e) => {
+    // Points, lines and areas all resolve to the SAME signal dossier by id.
+    const signalClick = (e: maplibregl.MapLayerMouseEvent) => {
       const id = (e.features?.[0]?.properties as { id?: string })?.id;
       const sig = signalsRef.current.find((s) => s.id === id);
       if (sig) overlay.open(sig);
-    });
+    };
+    map.on("click", SIGNAL_LAYER, signalClick);
+    map.on("click", SIGNAL_LINE_LAYER, signalClick);
+    map.on("click", SIGNAL_FILL_LAYER, signalClick);
 
     // Click a cluster badge → ease into the zoom where it splits apart.
     const clusterClick = (sourceId: string) => (e: maplibregl.MapLayerMouseEvent) => {
@@ -646,7 +703,7 @@ export default function WorldMap() {
     const hoverLayers = [
       CAM_LAYER, CAM_DOT_LAYER, CAM_CLUSTER_LAYER,
       WEBCAM_LAYER, WEBCAM_DOT_LAYER, WEBCAM_CLUSTER_LAYER,
-      PLANE_LAYER, SAT_LAYER, SIGNAL_LAYER,
+      PLANE_LAYER, SAT_LAYER, SIGNAL_LAYER, SIGNAL_LINE_LAYER, SIGNAL_FILL_LAYER,
     ];
     for (const layer of hoverLayers) {
       map.on("mouseenter", layer, () => {
@@ -813,6 +870,8 @@ export default function WorldMap() {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
     (map.getSource(SIGNAL_SRC) as GeoJSONSource | undefined)?.setData(toSignalFC(signals));
+    (map.getSource(SIGNAL_LINE_SRC) as GeoJSONSource | undefined)?.setData(toSignalLineFC(signals));
+    (map.getSource(SIGNAL_FILL_SRC) as GeoJSONSource | undefined)?.setData(toSignalFillFC(signals));
   }, [signals]);
 
   useEffect(() => {
@@ -935,6 +994,9 @@ function SignalFeed({
               attribution: source.attribution,
               sourceLabel: source.label,
               link: f.link,
+              // Carries line/area geometry (cables, jamming) through to the
+              // line/fill builders in lib/map/features; absent for point signals.
+              ...(f.geometry ? { geometry: f.geometry } : {}),
             },
           }));
           onData(id, objs);
