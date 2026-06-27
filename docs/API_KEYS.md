@@ -91,19 +91,24 @@ Every layer now shows a live **freshness dot** in the rail (the trust spine).
 
 ---
 
-## 4 · Parked / future — markets & macro (Task #12, not being built yet)
+## 4 · Markets & macro (Task #12 — BUILT)
 
-Listed only so the picture is complete. All free; get them whenever we pick up the
-markets work.
+The Markets panel is now multi-section. **Crypto (CoinGecko) and FX (Frankfurter /
+ECB) are keyless and live already.** The rest are wired and **dormant** — each
+section renders a quiet "add KEY" note until set, then goes live with no code change:
 
-| Source | Unlocks | Env var |
-|--------|---------|---------|
-| **Finnhub** | Global stock quotes / exchanges | `FINNHUB_API_KEY` |
-| **Alpha Vantage** | Equities / FX / commodities | `ALPHAVANTAGE_API_KEY` |
-| **Financial Modeling Prep** | Fundamentals / indices | `FMP_API_KEY` |
-| **FRED** (St. Louis Fed) | Macro series, central‑bank rates | `FRED_API_KEY` |
+| Source | Unlocks | Env var | State |
+|--------|---------|---------|-------|
+| **Finnhub** | Equities (SPY/QQQ/DIA/AAPL/MSFT/NVDA quotes) | `FINNHUB_API_KEY` | dormant |
+| **FRED** (St. Louis Fed) | Macro/rates (10-Yr, Fed Funds, unemployment, VIX) | `FRED_API_KEY` | dormant |
+| **freellmapi.co** (your gateway) | AI daily brief, grounded in the Instability Index | `FREELLMAPI_BASE_URL` + `FREELLMAPI_KEY` | dormant |
 
-(Polymarket, Fear & Greed, World Bank, Eurostat, OECD SDMX — all keyless, no entry needed.)
+- **Finnhub** — free key at <https://finnhub.io/register> (instant).
+- **FRED** — free key at <https://fredaccount.stlouisfed.org/apikeys>.
+- **freellmapi** — base URL + key from your own dashboard (also powers the `/locate` vision fallback).
+
+Alpha Vantage / FMP aren't used (Finnhub + FRED cover equities + macro). Polymarket,
+Fear & Greed, World Bank, Eurostat, OECD SDMX remain keyless options if we expand further.
 
 ---
 
@@ -134,10 +139,8 @@ GEOLOCATE_BACKEND=
 WINDY_WEBCAMS_API_KEY=
 WINDY_MAP_FORECAST_API_KEY=
 
-# --- Parked: markets/macro (Task #12) ---
+# --- Markets/macro (Task #12, BUILT — crypto+FX already live keyless; these unlock the rest) ---
 FINNHUB_API_KEY=
-ALPHAVANTAGE_API_KEY=
-FMP_API_KEY=
 FRED_API_KEY=
 ```
 
