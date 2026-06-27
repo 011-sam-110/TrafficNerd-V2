@@ -1,0 +1,95 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          111.1499,
+          -8.9563,
+          -65.6
+        ]
+      },
+      "id": "20260627_0000100",
+      "properties": {
+        "source_id": "2017722",
+        "source_catalog": "EMSC-RTS",
+        "lastupdate": "2026-06-27T08:06:52.260826Z",
+        "time": "2026-06-27T07:47:23.012Z",
+        "flynn_region": "JAVA, INDONESIA",
+        "lat": -8.9563,
+        "lon": 111.1499,
+        "depth": 65.6,
+        "evtype": "ke",
+        "auth": "NEIC",
+        "mag": 5.2,
+        "magtype": "mw",
+        "unid": "20260627_0000100"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          124.86,
+          0.48,
+          -8.0
+        ]
+      },
+      "id": "20260627_0000088",
+      "properties": {
+        "source_id": "2017710",
+        "source_catalog": "EMSC-RTS",
+        "lastupdate": "2026-06-27T07:07:29.567787Z",
+        "time": "2026-06-27T06:57:17.0Z",
+        "flynn_region": "MINAHASA, SULAWESI, INDONESIA",
+        "lat": 0.48,
+        "lon": 124.86,
+        "depth": 8.0,
+        "evtype": "ke",
+        "auth": "BMKG",
+        "mag": 2.8,
+        "magtype": "m",
+        "unid": "20260627_0000088"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          27.6389,
+          37.9392,
+          -7.0
+        ]
+      },
+      "id": "20260627_0000095",
+      "properties": {
+        "source_id": "2017712",
+        "source_catalog": "EMSC-RTS",
+        "lastupdate": "2026-06-27T07:42:04.332248Z",
+        "time": "2026-06-27T07:02:39.93Z",
+        "flynn_region": "WESTERN TURKEY",
+        "lat": 37.9392,
+        "lon": 27.6389,
+        "depth": 7.0,
+        "evtype": "ke",
+        "auth": "EMSC",
+        "mag": 1.6,
+        "magtype": "ml",
+        "unid": "20260627_0000095"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": null,
+      "id": "BADGEO",
+      "properties": {
+        "mag": 1.0,
+        "unid": "bad"
+      }
+    }
+  ]
+}
