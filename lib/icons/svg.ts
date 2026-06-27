@@ -144,6 +144,9 @@ export const CAMERA_REGIONS: RegionMeta[] = [
   { source: "caltrans", label: "California", color: "#4ade80", view: { lat: 36.8, lng: -119.7, altitude: 0.95 } },
   { source: "scdot", label: "South Carolina", color: "#2dd4bf", view: { lat: 33.9, lng: -80.9, altitude: 0.6 } },
   { source: "digitraffic", label: "Finland", color: "#38bdf8", view: { lat: 64.5, lng: 26, altitude: 0.9 } },
+  { source: "castlerock", label: "US & Canada 511", color: "#0ea5e9", view: { lat: 40, lng: -88, altitude: 1.6 } },
+  { source: "tripcheck", label: "Oregon", color: "#10b981", view: { lat: 44, lng: -120.5, altitude: 0.8 } },
+  { source: "drivebc", label: "British Columbia", color: "#5eead4", view: { lat: 53.5, lng: -125, altitude: 0.9 } },
 ];
 
 export const CAMERA_DEFAULT_REGION: RegionMeta = {

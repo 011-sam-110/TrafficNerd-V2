@@ -49,6 +49,9 @@ export async function loadCameraIcons(map: maplibregl.Map): Promise<void> {
     ["caltrans", cameraRegionColor("caltrans")],
     ["scdot", cameraRegionColor("scdot")],
     ["digitraffic", cameraRegionColor("digitraffic")],
+    ["castlerock", cameraRegionColor("castlerock")],
+    ["tripcheck", cameraRegionColor("tripcheck")],
+    ["drivebc", cameraRegionColor("drivebc")],
     ["default", CAMERA_DEFAULT_REGION.color],
   ];
   await Promise.all(
