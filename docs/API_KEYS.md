@@ -1,0 +1,123 @@
+# TrafficNerd‑V2 — API keys & access tokens
+
+Every layer in this app is **keyless-first**: it works with no keys at all. The keys
+below only *unlock additional layers* (or upgrade a modelled layer to real
+measurements). Each source is **free** — most are instant signup, a few need a short
+registration or an email request. Until a key is set, its layer stays **dormant**
+(renders nothing, never errors).
+
+> **How to give me the keys:** fill in the values, or just paste them back to me and
+> I'll wire them in. **Never commit real keys.** They all go in **`.env.local`** at the
+> project root (already git‑ignored). All are **server‑only** — none are exposed to the
+> browser (no `NEXT_PUBLIC_` prefix), so the keys never leave the server.
+
+---
+
+## 1 · Intelligence layers — get these (all free)
+
+| # | Source | Unlocks | Free tier | Env var(s) |
+|---|--------|---------|-----------|-----------|
+| 1 | **AISStream.io** | Real‑time global ship tracking (named vessels, Hormuz/Suez) | Free, no card, WebSocket | `AISSTREAM_API_KEY` |
+| 2 | **ENTSO‑E Transparency** | EU electricity‑grid load / generation mix / cross‑border flows / outages | Free w/ registration | `ENTSOE_API_TOKEN` |
+| 3 | **OpenAQ** | Real air‑quality **station** measurements (upgrades the modelled CAMS layer) | Free | `OPENAQ_API_KEY` |
+| 4 | **UCDP** (Uppsala) | Geocoded conflict events + fatalities (structural conflict history) | Free token | `UCDP_API_TOKEN` |
+| 5 | **ACLED** | Real‑time armed‑conflict & protest events w/ actor attribution | Free, registered | `ACLED_API_KEY` + `ACLED_EMAIL` |
+| 6 | **NASA FIRMS** | VIIRS/MODIS thermal active‑fire detections | Free MAP_KEY | `FIRMS_MAP_KEY` |
+| 7 | **ReliefWeb** (OCHA) | Humanitarian situation reports + disaster declarations | Free *approved appname* (not a secret) | `RELIEFWEB_APPNAME` |
+
+### Where to get each
+
+1. **AISStream.io** — sign up at <https://aisstream.io>, create an API key on the
+   dashboard. (Live vessel positions over a free WebSocket; coverage is terrestrial
+   AIS, ~200 km offshore, so mid‑ocean is patchy.)
+2. **ENTSO‑E** — register at <https://transparency.entsoe.eu> → after confirming your
+   account, email **transparency@entsoe.eu** with subject *"Restful API access"* from
+   your registered address; they reply with a **Web API security token** (usually < 1
+   business day).
+3. **OpenAQ** — register at <https://explore.openaq.org> (or <https://openaq.org>) and
+   generate an API key in your account. (v3 sends it as the `X‑API‑Key` header.)
+4. **UCDP** — request a free API access token via the UCDP API docs at
+   <https://ucdp.uu.se> (the GED REST API now needs an `x‑ucdp‑access‑token` header).
+5. **ACLED** — register at <https://acleddata.com/register> → "Access" → generate an
+   API key. You'll use the key **and** the email you registered with.
+6. **NASA FIRMS** — request a free **MAP_KEY** at
+   <https://firms.modaps.eosdis.nasa.gov/api/area/> (instant, just an email).
+
+---
+
+## 2 · Optional enhancements (free, but we already have a keyless equivalent)
+
+| Source | Adds | Why optional | Env var |
+|--------|------|--------------|---------|
+| **Electricity Maps** | Live carbon/grid mix outside the EU | ENTSO‑E already covers EU grid | `ELECTRICITYMAPS_API_KEY` |
+| **Cloudflare Radar** | A second internet‑outage vantage | We already corroborate via keyless **IODA + RIPEstat** | `CLOUDFLARE_API_TOKEN` |
+
+- **Electricity Maps** — free tier at <https://www.electricitymaps.com/free-tier-api>.
+- **Cloudflare Radar** — any free Cloudflare account → My Profile → API Tokens → token
+  with **Radar Read**: <https://developers.cloudflare.com/radar/get-started/>.
+
+---
+
+## 3 · Already wired, currently dormant (set these to switch existing features on)
+
+| Feature | What it needs | Env var(s) |
+|---------|---------------|-----------|
+| **Photo geolocation** (`/locate`) vision fallback | freellmapi.co gateway (you own it) | `FREELLMAPI_BASE_URL`, `FREELLMAPI_KEY` |
+| **Photo geolocation** GeoCLIP backend (best accuracy) | run `scripts/geolocate_service.py`, point the app at it | `GEOLOCATE_GEOCLIP_URL` (+ optional `GEOLOCATE_BACKEND=geoclip\|llm`) |
+| **Windy webcams** layer | Windy API keys (you said these are already in `.env.local`) | `WINDY_WEBCAMS_API_KEY`, `WINDY_MAP_FORECAST_API_KEY` |
+
+---
+
+## 4 · Parked / future — markets & macro (Task #12, not being built yet)
+
+Listed only so the picture is complete. All free; get them whenever we pick up the
+markets work.
+
+| Source | Unlocks | Env var |
+|--------|---------|---------|
+| **Finnhub** | Global stock quotes / exchanges | `FINNHUB_API_KEY` |
+| **Alpha Vantage** | Equities / FX / commodities | `ALPHAVANTAGE_API_KEY` |
+| **Financial Modeling Prep** | Fundamentals / indices | `FMP_API_KEY` |
+| **FRED** (St. Louis Fed) | Macro series, central‑bank rates | `FRED_API_KEY` |
+
+(Polymarket, Fear & Greed, World Bank, Eurostat, OECD SDMX — all keyless, no entry needed.)
+
+---
+
+## `.env.local` template
+
+Copy this into `.env.local`, fill what you have, leave the rest blank (blank = dormant):
+
+```dotenv
+# --- Intelligence layers (free) ---
+AISSTREAM_API_KEY=
+ENTSOE_API_TOKEN=
+OPENAQ_API_KEY=
+UCDP_API_TOKEN=
+ACLED_API_KEY=
+ACLED_EMAIL=
+FIRMS_MAP_KEY=
+RELIEFWEB_APPNAME=
+
+# --- Optional enhancements ---
+ELECTRICITYMAPS_API_KEY=
+CLOUDFLARE_API_TOKEN=
+
+# --- Already-wired dormant features ---
+FREELLMAPI_BASE_URL=
+FREELLMAPI_KEY=
+GEOLOCATE_GEOCLIP_URL=
+GEOLOCATE_BACKEND=
+WINDY_WEBCAMS_API_KEY=
+WINDY_MAP_FORECAST_API_KEY=
+
+# --- Parked: markets/macro (Task #12) ---
+FINNHUB_API_KEY=
+ALPHAVANTAGE_API_KEY=
+FMP_API_KEY=
+FRED_API_KEY=
+```
+
+> These env‑var names are the contract — when I build each key‑gated adapter it reads
+> exactly these names, so the moment you paste a value the layer goes live with no code
+> change. Nothing here blocks the keyless layers, which keep shipping in parallel.

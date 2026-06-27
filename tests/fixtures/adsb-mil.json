@@ -1,0 +1,95 @@
+{
+  "ac": [
+    {
+      "hex": "ae49c5",
+      "flight": "RCH4139 ",
+      "r": "09-9209",
+      "t": "C17",
+      "alt_baro": 15000,
+      "gs": 397.0,
+      "track": 275.0,
+      "squawk": "2145",
+      "lat": 47.048025,
+      "lon": -120.926613
+    },
+    {
+      "hex": "ae1471",
+      "flight": "RCH4536 ",
+      "r": "07-7179",
+      "t": "C17",
+      "alt_baro": 33000,
+      "gs": 511.1,
+      "track": 58.11,
+      "lat": 37.297746,
+      "lon": -101.995816,
+      "category": "A5"
+    },
+    {
+      "hex": "e200dd",
+      "flight": "ARG01   ",
+      "r": "ARG-01",
+      "t": "B752",
+      "alt_baro": 38000,
+      "gs": 415.4,
+      "track": 227.24,
+      "squawk": "2532",
+      "lat": -32.568458,
+      "lon": -56.091651,
+      "category": "A3"
+    },
+    {
+      "hex": "7101f0",
+      "flight": "SVA9291 ",
+      "r": "HZ-MF5",
+      "t": "GLF4",
+      "alt_baro": 31500,
+      "gs": 530.8,
+      "track": 31.2,
+      "squawk": "3406",
+      "lat": 41.749146,
+      "lon": -5.733178,
+      "category": "A2"
+    },
+    {
+      "hex": "353606",
+      "flight": "AZOR10  ",
+      "r": "T.21-07",
+      "t": "C295",
+      "alt_baro": 4275,
+      "gs": 152.6,
+      "track": 219.95,
+      "squawk": "6540",
+      "lat": 40.24585,
+      "lon": -3.791138,
+      "category": "A2"
+    },
+    {
+      "hex": "43c4ce",
+      "flight": "SHF265  ",
+      "r": "ZD983",
+      "t": "H47",
+      "alt_baro": 2325,
+      "gs": 133.0,
+      "track": 310.0,
+      "squawk": "0010",
+      "lat": 52.456524,
+      "lon": -2.299882
+    },
+    {
+      "hex": "abc123",
+      "flight": "GRND01 ",
+      "t": "H60",
+      "alt_baro": "ground",
+      "gs": 0,
+      "lat": 38.9,
+      "lon": -77.0
+    },
+    {
+      "hex": "deadbe",
+      "flight": "NOPOS1 ",
+      "t": "F16",
+      "alt_baro": 40000,
+      "gs": 450
+    }
+  ]
+}
