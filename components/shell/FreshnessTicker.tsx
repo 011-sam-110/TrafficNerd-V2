@@ -16,6 +16,7 @@ const TO_LAYER: Record<FreshSourceId, LayerKey> = {
   cameras: "cameras",
   planes: "planes",
   satellites: "satellites",
+  webcams: "webcams",
 };
 
 export default function FreshnessTicker() {

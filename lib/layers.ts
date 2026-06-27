@@ -16,8 +16,8 @@ import { loadPersisted, savePersisted } from "@/lib/shell/persist";
 export type LayerKey = "cameras" | "satellites" | "planes" | "ships" | "webcams" | "weather";
 export type LayerState = Record<LayerKey, boolean>;
 
-export const ACTIVE_LAYERS: readonly LayerKey[] = ["cameras", "planes", "satellites"];
-export const PLANNED_LAYERS: readonly LayerKey[] = ["ships", "webcams", "weather"];
+export const ACTIVE_LAYERS: readonly LayerKey[] = ["cameras", "planes", "satellites", "webcams"];
+export const PLANNED_LAYERS: readonly LayerKey[] = ["ships", "weather"];
 
 const DEFAULT_STATE: LayerState = {
   cameras: true,
@@ -39,7 +39,10 @@ export const LAYER_PRESETS: { id: PresetId; label: string }[] = [
   { id: "air-space", label: "Air + space" },
 ];
 
-// Presets only ever switch ACTIVE layers — planned layers stay off (no data).
+// Presets switch the core cameras/planes/satellites layers. Webcams is active
+// (a live toggle) but stays OUT of the presets on purpose: it is a keyed,
+// rate-limited global sample, so it stays opt-in rather than being pulled in by
+// a one-tap "All". Planned layers (ships/weather) have no data yet.
 export function presetState(id: PresetId): LayerState {
   const off: LayerState = { ...DEFAULT_STATE, cameras: false, satellites: false, planes: false };
   switch (id) {

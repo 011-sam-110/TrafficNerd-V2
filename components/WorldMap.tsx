@@ -24,10 +24,10 @@ import { metricsStore } from "@/lib/metrics";
 import { freshnessStore } from "@/lib/freshness";
 import { mapViewStore, useMapView, type RegionView } from "@/lib/mapView";
 import { cameraFeed } from "@/lib/cameras/classify";
-import { CAMERA_FEED_META, cameraRegionColor } from "@/lib/icons/svg";
+import { CAMERA_FEED_META, cameraRegionColor, WEBCAM_COLOR } from "@/lib/icons/svg";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
-import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC } from "@/lib/map/features";
-import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons } from "@/lib/map/icons";
+import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC, toWebcamFC } from "@/lib/map/features";
+import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons, loadWebcamIcons } from "@/lib/map/icons";
 
 type Pt = {
   id: string;
@@ -51,6 +51,9 @@ const TRAIL_LAYER = "trail-lines";
 const SAT_SRC = "satellites";
 const SAT_GLOW_LAYER = "satellite-glow";
 const SAT_LAYER = "satellite-core";
+const WEBCAM_SRC = "webcams";
+const WEBCAM_DOT_LAYER = "webcam-dots"; // cheap rose glows when zoomed out
+const WEBCAM_LAYER = "webcam-markers"; // detailed webcam icons on descent
 const DEM_SRC = "terrain-dem";
 const HILLSHADE_LAYER = "hillshade";
 
@@ -79,6 +82,7 @@ export default function WorldMap() {
   // the top bar can drive them.
   const [satellites, setSatellites] = useState<WorldObject[]>([]);
   const [planesLayer, setPlanesLayer] = useState<PlanesLayer>({ objects: [], trails: [] });
+  const [webcams, setWebcams] = useState<WorldObject[]>([]);
 
   const view = useMapView();
   const basemap = view.basemap;
@@ -138,6 +142,9 @@ export default function WorldMap() {
       freshnessStore.record("satellites", { count: satellites.length, ok: true });
     }
   }, [satellites]);
+  useEffect(() => {
+    metricsStore.set({ webcams: webcams.length });
+  }, [webcams]);
 
   // Refs holding the latest data so addAppLayers (called on every style.load,
   // i.e. each basemap swap) can re-seed sources, and clicks can resolve objects.
@@ -149,6 +156,8 @@ export default function WorldMap() {
   trailsRef.current = planesLayer.trails;
   const satsRef = useRef<WorldObject[]>([]);
   satsRef.current = satellites;
+  const webcamsRef = useRef<WorldObject[]>([]);
+  webcamsRef.current = webcams;
   const layersRef = useRef<LayerState>(layers);
   layersRef.current = layers;
 
@@ -185,6 +194,8 @@ export default function WorldMap() {
     set(CAM_LAYER, l.cameras);
     set(SAT_GLOW_LAYER, l.satellites);
     set(SAT_LAYER, l.satellites);
+    set(WEBCAM_DOT_LAYER, l.webcams);
+    set(WEBCAM_LAYER, l.webcams);
     set(TRAIL_LAYER, l.planes);
     set(PLANE_LAYER, l.planes);
   }, []);
@@ -236,12 +247,18 @@ export default function WorldMap() {
       applyTerrain(map, terrainRef.current);
 
       // Symbol icons are wiped by setStyle — re-rasterise/register them.
-      await Promise.all([loadCameraIcons(map), loadPlaneIcons(map), loadSatelliteIcons(map)]);
+      await Promise.all([
+        loadCameraIcons(map),
+        loadPlaneIcons(map),
+        loadSatelliteIcons(map),
+        loadWebcamIcons(map),
+      ]);
 
       // Sources, seeded from the latest refs.
       ensureGeoJSON(map, TRAIL_SRC, toTrailFC(trailsRef.current));
       ensureGeoJSON(map, SAT_SRC, toSatelliteFC(satsRef.current));
       ensureGeoJSON(map, CAM_SRC, toCameraFC(camerasRef.current));
+      ensureGeoJSON(map, WEBCAM_SRC, toWebcamFC(webcamsRef.current));
       ensureGeoJSON(map, PLANE_SRC, toPlaneFC(planesRef.current));
 
       // Layers, bottom → top.
@@ -323,6 +340,38 @@ export default function WorldMap() {
           paint: { "icon-opacity": ["case", ["get", "available"], 1, 0.4] },
         });
       }
+      if (!map.getLayer(WEBCAM_DOT_LAYER)) {
+        map.addLayer({
+          id: WEBCAM_DOT_LAYER,
+          type: "circle",
+          source: WEBCAM_SRC,
+          layout: { visibility: vis(layersRef.current.webcams) },
+          paint: {
+            "circle-color": WEBCAM_COLOR,
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 0, 1.3, 3, 2, 6, 3, 9, 4],
+            // Fade the cheap glows out as the detailed icons (minzoom 5) fade in.
+            "circle-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.5, 3, 0.65, 5, 0.45, 6, 0],
+            "circle-stroke-color": "#ffffff",
+            "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 0, 0, 5, 0.5],
+            "circle-stroke-opacity": ["interpolate", ["linear"], ["zoom"], 3, 0, 6, 0.5],
+          },
+        });
+      }
+      if (!map.getLayer(WEBCAM_LAYER)) {
+        map.addLayer({
+          id: WEBCAM_LAYER,
+          type: "symbol",
+          source: WEBCAM_SRC,
+          minzoom: 5,
+          layout: {
+            "icon-image": "webcam",
+            "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.32, 9, 0.5, 13, 0.65, 17, 0.85],
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            visibility: vis(layersRef.current.webcams),
+          },
+        });
+      }
       if (!map.getLayer(PLANE_LAYER)) {
         map.addLayer({
           id: PLANE_LAYER,
@@ -376,8 +425,15 @@ export default function WorldMap() {
       const sat = satsRef.current.find((s) => s.id === id);
       if (sat) overlay.open(sat);
     });
+    const webcamClick = (e: maplibregl.MapLayerMouseEvent) => {
+      const id = (e.features?.[0]?.properties as { id?: string })?.id;
+      const cam = webcamsRef.current.find((w) => w.id === id);
+      if (cam) overlay.open(cam);
+    };
+    map.on("click", WEBCAM_LAYER, webcamClick);
+    map.on("click", WEBCAM_DOT_LAYER, webcamClick);
 
-    for (const layer of [CAM_LAYER, CAM_DOT_LAYER, PLANE_LAYER, SAT_LAYER]) {
+    for (const layer of [CAM_LAYER, CAM_DOT_LAYER, WEBCAM_LAYER, WEBCAM_DOT_LAYER, PLANE_LAYER, SAT_LAYER]) {
       map.on("mouseenter", layer, () => {
         map.getCanvas().style.cursor = "pointer";
       });
@@ -495,6 +551,12 @@ export default function WorldMap() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
+    (map.getSource(WEBCAM_SRC) as GeoJSONSource | undefined)?.setData(toWebcamFC(webcams));
+  }, [webcams]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
     (map.getSource(PLANE_SRC) as GeoJSONSource | undefined)?.setData(toPlaneFC(planesLayer.objects));
     (map.getSource(TRAIL_SRC) as GeoJSONSource | undefined)?.setData(toTrailFC(planesLayer.trails));
   }, [planesLayer]);
@@ -532,6 +594,7 @@ export default function WorldMap() {
       {layers.cameras && <CamerasFeed onData={setPts} />}
       {layers.planes && <PlanesFeed onData={setPlanesLayer} />}
       {layers.satellites && <SatellitesFeed onData={setSatellites} />}
+      {layers.webcams && <WebcamsFeed onData={setWebcams} />}
     </div>
   );
 }
@@ -578,5 +641,58 @@ function SatellitesFeed({ onData }: { onData: (sats: WorldObject[]) => void }) {
   useEffect(() => {
     onData(sats);
   }, [sats, onData]);
+  return null;
+}
+
+// Windy webcams — a one-shot global sample (the API is rate-limited, so this is a
+// fetched snapshot, not a poll). Thin markers only; the dossier re-resolves the
+// short-lived image URL on click. Mirrors CamerasFeed's hidden-doesn't-fetch gate.
+type WebcamMarker = {
+  id: string;
+  title: string;
+  lat: number;
+  lon: number;
+  country?: string;
+  region?: string;
+  available?: boolean;
+  detailUrl?: string;
+};
+
+function WebcamsFeed({ onData }: { onData: (webcams: WorldObject[]) => void }) {
+  useEffect(() => {
+    let alive = true;
+    fetch("/api/webcams")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        const markers = (d.webcams as WebcamMarker[]) ?? [];
+        const objects: WorldObject[] = markers.map((w) => ({
+          kind: "webcam",
+          id: w.id,
+          lat: w.lat,
+          lon: w.lon,
+          label: w.title,
+          color: WEBCAM_COLOR,
+          icon: "webcam",
+          typeLabel: "Webcam",
+          meta: {
+            available: w.available ?? true,
+            region: w.region,
+            country: w.country,
+            detailUrl: w.detailUrl,
+          },
+        }));
+        onData(objects);
+        freshnessStore.record("webcams", { count: objects.length, ok: true });
+      })
+      .catch(() => {
+        if (!alive) return;
+        onData([]);
+        freshnessStore.record("webcams", { count: 0, ok: false });
+      });
+    return () => {
+      alive = false;
+    };
+  }, [onData]);
   return null;
 }

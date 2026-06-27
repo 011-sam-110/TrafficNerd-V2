@@ -38,7 +38,7 @@ const LAYER_META: Record<LayerKey, LayerMeta> = {
   planes: { name: "Planes", group: "Air", accent: "#d97706", source: "adsb.lol — live ADS-B", fresh: "planes" },
   satellites: { name: "Satellites", group: "Space", accent: "#7c3aed", source: "CelesTrak TLE · SGP4 (local)", fresh: "satellites" },
   ships: { name: "Ships", group: "Sea", accent: "#0d9488", source: "AIS vessels", planned: true },
-  webcams: { name: "Webcams", group: "Ground", accent: "#0891b2", source: "Windy global webcams", planned: true },
+  webcams: { name: "Webcams", group: "Ground", accent: "#ec4899", source: "Windy.com — global webcams", fresh: "webcams" },
   weather: { name: "Weather", group: "Sky", accent: "#0284c7", source: "Radar & events", planned: true },
 };
 
@@ -185,6 +185,7 @@ export default function LayerRail() {
     if (k === "cameras") return m.camerasTotal || null;
     if (k === "planes") return m.planes;
     if (k === "satellites") return m.satellites;
+    if (k === "webcams") return m.webcams || null;
     return null;
   };
 

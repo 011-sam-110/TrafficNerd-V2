@@ -16,7 +16,8 @@ export type IconKey =
   | "sat-station" | "sat-starlink" | "sat-oneweb" | "sat-navigation" | "sat-weather"
   | "sat-eo" | "sat-science" | "sat-comms" | "sat-cubesat" | "sat-debris" | "sat-other"
   | "plane-airliner" | "plane-regional" | "plane-light" | "plane-helicopter" | "plane-ground"
-  | "cam-still" | "cam-video";
+  | "cam-still" | "cam-video"
+  | "webcam";
 
 // "Inner" dark used for cut-outs (lenses, panel cells) that should read against
 // any tint — it stays constant when currentColor is replaced.
@@ -85,7 +86,20 @@ export const ICON_SVG: Record<IconKey, string> = {
   "cam-video": wrap(
     `<path d="M1.8 8.1 12.6 5.4c.9-.22 1.82.32 2.05 1.25l.46 1.85c.22.9-.32 1.82-1.22 2.05L2.8 13.5 1.8 8.1z"/><circle cx="5" cy="9.5" r="1.05" fill="${INK}"/><rect x="9.4" y="13" width="1.8" height="4.7"/><rect x="5.8" y="17.6" width="9" height="1.7" rx=".85"/><path d="M17.6 7.4a4.2 4.2 0 0 1 0 6.2M19.9 5.6a6.8 6.8 0 0 1 0 9.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>`,
   ),
+
+  // --- Webcams (Windy) ----------------------------------------------------
+  // A front-facing webcam (monitor body + lens + stand), deliberately distinct
+  // from the angled CCTV "cam-*" pictograms so the public-webcam layer reads as
+  // its own thing on the map and in the legend.
+  webcam: wrap(
+    `<rect x="3.5" y="3.5" width="17" height="13" rx="2.2"/><circle cx="12" cy="10" r="3.9" fill="${INK}"/><circle cx="12" cy="10" r="1.6"/><circle cx="17" cy="6.6" r="1" fill="${INK}"/><rect x="10.7" y="16.5" width="2.6" height="2.8"/><rect x="7.3" y="19" width="9.4" height="1.9" rx=".95"/>`,
+  ),
 };
+
+// Webcams are a DISTINCT layer from road CCTV. They get their own warm rose hue
+// so they never blend into the cool camera family, the amber planes, or the
+// violet satellites. Single source of truth for the layer's identity colour.
+export const WEBCAM_COLOR = "#ec4899";
 
 // ---------------------------------------------------------------------------
 // Per-type metadata: which icon, what colour, what label.

@@ -11,6 +11,7 @@ import type { WorldObject } from "@/lib/world";
 import { CameraDetail } from "@/components/CameraDetail";
 import SatelliteDetail from "@/components/SatelliteDetail";
 import PlaneDetail from "@/components/PlaneDetail";
+import WebcamDetail from "@/components/WebcamDetail";
 
 export function OverlayBody({ object }: { object: WorldObject }) {
   switch (object.kind) {
@@ -20,6 +21,8 @@ export function OverlayBody({ object }: { object: WorldObject }) {
       return <SatelliteDetail object={object} />;
     case "plane":
       return <PlaneDetail object={object} />;
+    case "webcam":
+      return <WebcamDetail object={object} />;
     default:
       return null;
   }
