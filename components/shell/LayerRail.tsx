@@ -17,6 +17,8 @@ import {
   PLANNED_LAYERS,
   type LayerKey,
 } from "@/lib/layers";
+import { SIGNALS, signalsByGroup } from "@/lib/signals/registry";
+import { signalsStore, useSignals, useSignalCounts } from "@/lib/signals/store";
 import { useMetrics } from "@/lib/metrics";
 import { useFreshness, classifyFreshness, freshnessAgeMs, type FreshSourceId } from "@/lib/freshness";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
@@ -178,6 +180,79 @@ function LayerRow({
   );
 }
 
+// One global-signal layer: dot + label + attribution + live count + toggle.
+// Mirrors LayerRow but reads the SEPARATE signals store (default off, opt-in).
+function SignalRow({ id }: { id: string }) {
+  const source = SIGNALS.find((s) => s.id === id)!;
+  const on = useSignals()[id] === true;
+  const count = useSignalCounts()[id];
+  const countLabel = count != null ? count.toLocaleString() : on ? "…" : "—";
+  return (
+    <div className="tn-layer-row" style={{ opacity: on ? 1 : 0.55 }}>
+      <div className="tn-layer-head" style={{ cursor: "default" }}>
+        <span
+          className="tn-layer-dot"
+          style={{ background: source.color, boxShadow: on ? `0 0 7px ${source.color}88` : "none" }}
+        />
+        <div className="tn-layer-main">
+          <span className="tn-layer-name">{source.label}</span>
+          <span className="tn-layer-source">{source.attribution}</span>
+        </div>
+      </div>
+      <span className="tn-layer-count tn-num">{countLabel}</span>
+      <Toggle
+        on={on}
+        accent={source.color}
+        label={`Toggle ${source.label}`}
+        onClick={() => signalsStore.toggle(id)}
+      />
+    </div>
+  );
+}
+
+// Collapsible "Global signals" section. Default COLLAPSED — these are heavy,
+// global, opt-in feeds, so they stay out of the way until deliberately opened.
+function GlobalSignals() {
+  const [open, setOpen] = useState(false);
+  const groups = signalsByGroup();
+  const onCount = useSignals();
+  const activeCount = SIGNALS.filter((s) => onCount[s.id]).length;
+  return (
+    <div className="tn-signals">
+      <button
+        type="button"
+        className="tn-signals-header"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
+        <span className="tn-signals-title">
+          Global signals
+          {activeCount > 0 ? <span className="tn-signals-badge">{activeCount}</span> : null}
+        </span>
+        <span className="tn-layer-caret" data-open={open}>
+          ›
+        </span>
+      </button>
+      {open && (
+        <div className="tn-signals-body">
+          {groups.map((g) => (
+            <div key={g.group} className="tn-rail-section">
+              <div className="tn-subhead">{g.group}</div>
+              {g.sources.map((s) => (
+                <SignalRow key={s.id} id={s.id} />
+              ))}
+            </div>
+          ))}
+          <p className="tn-rail-foot">
+            Opt-in natural-hazard &amp; space-weather layers. Fetched only while on; every feed is
+            keyless, live and attributed.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function LayerRail() {
   const ui = useUI();
   const m = useMetrics();
@@ -229,6 +304,12 @@ export default function LayerRail() {
           <LayerRow key={k} layerKey={k} count={null} />
         ))}
       </div>
+
+      <div className="tn-rail-divider" />
+
+      <GlobalSignals />
+
+      <div className="tn-rail-divider" />
 
       <button type="button" className="tn-coverage-open" onClick={() => coverageStore.open()}>
         Coverage details — live counts per source

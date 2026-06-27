@@ -1,0 +1,54 @@
+{
+  "title": "EONET test slice",
+  "events": [
+    {
+      "id": "EONET_W1",
+      "title": "Median Wildfire, Gooding, Idaho",
+      "link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_W1",
+      "categories": [{ "id": "wildfires", "title": "Wildfires" }],
+      "sources": [{ "id": "InciWeb", "url": "https://inciweb.example/1" }],
+      "geometry": [
+        { "type": "Point", "coordinates": [-114.0, 42.0], "date": "2026-06-16T13:57:00Z" },
+        { "type": "Point", "coordinates": [-114.767567, 42.805867], "date": "2026-06-17T13:57:00Z" }
+      ]
+    },
+    {
+      "id": "EONET_S1",
+      "title": "Tropical Storm Higos",
+      "link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_S1",
+      "categories": [{ "id": "severeStorms", "title": "Severe Storms" }],
+      "sources": [{ "id": "JTWC", "url": "https://navy.example/wp08" }],
+      "geometry": [
+        { "type": "Point", "coordinates": [145.7, 14.7], "date": "2026-06-23T00:00:00Z", "magnitudeValue": 35.0, "magnitudeUnit": "kts" },
+        { "type": "Point", "coordinates": [134.1, 22.4], "date": "2026-06-25T18:00:00Z", "magnitudeValue": 50.0, "magnitudeUnit": "kts" }
+      ]
+    },
+    {
+      "id": "EONET_V1",
+      "title": "Nevados del Chillan Volcano, Chile",
+      "categories": [{ "id": "volcanoes", "title": "Volcanoes" }],
+      "sources": [{ "id": "SI", "url": "https://volcano.example/1" }],
+      "geometry": [{ "type": "Point", "coordinates": [-71.378, -36.868], "date": "2026-06-20T00:00:00Z" }]
+    },
+    {
+      "id": "EONET_WP",
+      "title": "Areal Wildfire (polygon)",
+      "categories": [{ "id": "wildfires", "title": "Wildfires" }],
+      "sources": [{ "id": "PDC", "url": "https://pdc.example/1" }],
+      "geometry": [
+        {
+          "type": "Polygon",
+          "coordinates": [[[10.0, 20.0], [12.0, 20.0], [12.0, 22.0], [10.0, 22.0], [10.0, 20.0]]],
+          "date": "2026-06-22T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "EONET_NOGEOM",
+      "title": "Event with no geometry",
+      "categories": [{ "id": "wildfires", "title": "Wildfires" }],
+      "sources": [],
+      "geometry": []
+    }
+  ]
+}

@@ -7,6 +7,7 @@
 
 import type { WorldObject } from "@/lib/world";
 import type { PlaneTrail } from "@/lib/planes/usePlanes";
+import type { SignalGeometry } from "@/lib/signals/types";
 import { cameraRegionColor } from "@/lib/icons/svg";
 
 const KNOWN_REGIONS = ["tfl", "caltrans", "scdot", "digitraffic", "castlerock", "tripcheck", "drivebc"];
@@ -81,6 +82,101 @@ export function toWebcamFC(webcams: WorldObject[]): GeoJSON.FeatureCollection {
       properties: { id: w.id, name: w.label },
     })),
   };
+}
+
+/** The line/area geometry a signal feature carries, if any (rides in meta). */
+function signalGeometry(s: WorldObject): SignalGeometry | undefined {
+  const g = s.meta?.geometry as SignalGeometry | undefined;
+  if (!g) return undefined;
+  return g.type === "LineString" ||
+    g.type === "MultiLineString" ||
+    g.type === "Polygon" ||
+    g.type === "MultiPolygon"
+    ? g
+    : undefined;
+}
+
+const isLine = (g: SignalGeometry) => g.type === "LineString" || g.type === "MultiLineString";
+const isArea = (g: SignalGeometry) => g.type === "Polygon" || g.type === "MultiPolygon";
+
+/** Shared props every signal geometry carries for click resolution + styling. */
+function signalProps(s: WorldObject) {
+  return {
+    id: s.id,
+    signalId: (s.meta?.signalId as string) ?? "",
+    label: s.label,
+    color: s.color ?? "#64748b",
+  };
+}
+
+/**
+ * Global POINT signals (earthquakes, wildfires, aurora, …) → point features for
+ * the ONE data-driven circle+label layer. Every point signal funnels through
+ * this: the per-feature `color` paints the dot, `radius` sizes it, and
+ * `label`/`signalId` ride along for the label layer + click resolution. `radius`
+ * is derived here from the documented `meta.props.magnitude` convention (see
+ * lib/signals/types.ts) so the WorldMap layer needs no per-source knowledge.
+ *
+ * Features that carry a line/area geometry are EXCLUDED here (they render on the
+ * line/fill sources instead — see below), so adding a cable or jamming layer
+ * never disturbs the point circle layer.
+ */
+export function toSignalFC(signals: WorldObject[]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: signals
+      .filter((s) => !signalGeometry(s))
+      .map((s) => {
+        const props = (s.meta?.props ?? {}) as Record<string, unknown>;
+        const mag = Number(props.magnitude);
+        // magnitude (≈0–10) scales the marker; everything else gets a calm fixed dot.
+        const radius = Number.isFinite(mag) ? Math.max(4, Math.min(26, 4 + mag * 1.6)) : 7;
+        return {
+          type: "Feature" as const,
+          geometry: { type: "Point" as const, coordinates: [s.lon, s.lat] },
+          properties: { ...signalProps(s), radius },
+        };
+      }),
+  };
+}
+
+/**
+ * Line signals (e.g. submarine cables) → LineString/MultiLineString features for
+ * the dedicated signal `line` layer. The feature's own geometry is passed
+ * straight through; the same `signalProps` ride along so a click resolves to the
+ * SAME dossier as a point signal.
+ */
+export function toSignalLineFC(signals: WorldObject[]): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+  for (const s of signals) {
+    const g = signalGeometry(s);
+    if (!g || !isLine(g)) continue;
+    features.push({
+      type: "Feature",
+      geometry: g as GeoJSON.Geometry,
+      properties: signalProps(s),
+    });
+  }
+  return { type: "FeatureCollection", features };
+}
+
+/**
+ * Area signals (e.g. GPS-jamming H3 hexes) → Polygon/MultiPolygon features for
+ * the dedicated signal `fill` layer. Mirrors toSignalLineFC; the per-feature
+ * `color` tints the fill + outline.
+ */
+export function toSignalFillFC(signals: WorldObject[]): GeoJSON.FeatureCollection {
+  const features: GeoJSON.Feature[] = [];
+  for (const s of signals) {
+    const g = signalGeometry(s);
+    if (!g || !isArea(g)) continue;
+    features.push({
+      type: "Feature",
+      geometry: g as GeoJSON.Geometry,
+      properties: signalProps(s),
+    });
+  }
+  return { type: "FeatureCollection", features };
 }
 
 /** Satellites → sub-satellite point features (altitude lives in the dossier). */

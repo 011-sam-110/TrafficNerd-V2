@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { layersStore } from "@/lib/layers";
+import { signalsStore } from "@/lib/signals/store";
 import { uiStore } from "@/lib/shell/ui";
 import StatusBar from "@/components/shell/StatusBar";
 import LayerRail from "@/components/shell/LayerRail";
@@ -22,6 +23,7 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
   // server, reconcile after mount → no hydration mismatch).
   useEffect(() => {
     layersStore.hydrate();
+    signalsStore.hydrate();
     uiStore.hydrate();
   }, []);
 

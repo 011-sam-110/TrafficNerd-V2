@@ -26,9 +26,12 @@ import { mapViewStore, useMapView, type RegionView, type PointView } from "@/lib
 import { cameraFeed } from "@/lib/cameras/classify";
 import { CAMERA_FEED_META, cameraRegionColor, WEBCAM_COLOR } from "@/lib/icons/svg";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
-import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC, toWebcamFC } from "@/lib/map/features";
+import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC, toWebcamFC, toSignalFC, toSignalLineFC, toSignalFillFC } from "@/lib/map/features";
 import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons, loadWebcamIcons } from "@/lib/map/icons";
 import { CAMERA_CLUSTER, WEBCAM_CLUSTER, expandCluster } from "@/lib/map/cluster";
+import { SIGNALS } from "@/lib/signals/registry";
+import { useSignals, signalCountsStore } from "@/lib/signals/store";
+import type { SignalFeature, SignalSource } from "@/lib/signals/types";
 import {
   readInitialViewState,
   scheduleUrlWrite,
@@ -66,6 +69,21 @@ const WEBCAM_CLUSTER_LAYER = "webcam-clusters"; // soft rose count badges
 const WEBCAM_CLUSTER_COUNT = "webcam-cluster-count"; // numeric label on each cluster
 const DEM_SRC = "terrain-dem";
 const HILLSHADE_LAYER = "hillshade";
+// Global signals — THREE aggregated sources carrying the union of every ON
+// signal's features, split by geometry so each MapLibre layer type gets its own:
+//   • SIGNAL_SRC   — points  → circle + label layers
+//   • SIGNAL_LINE_SRC — LineString/MultiLineString → line layer (e.g. cables)
+//   • SIGNAL_FILL_SRC — Polygon/MultiPolygon → fill + outline layers (e.g. jamming)
+// The point circle layer is unaffected by line/area features (toSignalFC excludes
+// them), and a click on ANY of them resolves to the SAME signal dossier.
+const SIGNAL_SRC = "signals";
+const SIGNAL_LAYER = "signal-dots";
+const SIGNAL_LABEL = "signal-labels";
+const SIGNAL_LINE_SRC = "signal-lines";
+const SIGNAL_LINE_LAYER = "signal-line-paths";
+const SIGNAL_FILL_SRC = "signal-fills";
+const SIGNAL_FILL_LAYER = "signal-fill-areas";
+const SIGNAL_FILL_OUTLINE = "signal-fill-outline";
 
 // Start zoomed out so the spinning globe is the hero. The palette / rail fly inward.
 const HOME = { center: [-30, 28] as [number, number], zoom: 1.4 };
@@ -96,12 +114,19 @@ export default function WorldMap() {
   const [satellites, setSatellites] = useState<WorldObject[]>([]);
   const [planesLayer, setPlanesLayer] = useState<PlanesLayer>({ objects: [], trails: [] });
   const [webcams, setWebcams] = useState<WorldObject[]>([]);
+  // Global signals are merged from per-source <SignalFeed> children into one map
+  // (id → that source's objects); `signals` is the flattened union the aggregated
+  // MapLibre source renders. Toggling a signal off unmounts its feed, which clears
+  // its slot here — so a hidden signal contributes nothing and never fetches.
+  const [signals, setSignals] = useState<WorldObject[]>([]);
+  const signalChunksRef = useRef<Record<string, WorldObject[]>>({});
 
   const view = useMapView();
   const basemap = view.basemap;
   const terrainOn = view.terrain;
   const layers = useLayers();
   const camFilter = useCameraFilter();
+  const signalsState = useSignals();
 
   // Cameras → WorldObject[] (shape = feed, colour = region).
   const cameraObjects = useMemo<WorldObject[]>(
@@ -171,8 +196,21 @@ export default function WorldMap() {
   satsRef.current = satellites;
   const webcamsRef = useRef<WorldObject[]>([]);
   webcamsRef.current = webcams;
+  const signalsRef = useRef<WorldObject[]>([]);
+  signalsRef.current = signals;
   const layersRef = useRef<LayerState>(layers);
   layersRef.current = layers;
+
+  // Merge one signal source's objects into the aggregated set. A SignalFeed calls
+  // this with its features on load and with [] on unmount (toggle-off), so the
+  // union always reflects exactly the ON signals — no per-layer WorldMap code.
+  const mergeSignalChunk = useCallback((id: string, objs: WorldObject[]) => {
+    const next = { ...signalChunksRef.current };
+    if (objs.length) next[id] = objs;
+    else delete next[id];
+    signalChunksRef.current = next;
+    setSignals(Object.values(next).flat());
+  }, []);
 
   // --- Map helpers (stable; read from refs) --------------------------------
 
@@ -293,6 +331,9 @@ export default function WorldMap() {
       ensureGeoJSON(map, CAM_SRC, toCameraFC(camerasRef.current), CAMERA_CLUSTER);
       ensureGeoJSON(map, WEBCAM_SRC, toWebcamFC(webcamsRef.current), WEBCAM_CLUSTER);
       ensureGeoJSON(map, PLANE_SRC, toPlaneFC(planesRef.current));
+      ensureGeoJSON(map, SIGNAL_FILL_SRC, toSignalFillFC(signalsRef.current));
+      ensureGeoJSON(map, SIGNAL_LINE_SRC, toSignalLineFC(signalsRef.current));
+      ensureGeoJSON(map, SIGNAL_SRC, toSignalFC(signalsRef.current));
 
       // Layers, bottom → top.
       if (!map.getLayer(TRAIL_LAYER)) {
@@ -502,6 +543,98 @@ export default function WorldMap() {
           },
         });
       }
+      // Global signals — AREA fill (Polygon/MultiPolygon, e.g. GPS jamming). Added
+      // first so it sits beneath the line + circle layers; per-feature `color`
+      // tints both the fill and its outline. Always visible (source = ON signals).
+      if (!map.getLayer(SIGNAL_FILL_LAYER)) {
+        map.addLayer({
+          id: SIGNAL_FILL_LAYER,
+          type: "fill",
+          source: SIGNAL_FILL_SRC,
+          paint: {
+            "fill-color": ["get", "color"],
+            "fill-opacity": 0.28,
+          },
+        });
+      }
+      if (!map.getLayer(SIGNAL_FILL_OUTLINE)) {
+        map.addLayer({
+          id: SIGNAL_FILL_OUTLINE,
+          type: "line",
+          source: SIGNAL_FILL_SRC,
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": 1,
+            "line-opacity": 0.7,
+          },
+        });
+      }
+      // Global signals — LINE layer (LineString/MultiLineString, e.g. submarine
+      // cables). Thin, per-feature coloured, gently thickening with zoom.
+      if (!map.getLayer(SIGNAL_LINE_LAYER)) {
+        map.addLayer({
+          id: SIGNAL_LINE_LAYER,
+          type: "line",
+          source: SIGNAL_LINE_SRC,
+          layout: { "line-cap": "round", "line-join": "round" },
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.6, 4, 1.1, 10, 2],
+            "line-opacity": 0.75,
+          },
+        });
+      }
+      // Global signals — ONE data-driven circle layer for ALL POINT signal sources.
+      // Colour + radius come straight from the per-feature props (see toSignalFC),
+      // so a new signal source renders here with zero changes. The source only ever
+      // holds the union of ON signals' points, so the layer stays visible always.
+      if (!map.getLayer(SIGNAL_LAYER)) {
+        map.addLayer({
+          id: SIGNAL_LAYER,
+          type: "circle",
+          source: SIGNAL_SRC,
+          paint: {
+            "circle-color": ["get", "color"],
+            // Per-feature base radius, gently scaled by zoom.
+            "circle-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              ["*", ["get", "radius"], 0.7],
+              6,
+              ["get", "radius"],
+              12,
+              ["*", ["get", "radius"], 1.4],
+            ],
+            "circle-opacity": 0.82,
+            "circle-stroke-color": "#ffffff",
+            "circle-stroke-width": 1,
+            "circle-stroke-opacity": 0.85,
+          },
+        });
+      }
+      if (!map.getLayer(SIGNAL_LABEL)) {
+        map.addLayer({
+          id: SIGNAL_LABEL,
+          type: "symbol",
+          source: SIGNAL_SRC,
+          minzoom: 4, // declutter — labels only once zoomed past the globe overview
+          layout: {
+            "text-field": ["get", "label"],
+            "text-font": ["Open Sans Regular"], // served by CARTO_GLYPHS on every basemap
+            "text-size": 11,
+            "text-offset": [0, 1.1],
+            "text-anchor": "top",
+            "text-optional": true, // drop the label rather than hide the dot
+          },
+          paint: {
+            "text-color": "#0f172a",
+            "text-halo-color": "#ffffff",
+            "text-halo-width": 1.2,
+          },
+        });
+      }
 
       applyVisibility(map, layersRef.current);
       readyRef.current = true;
@@ -547,6 +680,16 @@ export default function WorldMap() {
     map.on("click", WEBCAM_LAYER, webcamClick);
     map.on("click", WEBCAM_DOT_LAYER, webcamClick);
 
+    // Points, lines and areas all resolve to the SAME signal dossier by id.
+    const signalClick = (e: maplibregl.MapLayerMouseEvent) => {
+      const id = (e.features?.[0]?.properties as { id?: string })?.id;
+      const sig = signalsRef.current.find((s) => s.id === id);
+      if (sig) overlay.open(sig);
+    };
+    map.on("click", SIGNAL_LAYER, signalClick);
+    map.on("click", SIGNAL_LINE_LAYER, signalClick);
+    map.on("click", SIGNAL_FILL_LAYER, signalClick);
+
     // Click a cluster badge → ease into the zoom where it splits apart.
     const clusterClick = (sourceId: string) => (e: maplibregl.MapLayerMouseEvent) => {
       const f = e.features?.[0];
@@ -560,7 +703,7 @@ export default function WorldMap() {
     const hoverLayers = [
       CAM_LAYER, CAM_DOT_LAYER, CAM_CLUSTER_LAYER,
       WEBCAM_LAYER, WEBCAM_DOT_LAYER, WEBCAM_CLUSTER_LAYER,
-      PLANE_LAYER, SAT_LAYER,
+      PLANE_LAYER, SAT_LAYER, SIGNAL_LAYER, SIGNAL_LINE_LAYER, SIGNAL_FILL_LAYER,
     ];
     for (const layer of hoverLayers) {
       map.on("mouseenter", layer, () => {
@@ -726,6 +869,14 @@ export default function WorldMap() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !readyRef.current) return;
+    (map.getSource(SIGNAL_SRC) as GeoJSONSource | undefined)?.setData(toSignalFC(signals));
+    (map.getSource(SIGNAL_LINE_SRC) as GeoJSONSource | undefined)?.setData(toSignalLineFC(signals));
+    (map.getSource(SIGNAL_FILL_SRC) as GeoJSONSource | undefined)?.setData(toSignalFillFC(signals));
+  }, [signals]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
     (map.getSource(PLANE_SRC) as GeoJSONSource | undefined)?.setData(toPlaneFC(planesLayer.objects));
     (map.getSource(TRAIL_SRC) as GeoJSONSource | undefined)?.setData(toTrailFC(planesLayer.trails));
   }, [planesLayer]);
@@ -741,12 +892,13 @@ export default function WorldMap() {
       camerasRef.current.find((c) => c.id === id) ??
       planesRef.current.find((p) => p.id === id) ??
       satsRef.current.find((s) => s.id === id) ??
-      webcamsRef.current.find((w) => w.id === id);
+      webcamsRef.current.find((w) => w.id === id) ??
+      signalsRef.current.find((s) => s.id === id);
     if (found) {
       overlay.open(found);
       pendingObjRef.current = null;
     }
-  }, [filteredCameras, planesLayer, satellites, webcams]);
+  }, [filteredCameras, planesLayer, satellites, webcams, signals]);
 
   // Debug handle for live tuning (basemap / terrain).
   useEffect(() => {
@@ -796,8 +948,77 @@ export default function WorldMap() {
       {layers.planes && <PlanesFeed onData={setPlanesLayer} />}
       {layers.satellites && <SatellitesFeed onData={setSatellites} />}
       {layers.webcams && <WebcamsFeed onData={setWebcams} />}
+
+      {/* One gating feed per ON signal — mounted only while its toggle is on, so a
+          hidden signal never fetches (mirrors CamerasFeed). Each lifts its objects
+          into the aggregated set and clears its slot on unmount. */}
+      {SIGNALS.filter((s) => signalsState[s.id]).map((s) => (
+        <SignalFeed key={s.id} source={s} onData={mergeSignalChunk} />
+      ))}
     </div>
   );
+}
+
+// --- Global-signals gating feed ----------------------------------------------
+// Fetches ONE signal source through the generic /api/signals/<id> proxy, converts
+// its SignalFeature[] into clickable WorldObject[], and lifts them up. Refreshes
+// on the source's own cadence; reports its live count to the rail; clears its
+// contribution + count on unmount (toggle-off). See SIGNALS / lib/signals.
+function SignalFeed({
+  source,
+  onData,
+}: {
+  source: SignalSource;
+  onData: (id: string, objs: WorldObject[]) => void;
+}) {
+  const { id } = source;
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      fetch(`/api/signals/${encodeURIComponent(id)}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (!alive) return;
+          const features = (d.features as SignalFeature[]) ?? [];
+          const objs: WorldObject[] = features.map((f) => ({
+            kind: "signal",
+            id: f.id,
+            lat: f.lat,
+            lon: f.lon,
+            label: f.title,
+            color: f.color ?? source.color,
+            typeLabel: source.label,
+            meta: {
+              signalId: f.signalId,
+              props: f.props ?? {},
+              attribution: source.attribution,
+              sourceLabel: source.label,
+              link: f.link,
+              // Carries line/area geometry (cables, jamming) through to the
+              // line/fill builders in lib/map/features; absent for point signals.
+              ...(f.geometry ? { geometry: f.geometry } : {}),
+            },
+          }));
+          onData(id, objs);
+          signalCountsStore.set(id, objs.length);
+        })
+        .catch(() => {
+          if (!alive) return;
+          onData(id, []);
+          signalCountsStore.set(id, 0);
+        });
+    };
+    load();
+    // Refresh on the source's cadence (floored so a misconfigured 0 can't spin).
+    const t = setInterval(load, Math.max(30_000, source.refreshMs));
+    return () => {
+      alive = false;
+      clearInterval(t);
+      onData(id, []);
+      signalCountsStore.set(id, null);
+    };
+  }, [id, source, onData]);
+  return null;
 }
 
 // --- Gating data feeds -------------------------------------------------------
