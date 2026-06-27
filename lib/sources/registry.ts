@@ -21,6 +21,7 @@ const SOURCES: Array<() => Promise<Camera[]>> = [
   fetchDriveBc,
 ];
 let cache: { cameras: Camera[]; at: number } | null = null;
+let inflight: Promise<Camera[]> | null = null;
 
 export function mergeResults(
   results: PromiseSettledResult<Camera[]>[],
@@ -36,12 +37,30 @@ export function mergeResults(
   return cameras;
 }
 
-export async function getRegistry(): Promise<Camera[]> {
-  if (cache && Date.now() - cache.at < TTL_MS) return cache.cameras;
+async function refresh(): Promise<Camera[]> {
   const results = await Promise.allSettled(SOURCES.map((f) => f()));
   const cameras = mergeResults(results, cache?.cameras ?? null);
   cache = { cameras, at: Date.now() };
   return cameras;
+}
+
+// Stale-while-revalidate: a fresh cache returns instantly; a stale cache returns
+// instantly too while a single shared refresh runs in the background. Only the
+// very first (cold) call, with no cache at all, waits for the fetch — important
+// now that Castle Rock pages ~100 requests and a cold load can take ~40s.
+export async function getRegistry(): Promise<Camera[]> {
+  if (cache && Date.now() - cache.at < TTL_MS) return cache.cameras;
+  if (!inflight) {
+    inflight = refresh()
+      .catch((e) => {
+        if (!cache) throw e; // cold + total failure → surface the error
+        return cache.cameras; // otherwise keep serving stale
+      })
+      .finally(() => {
+        inflight = null;
+      });
+  }
+  return cache ? cache.cameras : inflight;
 }
 
 export async function getCameraById(id: string): Promise<Camera | null> {

@@ -61,6 +61,19 @@ test("assigns lat/lon in the correct order (fails loudly if swapped)", () => {
   expect(a.lon).toBeLessThan(0);
 });
 
+// The endpoint caps each response at 100 rows, so fetchRegistry pages by `start`.
+// pageStarts yields the offsets needed AFTER page 0 to cover the reported total.
+test("pageStarts walks 100-row pages after page 0, capped for safety", () => {
+  expect(pageStarts(57)).toEqual([]); // a single 100-row page already covers it
+  expect(pageStarts(100)).toEqual([]); // exactly one full page → no extra fetches
+  expect(pageStarts(250)).toEqual([100, 200]); // page0 + two more = 0..249
+  expect(pageStarts(4881)).toHaveLength(48); // FL: page0 + 48 pages = 49 → 4900 ≥ 4881
+  expect(pageStarts(4881)[0]).toBe(100);
+  expect(pageStarts(4881).at(-1)).toBe(4800);
+  // A bogus huge total can't loop us forever: capped at MAX_PAGES_PER_SYSTEM-1.
+  expect(pageStarts(10_000_000).length).toBe(119);
+});
+
 test("the same record set re-namespaces and re-flags country per system", () => {
   const [a] = normalizeCastleRock(fixture as never, ON);
   expect(a.id).toBe("castlerock:on:1"); // namespace switches with the system
