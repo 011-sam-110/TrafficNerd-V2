@@ -1,16 +1,23 @@
 import { describe, it, expect } from "vitest";
 import { BUILTIN_VARIANTS, BUILTIN_BY_ID, DEFAULT_VARIANT_ID } from "@/lib/variants/builtins";
+import { PERSISTENT_PANELS } from "@/lib/shell/panelRegistry";
 import { SIGNALS } from "@/lib/signals/registry";
 
 describe("built-in variants", () => {
-  it("has explore as the default and it is minimal", () => {
+  it("has explore as the default with minimal calm chrome but dockable tiles for the workspace", () => {
     expect(DEFAULT_VARIANT_ID).toBe("explore");
     const explore = BUILTIN_BY_ID["explore"];
     expect(explore).toBeTruthy();
     expect(explore.layers.cameras).toBe(true);
     expect(explore.layers.planes).toBe(true);
     expect(explore.signals).toBeUndefined(); // no intel layers in the calm default
-    expect(explore.panels.filter((p) => p.visible).map((p) => p.panel)).toEqual(["layerRail"]);
+    // Calm view: the only persistent chrome panel is the layer rail.
+    const persistentVisible = explore.panels
+      .filter((p) => p.visible && (PERSISTENT_PANELS as readonly string[]).includes(p.panel))
+      .map((p) => p.panel);
+    expect(persistentVisible).toEqual(["layerRail"]);
+    // SP1b: explore still offers dockable intelligence tiles in the opt-in workspace.
+    expect(explore.panels.some((p) => p.panel === "coverage" || p.panel === "markets")).toBe(true);
   });
 
   it("covers every registry signal group across the variant set", () => {
