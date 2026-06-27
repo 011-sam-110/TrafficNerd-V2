@@ -60,9 +60,13 @@ import { MILITARY_AIR_SOURCE } from "@/lib/signals/military-air";
 import { AIS_SOURCE } from "@/lib/signals/ais";
 import { INTERNET_OUTAGES_SOURCE } from "@/lib/signals/internet-outages";
 import { SPACE_WEATHER_SOURCE } from "@/lib/signals/space-weather";
+import { INSTABILITY_SOURCE } from "@/lib/signals/instability";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
+  // Synthesis — the flagship: a per-country instability score composited from the
+  // conflict / food / displacement / outage layers (keyless inputs; ACLED upgrades it).
+  INSTABILITY_SOURCE,
   EARTHQUAKES_SOURCE,
   WILDFIRES_SOURCE,
   VOLCANOES_SOURCE,
