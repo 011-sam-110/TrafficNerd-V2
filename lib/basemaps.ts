@@ -84,6 +84,8 @@ export const BASEMAPS: Record<BasemapKey, BasemapDef> = {
   },
 };
 
-// Real photographic Earth by default — the globe-as-hero "planetarium" look the
-// differentiation research called for; "Light" (Positron) stays one tap away.
-export const DEFAULT_BASEMAP: BasemapKey = "satellite";
+// Calm LIGHT by default — CARTO Positron is the redesign's globe-as-hero identity
+// (the dark neon dashboard is the mocked anti-pattern). The photographic Esri
+// "Satellite" imagery stays one tap away in the basemap switcher for the deep-zoom
+// payoff. [coordinator-notes §5, DECISION 2]
+export const DEFAULT_BASEMAP: BasemapKey = "positron";
