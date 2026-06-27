@@ -23,6 +23,7 @@ import BreakingBanner from "@/components/shell/BreakingBanner";
 import { FeedOverlay } from "@/components/FeedOverlay";
 import PanelHost from "@/components/shell/PanelHost";
 import DockableWorkspace from "@/components/shell/DockableWorkspace";
+import IntelColumn from "@/components/shell/IntelColumn";
 
 export default function ConsoleShell({ children }: { children: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -67,6 +68,7 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
       {!ws.open && <MarketsPanel />}
       {!ws.open && <WatchlistPanel />}
       <DockableWorkspace />
+      <IntelColumn />
       <FeedOverlay />
     </div>
   );
