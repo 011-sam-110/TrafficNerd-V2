@@ -10,6 +10,8 @@ import { encodeViewState, decodeViewState, type ViewState } from "@/lib/share/ur
 import { layersStore, ACTIVE_LAYERS } from "@/lib/layers";
 import { mapViewStore } from "@/lib/mapView";
 import { overlay } from "@/lib/overlay";
+import { variantStore } from "@/lib/variants/store";
+import { DEFAULT_VARIANT_ID } from "@/lib/variants/builtins";
 
 const WRITE_DEBOUNCE_MS = 400;
 
@@ -17,6 +19,7 @@ const WRITE_DEBOUNCE_MS = 400;
 export function composeViewState(map: MlMap): ViewState {
   const c = map.getCenter();
   const layerState = layersStore.get();
+  const activeVariantId = variantStore.get().activeId;
   return {
     lat: c.lat,
     lon: c.lng,
@@ -24,6 +27,7 @@ export function composeViewState(map: MlMap): ViewState {
     layers: ACTIVE_LAYERS.filter((k) => layerState[k]),
     basemap: mapViewStore.get().basemap,
     obj: overlay.get().object?.id,
+    v: activeVariantId === DEFAULT_VARIANT_ID ? undefined : activeVariantId,
   };
 }
 

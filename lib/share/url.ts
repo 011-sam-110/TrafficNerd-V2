@@ -16,6 +16,7 @@
 
 import { ACTIVE_LAYERS, type LayerKey } from "@/lib/layers";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
+import { SIGNALS } from "@/lib/signals/registry";
 
 export interface ViewState {
   lat?: number;
@@ -26,6 +27,10 @@ export interface ViewState {
   basemap?: BasemapKey;
   /** Namespaced id of the open dossier object, if any. */
   obj?: string;
+  /** Active variant id. */
+  v?: string;
+  /** On-signal ids (divergence from the variant's defaults). */
+  sig?: string[];
 }
 
 const LAT_MAX = 90;
@@ -36,6 +41,9 @@ const OBJ_MAX_LEN = 96; // opaque internal key — keep shared links sane
 
 const VALID_LAYERS = new Set<string>(ACTIVE_LAYERS);
 const VALID_BASEMAPS = new Set<string>(Object.keys(BASEMAPS));
+const VALID_SIGNALS = new Set<string>(SIGNALS.map((s) => s.id));
+const VARIANT_RE = /^[a-z0-9-]{1,32}$/;
+const SIG_MAX = 40;
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, n));
@@ -74,6 +82,11 @@ export function encodeViewState(state: ViewState): string {
   if (state.obj && state.obj.length <= OBJ_MAX_LEN) {
     p.set("obj", state.obj);
   }
+  if (state.v && VARIANT_RE.test(state.v)) p.set("v", state.v);
+  if (state.sig?.length) {
+    const ids = state.sig.filter((s) => VALID_SIGNALS.has(s)).slice(0, SIG_MAX);
+    p.set("sig", ids.join(","));
+  }
   return p.toString();
 }
 
@@ -101,6 +114,14 @@ export function decodeViewState(params: URLSearchParams): ViewState {
 
   const obj = params.get("obj");
   if (obj && obj.length <= OBJ_MAX_LEN) out.obj = obj;
+
+  const v = params.get("v");
+  if (v && VARIANT_RE.test(v)) out.v = v;
+  if (params.has("sig")) {
+    out.sig = (params.get("sig") ?? "")
+      .split(",").map((s) => s.trim())
+      .filter((s) => VALID_SIGNALS.has(s)).slice(0, SIG_MAX);
+  }
 
   return out;
 }
