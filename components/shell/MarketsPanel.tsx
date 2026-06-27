@@ -9,10 +9,40 @@
 
 import { useEffect, useState } from "react";
 import { marketsStore, useMarketsOpen } from "@/lib/shell/markets";
-import { formatPrice, type MarketsPayload } from "@/lib/markets";
+import { type MarketsPayload, type MarketRow } from "@/lib/markets";
 import { useNow, formatAge } from "@/lib/shell/useNow";
+import DailyBrief from "@/components/shell/DailyBrief";
 
 const REFRESH_MS = 60_000;
+
+// One markets row: asset (icon/name/symbol) · value · optional signed % change.
+function MarketRowItem({ row }: { row: MarketRow }) {
+  const up = row.changePct != null && row.changePct >= 0;
+  const dir = row.changePct == null ? "flat" : up ? "up" : "down";
+  return (
+    <li className="tn-markets-row">
+      <span className="tn-markets-asset">
+        {row.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="tn-markets-icon" src={row.image} alt="" width={18} height={18} />
+        ) : (
+          <span className="tn-markets-icon tn-markets-icon-fallback" aria-hidden />
+        )}
+        <span className="tn-markets-name">{row.name}</span>
+        {row.symbol ? <span className="tn-markets-symbol">{row.symbol}</span> : null}
+        {row.sub ? <span className="tn-markets-rowsub">{row.sub}</span> : null}
+      </span>
+      <span className="tn-markets-price tn-num">{row.value}</span>
+      {row.changePct == null ? (
+        <span className="tn-markets-change tn-markets-flat tn-num" aria-hidden />
+      ) : (
+        <span className={`tn-markets-change tn-markets-${dir} tn-num`}>
+          {`${up ? "▲" : "▼"} ${Math.abs(row.changePct).toFixed(2)}%`}
+        </span>
+      )}
+    </li>
+  );
+}
 
 export default function MarketsPanel() {
   const open = useMarketsOpen();
@@ -66,7 +96,7 @@ export default function MarketsPanel() {
       <header className="tn-markets-head">
         <div>
           <h2 className="tn-markets-title">Markets</h2>
-          <p className="tn-markets-sub">Crypto markets · CoinGecko</p>
+          <p className="tn-markets-sub">Crypto · FX · Equities · Macro</p>
         </div>
         <button
           type="button"
@@ -78,49 +108,39 @@ export default function MarketsPanel() {
         </button>
       </header>
 
+      <DailyBrief />
+
       {status === "error" && !data && (
         <p className="tn-markets-status">Market data is unavailable right now.</p>
       )}
       {status === "loading" && !data && <p className="tn-markets-status">Loading prices…</p>}
 
-      {data && data.assets.length > 0 && (
-        <ul className="tn-markets-list">
-          {data.assets.map((a) => {
-            const up = a.changePct24h != null && a.changePct24h >= 0;
-            const dir = a.changePct24h == null ? "flat" : up ? "up" : "down";
-            return (
-              <li key={a.id} className="tn-markets-row">
-                <span className="tn-markets-asset">
-                  {a.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img className="tn-markets-icon" src={a.image} alt="" width={18} height={18} />
-                  ) : (
-                    <span className="tn-markets-icon tn-markets-icon-fallback" aria-hidden />
-                  )}
-                  <span className="tn-markets-name">{a.name}</span>
-                  <span className="tn-markets-symbol">{a.symbol}</span>
-                </span>
-                <span className="tn-markets-price tn-num">{formatPrice(a.price)}</span>
-                <span className={`tn-markets-change tn-markets-${dir} tn-num`}>
-                  {a.changePct24h == null
-                    ? "—"
-                    : `${up ? "▲" : "▼"} ${Math.abs(a.changePct24h).toFixed(2)}%`}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {data && data.assets.length === 0 && status !== "loading" && (
-        <p className="tn-markets-status">No market data available.</p>
-      )}
+      {data?.sections.map((section) => (
+        <section key={section.key} className="tn-markets-section">
+          <div className="tn-markets-section-head">
+            <span className="tn-markets-section-label">{section.label}</span>
+            <span className="tn-markets-section-source">{section.source}</span>
+          </div>
+          {section.dormant ? (
+            <p className="tn-markets-dormant">{section.note ?? "Add a key to enable."}</p>
+          ) : section.rows.length === 0 ? (
+            <p className="tn-markets-dormant">No data right now.</p>
+          ) : (
+            <ul className="tn-markets-list">
+              {section.rows.map((r) => (
+                <MarketRowItem key={r.id} row={r} />
+              ))}
+            </ul>
+          )}
+        </section>
+      ))}
 
       <p className="tn-markets-foot">
         {ageMs != null
           ? `Snapshot updated ${formatAge(ageMs)} ago · refreshes each minute.`
           : "Live keyless data — no account, no key."}{" "}
-        Prices are indicative, not financial advice.
+        Crypto &amp; FX are live and keyless; equities &amp; macro unlock with a free key.
+        Indicative only, not financial advice.
       </p>
     </aside>
   );

@@ -31,9 +31,121 @@ export interface MarketAsset {
   updatedAt?: string; // ISO from upstream
 }
 
+// --- multi-section model ----------------------------------------------------
+// Markets is no longer crypto-only: it shows several asset classes, each its own
+// honestly-labelled section. Keyless sections (crypto, FX) are always live; keyed
+// sections (equities, macro) render DORMANT with a "add KEY" note until configured
+// — never fabricated. The panel reads `sections`.
+
+export interface MarketRow {
+  id: string;
+  name: string;
+  symbol?: string;
+  /** Pre-formatted display value (price / rate / level). */
+  value: string;
+  /** Signed % change where the upstream provides it; null/undefined = not shown. */
+  changePct?: number | null;
+  /** Optional secondary line (market cap, unit, as-of date). */
+  sub?: string;
+  image?: string;
+}
+
+export interface MarketSection {
+  key: string;
+  label: string;
+  source: string;
+  /** True when the section is key-gated and the key isn't set; rows will be empty. */
+  dormant?: boolean;
+  /** Shown when dormant — which env var unlocks it. */
+  note?: string;
+  rows: MarketRow[];
+}
+
 export interface MarketsPayload {
   generatedAt: number;
-  assets: MarketAsset[];
+  sections: MarketSection[];
+}
+
+/** Crypto MarketAsset[] → display rows (market cap as the secondary line). */
+export function cryptoRows(assets: MarketAsset[]): MarketRow[] {
+  return assets.map((a) => ({
+    id: a.id,
+    name: a.name,
+    symbol: a.symbol,
+    value: formatPrice(a.price),
+    changePct: a.changePct24h,
+    image: a.image,
+    sub: a.marketCap != null ? `mkt cap ${formatCompactUsd(a.marketCap)}` : undefined,
+  }));
+}
+
+const FX_NAMES: Record<string, string> = {
+  EUR: "Euro", GBP: "British Pound", JPY: "Japanese Yen", CNY: "Chinese Yuan",
+  CHF: "Swiss Franc", CAD: "Canadian Dollar", AUD: "Australian Dollar", INR: "Indian Rupee",
+};
+
+/** Pure: Frankfurter (ECB) latest payload → FX rows (units of each currency per 1 USD). */
+export function parseFx(json: { base?: string; date?: string; rates?: Record<string, number> } | null | undefined): MarketRow[] {
+  const rates = json?.rates;
+  if (!rates) return [];
+  const out: MarketRow[] = [];
+  for (const [code, raw] of Object.entries(rates)) {
+    const rate = Number(raw);
+    if (!Number.isFinite(rate) || rate <= 0) continue;
+    out.push({
+      id: `fx:${code}`,
+      name: FX_NAMES[code] ?? code,
+      symbol: `USD/${code}`,
+      value: rate.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 }),
+      sub: json?.date ? `per 1 USD · ${json.date}` : "per 1 USD",
+    });
+  }
+  return out;
+}
+
+/** Pure: assembled Finnhub quotes → equity rows. {symbol,name,c(current),dp(% change)}. */
+export function parseEquities(
+  quotes: { symbol?: string; name?: string; c?: number | null; dp?: number | null }[] | null | undefined,
+): MarketRow[] {
+  if (!Array.isArray(quotes)) return [];
+  const out: MarketRow[] = [];
+  for (const q of quotes) {
+    const sym = (q.symbol ?? "").toUpperCase();
+    const price = q.c == null ? Number.NaN : Number(q.c);
+    if (!sym || !Number.isFinite(price) || price <= 0) continue;
+    const dp = typeof q.dp === "number" && Number.isFinite(q.dp) ? Number(q.dp.toFixed(2)) : null;
+    out.push({ id: `eq:${sym}`, name: q.name?.trim() || sym, symbol: sym, value: formatPrice(price), changePct: dp });
+  }
+  return out;
+}
+
+/** Pure: assembled FRED latest observations → macro rows. {id,label,value,unit,date}. */
+export function parseMacro(
+  series: { id?: string; label?: string; value?: number | string | null; unit?: string; date?: string }[] | null | undefined,
+): MarketRow[] {
+  if (!Array.isArray(series)) return [];
+  const out: MarketRow[] = [];
+  for (const s of series) {
+    const id = (s.id ?? "").trim();
+    const v = s.value == null ? Number.NaN : Number(s.value);
+    if (!id || !Number.isFinite(v)) continue;
+    out.push({
+      id: `macro:${id}`,
+      name: s.label?.trim() || id,
+      value: `${v.toLocaleString("en-US", { maximumFractionDigits: 2 })}${s.unit ?? ""}`,
+      sub: s.date ? `as of ${s.date}` : undefined,
+    });
+  }
+  return out;
+}
+
+/** Compact USD, e.g. "$1.2T", "$845B", "$12.3M". */
+export function formatCompactUsd(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
+  if (abs >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  return `$${n.toLocaleString("en-US")}`;
 }
 
 /** Pure: CoinGecko rows → MarketAsset[]. Skips rows with no id or no price. */

@@ -58,18 +58,30 @@ import { DISPLACEMENT_SOURCE } from "@/lib/signals/displacement";
 import { FOOD_SECURITY_SOURCE } from "@/lib/signals/food-security";
 import { MILITARY_AIR_SOURCE } from "@/lib/signals/military-air";
 import { AIS_SOURCE } from "@/lib/signals/ais";
+import { INTERNET_OUTAGES_SOURCE } from "@/lib/signals/internet-outages";
+import { SPACE_WEATHER_SOURCE } from "@/lib/signals/space-weather";
+import { INSTABILITY_SOURCE } from "@/lib/signals/instability";
+import { AIR_QUALITY_STATIONS_SOURCE } from "@/lib/signals/airquality-stations";
+import { TROPICAL_CYCLONES_SOURCE } from "@/lib/signals/tropical-cyclones";
+import { RELIEFWEB_SOURCE } from "@/lib/signals/reliefweb";
+import { GRID_LOAD_SOURCE } from "@/lib/signals/entsoe";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
+  // Synthesis — the flagship: a per-country instability score composited from the
+  // conflict / food / displacement / outage layers (keyless inputs; ACLED upgrades it).
+  INSTABILITY_SOURCE,
   EARTHQUAKES_SOURCE,
   WILDFIRES_SOURCE,
   VOLCANOES_SOURCE,
   SEVERE_STORMS_SOURCE,
   FLOODS_SOURCE,
   GDACS_SOURCE, // multi-hazard GDACS alerts (EQ/TC/FL/VO/DR/WF), alert-coloured
+  TROPICAL_CYCLONES_SOURCE, // NOAA NHC active named storms (keyless; empty in quiet season)
   FIRE_FIRMS_SOURCE, // NASA FIRMS active-fire detections (key-gated: FIRMS_MAP_KEY)
   EMSC_SOURCE, // EMSC quakes — a 2nd, faster Euro-Med catalogue alongside USGS
   AURORA_SOURCE,
+  SPACE_WEATHER_SOURCE, // NOAA SWPC Kp/storm-scale status pin (keyless)
   // Space
   LAUNCHES_SOURCE,
   // Infrastructure (cables = line layer, gpsJamming = fill layer)
@@ -78,6 +90,7 @@ export const SIGNALS: SignalSource[] = [
   NUCLEAR_SOURCE,
   AIRPORTS_SOURCE,
   PORTS_SOURCE,
+  INTERNET_OUTAGES_SOURCE, // IODA national internet-shutdown detection (keyless, country-aggregated)
   // Intel (GDELT geolocated news coverage)
   CONFLICT_SOURCE,
   PROTESTS_SOURCE,
@@ -86,6 +99,7 @@ export const SIGNALS: SignalSource[] = [
   // Environment & civic (keyless Open-Meteo + data.police.uk)
   WEATHER_SOURCE,
   AIR_QUALITY_SOURCE,
+  AIR_QUALITY_STATIONS_SOURCE, // real OpenAQ station PM2.5 (key-gated: OPENAQ_API_KEY)
   UK_CRIME_SOURCE,
   // Cyber threat (keyless abuse.ch + Ransomware.live, country-aggregated)
   CYBER_C2_SOURCE,
@@ -93,6 +107,9 @@ export const SIGNALS: SignalSource[] = [
   // Human cost (keyless UNHCR displacement + WFP HungerMap, country-aggregated)
   DISPLACEMENT_SOURCE,
   FOOD_SECURITY_SOURCE,
+  RELIEFWEB_SOURCE, // UN OCHA humanitarian emergencies (key-gated: RELIEFWEB_APPNAME)
+  // Energy / grid (key-gated: ENTSOE_API_TOKEN)
+  GRID_LOAD_SOURCE,
   // Military (keyless unfiltered military ADS-B)
   MILITARY_AIR_SOURCE,
   // Maritime (real-time AIS vessel positions at strategic chokepoints; key-gated: AISSTREAM_API_KEY)
