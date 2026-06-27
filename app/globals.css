@@ -580,3 +580,75 @@ a { color: var(--tn-accent); }
 .tn-alert-dismiss:hover { color: var(--tn-text); }
 @media (prefers-reduced-motion: reduce) { .tn-alert { animation: none; } }
 @media (max-width: 720px) { .tn-alert { width: calc(100vw - 20px); } .tn-alert-detail { display: none; } }
+
+/* =========================================================================
+   Batch D — platform/UX chrome: monitor presets, time-window filter, language
+   switcher, and the saved-places (watchlist) slide-in. All reuse the calm-light
+   tokens above; nothing introduces a new colour.
+   ========================================================================= */
+
+/* --- Monitor variants (top of the rail: whole-map-in-one-tap) ------------- */
+.tn-monitors { margin-bottom: 12px; }
+.tn-monitor-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.tn-monitor-chip {
+  font: inherit; font-size: 11px; font-weight: 600; color: var(--tn-text-muted);
+  background: var(--tn-chip-bg); border: 1px solid transparent; border-radius: 999px;
+  padding: 5px 11px; cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.tn-monitor-chip:hover { color: var(--tn-accent); border-color: var(--tn-border); }
+.tn-monitor-chip[aria-pressed="true"] {
+  color: var(--tn-accent-strong); background: var(--tn-accent-soft); border-color: var(--tn-border);
+}
+
+/* --- Time-window filter (inside the global-signals body) ------------------ */
+.tn-timewindow { margin-bottom: 8px; }
+.tn-timewindow-chips { display: flex; gap: 2px; background: var(--tn-chip-bg); border-radius: 9px; padding: 2px; }
+.tn-timewindow-chip {
+  flex: 1; font: inherit; font-size: 11px; font-weight: 600; color: var(--tn-text-muted);
+  background: transparent; border: none; border-radius: 7px; padding: 5px 0; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tn-timewindow-chip[aria-pressed="true"] { background: var(--tn-surface-solid); color: var(--tn-accent); box-shadow: var(--tn-shadow-sm); }
+
+/* --- Language switcher (top bar, mirrors the basemap segmented control) ---- */
+.tn-lang { display: flex; gap: 2px; background: var(--tn-chip-bg); border-radius: 9px; padding: 2px; }
+.tn-lang-btn {
+  font: inherit; font-size: 11.5px; font-weight: 600; color: var(--tn-text-muted);
+  background: transparent; border: none; border-radius: 7px; padding: 5px 8px; cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tn-lang-btn[aria-pressed="true"] { background: var(--tn-surface-solid); color: var(--tn-accent); box-shadow: var(--tn-shadow-sm); }
+@media (max-width: 720px) { .tn-lang { display: none; } }
+
+/* --- Saved places / watchlist (right slide-in; reuses .tn-markets surface) - */
+.tn-saved-add {
+  width: 100%; margin-top: 12px; font: inherit; font-size: 12.5px; font-weight: 650; color: var(--tn-accent);
+  background: var(--tn-accent-soft); border: 1px solid var(--tn-border); border-radius: 10px;
+  padding: 10px 12px; cursor: pointer; text-align: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tn-saved-add:hover { background: var(--tn-chip-bg); color: var(--tn-accent-strong); }
+.tn-saved-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.tn-saved-row {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px;
+  padding: 7px 2px; border-top: 1px solid var(--tn-border);
+}
+.tn-saved-row:first-child { border-top: none; }
+.tn-saved-recall {
+  display: flex; align-items: center; gap: 9px; min-width: 0; text-align: left;
+  font: inherit; background: transparent; border: none; cursor: pointer; padding: 2px 0; color: var(--tn-text);
+}
+.tn-saved-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--tn-text-faint); }
+.tn-saved-dot.tn-saved-view { background: var(--tn-accent); }
+.tn-saved-dot.tn-saved-object { background: var(--tn-sat); }
+.tn-saved-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tn-saved-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tn-saved-meta { font-size: 10.5px; color: var(--tn-text-faint); }
+.tn-saved-recall:hover .tn-saved-name { color: var(--tn-accent); }
+.tn-saved-remove {
+  flex-shrink: 0; width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center;
+  background: transparent; color: var(--tn-text-faint); border: 1px solid var(--tn-border);
+  font-size: 15px; line-height: 1; cursor: pointer;
+}
+.tn-saved-remove:hover { color: var(--tn-down); border-color: var(--tn-down); }

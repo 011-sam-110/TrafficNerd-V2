@@ -25,8 +25,12 @@ import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import { uiStore, useUI } from "@/lib/shell/ui";
 import { coverageStore } from "@/lib/shell/coverage";
 import { marketsStore } from "@/lib/shell/markets";
+import { watchlistPanelStore } from "@/lib/shell/watchlist";
 import { useNow, formatAge } from "@/lib/shell/useNow";
 import { CAMERA_REGIONS, CAMERA_FEED_META } from "@/lib/icons/svg";
+import { useT } from "@/lib/i18n/store";
+import MonitorBar from "@/components/shell/MonitorBar";
+import TimeWindowControl from "@/components/shell/TimeWindowControl";
 
 interface LayerMeta {
   name: string;
@@ -217,6 +221,7 @@ function GlobalSignals() {
   const [open, setOpen] = useState(false);
   const groups = signalsByGroup();
   const onCount = useSignals();
+  const t = useT();
   const activeCount = SIGNALS.filter((s) => onCount[s.id]).length;
   return (
     <div className="tn-signals">
@@ -227,7 +232,7 @@ function GlobalSignals() {
         aria-expanded={open}
       >
         <span className="tn-signals-title">
-          Global signals
+          {t("sectionGlobalSignals")}
           {activeCount > 0 ? <span className="tn-signals-badge">{activeCount}</span> : null}
         </span>
         <span className="tn-layer-caret" data-open={open}>
@@ -236,6 +241,7 @@ function GlobalSignals() {
       </button>
       {open && (
         <div className="tn-signals-body">
+          <TimeWindowControl />
           {groups.map((g) => (
             <div key={g.group} className="tn-rail-section">
               <div className="tn-subhead">{g.group}</div>
@@ -257,6 +263,7 @@ function GlobalSignals() {
 export default function LayerRail() {
   const ui = useUI();
   const m = useMetrics();
+  const t = useT();
 
   const count = (k: LayerKey): number | null => {
     if (k === "cameras") return m.camerasTotal || null;
@@ -270,19 +277,21 @@ export default function LayerRail() {
     return (
       <button type="button" className="tn-rail-fab" onClick={() => uiStore.setRailOpen(true)} title="Show layers">
         <span className="tn-rail-fab-bars" aria-hidden>≡</span>
-        Layers
+        {t("railLayers")}
       </button>
     );
   }
 
   return (
-    <aside className="tn-rail" aria-label="Layers">
+    <aside className="tn-rail" aria-label={t("railLayers")}>
       <div className="tn-rail-header">
-        <span className="tn-rail-title">Layers</span>
+        <span className="tn-rail-title">{t("railLayers")}</span>
         <button type="button" className="tn-rail-collapse" onClick={() => uiStore.setRailOpen(false)} aria-label="Collapse layers">
           ‹
         </button>
       </div>
+
+      <MonitorBar />
 
       <div className="tn-presets" role="group" aria-label="Layer presets">
         {LAYER_PRESETS.map((p) => (
@@ -313,11 +322,15 @@ export default function LayerRail() {
       <div className="tn-rail-divider" />
 
       <button type="button" className="tn-coverage-open" onClick={() => coverageStore.open()}>
-        Coverage details — live counts per source
+        {t("btnCoverage")}
       </button>
 
       <button type="button" className="tn-coverage-open" onClick={() => marketsStore.open()}>
-        Markets — live crypto prices
+        {t("btnMarkets")}
+      </button>
+
+      <button type="button" className="tn-coverage-open" onClick={() => watchlistPanelStore.open()}>
+        ★ {t("sectionSaved")}
       </button>
 
       <p className="tn-rail-foot">Only layers you can see are fetched. Everything here is a real, live, attributable feed.</p>
