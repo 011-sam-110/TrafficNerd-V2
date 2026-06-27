@@ -44,6 +44,7 @@ import { GPS_JAMMING_SOURCE } from "@/lib/signals/gpsjam";
 import { NUCLEAR_SOURCE } from "@/lib/signals/nuclear";
 import { AIRPORTS_SOURCE } from "@/lib/signals/airports";
 import { PORTS_SOURCE } from "@/lib/signals/ports";
+import { CONFLICT_SOURCE, PROTESTS_SOURCE } from "@/lib/signals/gdelt";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
@@ -61,6 +62,9 @@ export const SIGNALS: SignalSource[] = [
   NUCLEAR_SOURCE,
   AIRPORTS_SOURCE,
   PORTS_SOURCE,
+  // Intel (GDELT geolocated news coverage)
+  CONFLICT_SOURCE,
+  PROTESTS_SOURCE,
 ];
 
 /** Lookup a source by id (the dynamic route + store key). */

@@ -1,0 +1,43 @@
+[
+  {
+    "id": "bitcoin",
+    "symbol": "btc",
+    "name": "Bitcoin",
+    "image": "https://coin-images.coingecko.com/coins/images/1/large/bitcoin.png",
+    "current_price": 60155,
+    "price_change_percentage_24h": 0.79662,
+    "market_cap": 1206254726310,
+    "last_updated": "2026-06-27T06:01:12.997Z"
+  },
+  {
+    "id": "ethereum",
+    "symbol": "eth",
+    "name": "Ethereum",
+    "image": "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png",
+    "current_price": 1576.64,
+    "price_change_percentage_24h": -2.1,
+    "market_cap": 190268078064,
+    "last_updated": "2026-06-27T06:01:14.132Z"
+  },
+  {
+    "id": "dogecoin",
+    "symbol": "doge",
+    "name": "Dogecoin",
+    "current_price": 0.075637,
+    "price_change_percentage_24h": null,
+    "market_cap": 11710563619,
+    "last_updated": "2026-06-27T06:01:10.648Z"
+  },
+  {
+    "id": "",
+    "symbol": "bad",
+    "name": "No Id",
+    "current_price": 1.0
+  },
+  {
+    "id": "nodata",
+    "symbol": "nd",
+    "name": "No Price",
+    "current_price": null
+  }
+]

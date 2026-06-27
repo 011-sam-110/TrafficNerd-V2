@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>BBC News</title>
+    <description>BBC News - World</description>
+    <item>
+      <title>US strikes on Iran after attack on cargo ship</title>
+      <description>Tensions rise &amp; markets wobble.</description>
+      <link>https://www.bbc.co.uk/news/articles/ckg590wqxwpo?at_medium=RSS&amp;at_campaign=rss</link>
+      <guid isPermaLink="false">https://www.bbc.co.uk/news/articles/ckg590wqxwpo#0</guid>
+      <pubDate>Sat, 27 Jun 2026 02:48:12 GMT</pubDate>
+    </item>
+    <item>
+      <title><![CDATA[Venezuela earthquakes kill 920 as rescue teams arrive]]></title>
+      <link>https://www.bbc.co.uk/news/articles/c39y79g7gzko</link>
+      <pubDate>Sat, 27 Jun 2026 04:09:24 GMT</pubDate>
+    </item>
+    <item>
+      <title>No link here so this is skipped</title>
+      <pubDate>Sat, 27 Jun 2026 01:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Relative link skipped</title>
+      <link>/news/relative-path</link>
+      <pubDate>Sat, 27 Jun 2026 01:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

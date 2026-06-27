@@ -24,6 +24,7 @@ import { useFreshness, classifyFreshness, freshnessAgeMs, type FreshSourceId } f
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import { uiStore, useUI } from "@/lib/shell/ui";
 import { coverageStore } from "@/lib/shell/coverage";
+import { marketsStore } from "@/lib/shell/markets";
 import { useNow, formatAge } from "@/lib/shell/useNow";
 import { CAMERA_REGIONS, CAMERA_FEED_META } from "@/lib/icons/svg";
 
@@ -313,6 +314,10 @@ export default function LayerRail() {
 
       <button type="button" className="tn-coverage-open" onClick={() => coverageStore.open()}>
         Coverage details — live counts per source
+      </button>
+
+      <button type="button" className="tn-coverage-open" onClick={() => marketsStore.open()}>
+        Markets — live crypto prices
       </button>
 
       <p className="tn-rail-foot">Only layers you can see are fetched. Everything here is a real, live, attributable feed.</p>
