@@ -19,6 +19,12 @@ import {
 } from "@/lib/layers";
 import { SIGNALS, signalsByGroup } from "@/lib/signals/registry";
 import { signalsStore, useSignals, useSignalCounts } from "@/lib/signals/store";
+import {
+  useSignalFreshness,
+  classifySignalFreshness,
+  signalFreshAgeMs,
+  signalFreshLabel,
+} from "@/lib/signals/freshness";
 import { useMetrics } from "@/lib/metrics";
 import { useFreshness, classifyFreshness, freshnessAgeMs, type FreshSourceId } from "@/lib/freshness";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
@@ -185,7 +191,27 @@ function LayerRow({
   );
 }
 
-// One global-signal layer: dot + label + attribution + live count + toggle.
+// Per-signal freshness chip — honest "is this layer actually live?" beside each
+// ON signal layer, reading the trust spine (lib/signals/freshness). Only shown
+// when the layer is on (a SignalFeed must be mounted to have a record).
+function SignalFreshNote({ id, refreshMs }: { id: string; refreshMs: number }) {
+  const records = useSignalFreshness();
+  const now = useNow(1000);
+  const raw = records[id];
+  if (!raw) return null; // not mounted / no fetch yet
+  const rec = { ...raw, refreshMs };
+  const state = classifySignalFreshness(rec, now);
+  const age = signalFreshAgeMs(rec, now);
+  const text = signalFreshLabel(state, age == null ? "" : formatAge(age));
+  return (
+    <span className={`tn-fresh tn-fresh-${state}`}>
+      <span className="tn-fresh-dot" aria-hidden />
+      {text}
+    </span>
+  );
+}
+
+// One global-signal layer: dot + label + attribution + freshness + live count + toggle.
 // Mirrors LayerRow but reads the SEPARATE signals store (default off, opt-in).
 function SignalRow({ id }: { id: string }) {
   const source = SIGNALS.find((s) => s.id === id)!;
@@ -202,6 +228,7 @@ function SignalRow({ id }: { id: string }) {
         <div className="tn-layer-main">
           <span className="tn-layer-name">{source.label}</span>
           <span className="tn-layer-source">{source.attribution}</span>
+          {on ? <SignalFreshNote id={id} refreshMs={source.refreshMs} /> : null}
         </div>
       </div>
       <span className="tn-layer-count tn-num">{countLabel}</span>
@@ -251,8 +278,9 @@ function GlobalSignals() {
             </div>
           ))}
           <p className="tn-rail-foot">
-            Opt-in natural-hazard &amp; space-weather layers. Fetched only while on; every feed is
-            keyless, live and attributed.
+            Opt-in intelligence layers — hazards, conflict, cyber, maritime, human cost &amp; the
+            Country Instability Index. Fetched only while on; most are keyless, a few unlock with a
+            free key. Each is attributed and shows its own live freshness.
           </p>
         </div>
       )}

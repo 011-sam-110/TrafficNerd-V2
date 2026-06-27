@@ -13,6 +13,26 @@ registration or an email request. Until a key is set, its layer stays **dormant*
 
 ---
 
+## 0 · Status — what's live now
+
+Keys you've already given me are wired in `.env.local` and **live locally**:
+
+| Key | Layer it powers | State |
+|-----|-----------------|-------|
+| `AISSTREAM_API_KEY` | **Ships (AIS chokepoints)** — real-time vessels at Hormuz/Suez/Malacca/… | ✅ live |
+| `OPENAQ_API_KEY` | **Air quality — stations** — real PM2.5 from ~25.8k OpenAQ monitors | ✅ live |
+| `FIRMS_MAP_KEY` | **Active fires** — NASA VIIRS thermal detections | ✅ live |
+| `ACLED_EMAIL` + `ACLED_PASSWORD` | **Conflict events** + the conflict factor of the Index | ⏳ dormant — login works but the account's **API read access isn't activated yet** (returns 403). Activate it on myACLED and it goes live with no code change. |
+
+**Keyless layers added this session — already live, no key needed:** Internet
+outages (IODA), Space weather (NOAA SWPC), Tropical cyclones (NHC), and the
+flagship **Country Instability Index** (composited from food/displacement/outages,
+verified live across 170 countries). The Index currently caps ~49/100 because the
+conflict factor (ACLED) is dormant — activating ACLED opens it to the full range.
+Every layer now shows a live **freshness dot** in the rail (the trust spine).
+
+---
+
 ## 1 · Intelligence layers — get these (all free)
 
 | # | Source | Unlocks | Free tier | Env var(s) |
