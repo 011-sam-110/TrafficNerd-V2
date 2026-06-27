@@ -1,0 +1,75 @@
+[
+  {
+    "MMSI": 271002308,
+    "ShipName": "SINAN PASA",
+    "latitude": 40.952,
+    "longitude": 29.09264,
+    "Sog": 0,
+    "Cog": 235.2,
+    "TrueHeading": 343,
+    "NavigationalStatus": 0,
+    "time_utc": "2026-06-27 09:24:08.291457421 +0000 UTC"
+  },
+  {
+    "MMSI": 228263700,
+    "ShipName": "ARMORIQUE",
+    "latitude": 48.7205,
+    "longitude": -3.96233,
+    "Sog": 0,
+    "Cog": 136.1,
+    "TrueHeading": 136,
+    "NavigationalStatus": 0,
+    "time_utc": "2026-06-27 09:24:08.519052723 +0000 UTC"
+  },
+  {
+    "MMSI": 538011030,
+    "ShipName": "FIYUH",
+    "latitude": 51.80972,
+    "longitude": 2.88553,
+    "Sog": 5,
+    "Cog": 84.1,
+    "TrueHeading": 83,
+    "NavigationalStatus": 0,
+    "time_utc": "2026-06-27 09:24:08.67207745 +0000 UTC"
+  },
+  {
+    "MMSI": 219026491,
+    "ShipName": "ESVAGT SCHELDE",
+    "latitude": 51.72498,
+    "longitude": 2.99072,
+    "Sog": 0.1,
+    "Cog": 95.6,
+    "TrueHeading": 357,
+    "NavigationalStatus": 0,
+    "time_utc": "2026-06-27 09:24:09.001560657 +0000 UTC"
+  },
+  {
+    "MMSI": 219179000,
+    "ShipName": "MAERSK TRIESTE",
+    "latitude": 50.42163,
+    "longitude": -0.46898,
+    "Sog": 13.5,
+    "Cog": 259.1,
+    "TrueHeading": 259,
+    "NavigationalStatus": 0,
+    "time_utc": "2026-06-27 09:24:09.008506268 +0000 UTC"
+  },
+  {
+    "MMSI": 566824000,
+    "ShipName": "FRONTEK",
+    "latitude": 1.23312,
+    "longitude": 103.87386,
+    "Sog": 4.5,
+    "Cog": 31.7,
+    "TrueHeading": 17,
+    "NavigationalStatus": 0,
+    "time_utc": "2026-06-27 09:24:09.022357963 +0000 UTC"
+  },
+  {
+    "MMSI": 0,
+    "ShipName": "",
+    "latitude": null,
+    "longitude": null,
+    "Sog": 0
+  }
+]

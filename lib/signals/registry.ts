@@ -57,6 +57,7 @@ import { CYBER_RANSOMWARE_SOURCE } from "@/lib/signals/cyber-ransomware";
 import { DISPLACEMENT_SOURCE } from "@/lib/signals/displacement";
 import { FOOD_SECURITY_SOURCE } from "@/lib/signals/food-security";
 import { MILITARY_AIR_SOURCE } from "@/lib/signals/military-air";
+import { AIS_SOURCE } from "@/lib/signals/ais";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
@@ -94,6 +95,8 @@ export const SIGNALS: SignalSource[] = [
   FOOD_SECURITY_SOURCE,
   // Military (keyless unfiltered military ADS-B)
   MILITARY_AIR_SOURCE,
+  // Maritime (real-time AIS vessel positions at strategic chokepoints; key-gated: AISSTREAM_API_KEY)
+  AIS_SOURCE,
 ];
 
 /** Lookup a source by id (the dynamic route + store key). */
