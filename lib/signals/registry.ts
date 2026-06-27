@@ -49,6 +49,9 @@ import { GDACS_SOURCE } from "@/lib/signals/gdacs";
 import { WEATHER_SOURCE } from "@/lib/signals/weather";
 import { AIR_QUALITY_SOURCE } from "@/lib/signals/airquality";
 import { UK_CRIME_SOURCE } from "@/lib/signals/crime";
+import { CYBER_C2_SOURCE } from "@/lib/signals/cyber-c2";
+import { CYBER_RANSOMWARE_SOURCE } from "@/lib/signals/cyber-ransomware";
+import { DISPLACEMENT_SOURCE } from "@/lib/signals/displacement";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
@@ -74,6 +77,11 @@ export const SIGNALS: SignalSource[] = [
   WEATHER_SOURCE,
   AIR_QUALITY_SOURCE,
   UK_CRIME_SOURCE,
+  // Cyber threat (keyless abuse.ch + Ransomware.live, country-aggregated)
+  CYBER_C2_SOURCE,
+  CYBER_RANSOMWARE_SOURCE,
+  // Human cost (keyless UNHCR displacement, country-aggregated)
+  DISPLACEMENT_SOURCE,
 ];
 
 /** Lookup a source by id (the dynamic route + store key). */
