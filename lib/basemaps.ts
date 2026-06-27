@@ -21,9 +21,16 @@ export interface BasemapDef {
   vector: boolean;
 }
 
+// Keyless CARTO glyph server (the same one the Positron vector style uses) so
+// our own symbol-text layers — the cluster count badges — render on the raster
+// basemaps too, which otherwise ship no `glyphs`. "Open Sans Regular" is served
+// by this endpoint and by Positron's glyphs, so one font works on all basemaps.
+const CARTO_GLYPHS = "https://tiles.basemaps.cartocdn.com/fonts/{fontstack}/{range}.pbf";
+
 // Esri World Imagery — the photographic deep-zoom layer (also used pre-rewrite).
 const ESRI_STYLE: StyleSpecification = {
   version: 8,
+  glyphs: CARTO_GLYPHS,
   sources: {
     "esri-imagery": {
       type: "raster",
@@ -44,6 +51,7 @@ const ESRI_STYLE: StyleSpecification = {
 // OpenTopoMap — keyless topographic raster (relief + contours).
 const TOPO_STYLE: StyleSpecification = {
   version: 8,
+  glyphs: CARTO_GLYPHS,
   sources: {
     opentopomap: {
       type: "raster",

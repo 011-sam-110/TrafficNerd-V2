@@ -28,6 +28,7 @@ import { CAMERA_FEED_META, cameraRegionColor, WEBCAM_COLOR } from "@/lib/icons/s
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC, toWebcamFC } from "@/lib/map/features";
 import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons, loadWebcamIcons } from "@/lib/map/icons";
+import { CAMERA_CLUSTER, WEBCAM_CLUSTER, expandCluster } from "@/lib/map/cluster";
 
 type Pt = {
   id: string;
@@ -42,8 +43,10 @@ type Pt = {
 
 // Source / layer ids.
 const CAM_SRC = "cameras";
-const CAM_DOT_LAYER = "camera-dots"; // cheap glows — the zoomed-out representation
-const CAM_LAYER = "camera-markers"; // detailed feed/region icons — appear on descent
+const CAM_DOT_LAYER = "camera-dots"; // cheap glows — the zoomed-out representation (unclustered only)
+const CAM_LAYER = "camera-markers"; // detailed feed/region icons — appear on descent (unclustered only)
+const CAM_CLUSTER_LAYER = "camera-clusters"; // soft count badges that kill dot-soup
+const CAM_CLUSTER_COUNT = "camera-cluster-count"; // numeric label on each cluster
 const PLANE_SRC = "planes";
 const PLANE_LAYER = "plane-markers";
 const TRAIL_SRC = "trails";
@@ -52,8 +55,10 @@ const SAT_SRC = "satellites";
 const SAT_GLOW_LAYER = "satellite-glow";
 const SAT_LAYER = "satellite-core";
 const WEBCAM_SRC = "webcams";
-const WEBCAM_DOT_LAYER = "webcam-dots"; // cheap rose glows when zoomed out
-const WEBCAM_LAYER = "webcam-markers"; // detailed webcam icons on descent
+const WEBCAM_DOT_LAYER = "webcam-dots"; // cheap rose glows when zoomed out (unclustered only)
+const WEBCAM_LAYER = "webcam-markers"; // detailed webcam icons on descent (unclustered only)
+const WEBCAM_CLUSTER_LAYER = "webcam-clusters"; // soft rose count badges
+const WEBCAM_CLUSTER_COUNT = "webcam-cluster-count"; // numeric label on each cluster
 const DEM_SRC = "terrain-dem";
 const HILLSHADE_LAYER = "hillshade";
 
@@ -192,18 +197,37 @@ export default function WorldMap() {
     };
     set(CAM_DOT_LAYER, l.cameras);
     set(CAM_LAYER, l.cameras);
+    set(CAM_CLUSTER_LAYER, l.cameras);
+    set(CAM_CLUSTER_COUNT, l.cameras);
     set(SAT_GLOW_LAYER, l.satellites);
     set(SAT_LAYER, l.satellites);
     set(WEBCAM_DOT_LAYER, l.webcams);
     set(WEBCAM_LAYER, l.webcams);
+    set(WEBCAM_CLUSTER_LAYER, l.webcams);
+    set(WEBCAM_CLUSTER_COUNT, l.webcams);
     set(TRAIL_LAYER, l.planes);
     set(PLANE_LAYER, l.planes);
   }, []);
 
   const ensureGeoJSON = useCallback(
-    (map: maplibregl.Map, id: string, data: GeoJSON.FeatureCollection) => {
+    (
+      map: maplibregl.Map,
+      id: string,
+      data: GeoJSON.FeatureCollection,
+      cluster?: { clusterRadius: number; clusterMaxZoom: number },
+    ) => {
       const src = map.getSource(id) as GeoJSONSource | undefined;
+      // Cluster options are fixed at source-creation; setData just refreshes the
+      // points (MapLibre re-clusters them off-main-thread).
       if (src) src.setData(data);
+      else if (cluster)
+        map.addSource(id, {
+          type: "geojson",
+          data,
+          cluster: true,
+          clusterRadius: cluster.clusterRadius,
+          clusterMaxZoom: cluster.clusterMaxZoom,
+        });
       else map.addSource(id, { type: "geojson", data });
     },
     [],
@@ -254,11 +278,12 @@ export default function WorldMap() {
         loadWebcamIcons(map),
       ]);
 
-      // Sources, seeded from the latest refs.
+      // Sources, seeded from the latest refs. Cameras + webcams cluster (kills
+      // dot-soup at world zoom); planes/trails/satellites stay individual.
       ensureGeoJSON(map, TRAIL_SRC, toTrailFC(trailsRef.current));
       ensureGeoJSON(map, SAT_SRC, toSatelliteFC(satsRef.current));
-      ensureGeoJSON(map, CAM_SRC, toCameraFC(camerasRef.current));
-      ensureGeoJSON(map, WEBCAM_SRC, toWebcamFC(webcamsRef.current));
+      ensureGeoJSON(map, CAM_SRC, toCameraFC(camerasRef.current), CAMERA_CLUSTER);
+      ensureGeoJSON(map, WEBCAM_SRC, toWebcamFC(webcamsRef.current), WEBCAM_CLUSTER);
       ensureGeoJSON(map, PLANE_SRC, toPlaneFC(planesRef.current));
 
       // Layers, bottom → top.
@@ -311,9 +336,12 @@ export default function WorldMap() {
           id: CAM_DOT_LAYER,
           type: "circle",
           source: CAM_SRC,
+          filter: ["!", ["has", "point_count"]], // singletons only; groups → cluster badges
           layout: { visibility: vis(layersRef.current.cameras) },
           paint: {
-            "circle-color": ["get", "regionColor"],
+            // Live → region colour; down → muted slate (= CAMERA_OFFLINE_COLOR) so
+            // a dead feed reads as dead even as a faint glow.
+            "circle-color": ["case", ["get", "available"], ["get", "regionColor"], "#9aa6b2"],
             "circle-radius": ["interpolate", ["linear"], ["zoom"], 0, 1.3, 3, 2, 6, 3, 9, 4],
             // Fade the cheap glows out as the detailed markers (minzoom 5) fade in.
             "circle-opacity": ["interpolate", ["linear"], ["zoom"], 0, 0.5, 3, 0.65, 5, 0.45, 6, 0],
@@ -329,15 +357,57 @@ export default function WorldMap() {
           type: "symbol",
           source: CAM_SRC,
           minzoom: 5,
+          filter: ["!", ["has", "point_count"]], // singletons only; groups → cluster badges
           layout: {
-            // icon name = "cam-<feed>-<regionKey>" — matches loadCameraIcons().
-            "icon-image": ["concat", "cam-", ["get", "feed"], "-", ["get", "regionKey"]],
+            // icon name = "cam-<feed>-<regionKey>", or the muted "cam-<feed>-offline"
+            // variant when the feed is down — matches loadCameraIcons().
+            "icon-image": [
+              "case",
+              ["get", "available"],
+              ["concat", "cam-", ["get", "feed"], "-", ["get", "regionKey"]],
+              ["concat", "cam-", ["get", "feed"], "-offline"],
+            ],
             "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.35, 9, 0.55, 13, 0.7, 17, 0.9],
             "icon-allow-overlap": true,
             "icon-ignore-placement": true,
             visibility: vis(layersRef.current.cameras),
           },
-          paint: { "icon-opacity": ["case", ["get", "available"], 1, 0.4] },
+          paint: { "icon-opacity": ["case", ["get", "available"], 1, 0.45] },
+        });
+      }
+      if (!map.getLayer(CAM_CLUSTER_LAYER)) {
+        // Soft cyan count badge — the zoomed-out group representation that kills
+        // dot-soup. Radius grows in gentle tiers (mirrors CLUSTER_RADIUS_TIERS).
+        map.addLayer({
+          id: CAM_CLUSTER_LAYER,
+          type: "circle",
+          source: CAM_SRC,
+          filter: ["has", "point_count"],
+          layout: { visibility: vis(layersRef.current.cameras) },
+          paint: {
+            "circle-color": "#0ea5e9",
+            "circle-opacity": 0.82,
+            "circle-radius": ["step", ["get", "point_count"], 15, 25, 19, 100, 24, 750, 30],
+            "circle-stroke-color": "#ffffff",
+            "circle-stroke-width": 1.5,
+            "circle-stroke-opacity": 0.9,
+          },
+        });
+      }
+      if (!map.getLayer(CAM_CLUSTER_COUNT)) {
+        map.addLayer({
+          id: CAM_CLUSTER_COUNT,
+          type: "symbol",
+          source: CAM_SRC,
+          filter: ["has", "point_count"],
+          layout: {
+            "text-field": ["get", "point_count_abbreviated"],
+            "text-font": ["Open Sans Regular"], // served by CARTO_GLYPHS on every basemap
+            "text-size": ["step", ["get", "point_count"], 11, 100, 13, 750, 15],
+            "text-allow-overlap": true,
+            visibility: vis(layersRef.current.cameras),
+          },
+          paint: { "text-color": "#ffffff" },
         });
       }
       if (!map.getLayer(WEBCAM_DOT_LAYER)) {
@@ -345,6 +415,7 @@ export default function WorldMap() {
           id: WEBCAM_DOT_LAYER,
           type: "circle",
           source: WEBCAM_SRC,
+          filter: ["!", ["has", "point_count"]], // singletons only; groups → cluster badges
           layout: { visibility: vis(layersRef.current.webcams) },
           paint: {
             "circle-color": WEBCAM_COLOR,
@@ -363,6 +434,7 @@ export default function WorldMap() {
           type: "symbol",
           source: WEBCAM_SRC,
           minzoom: 5,
+          filter: ["!", ["has", "point_count"]], // singletons only; groups → cluster badges
           layout: {
             "icon-image": "webcam",
             "icon-size": ["interpolate", ["linear"], ["zoom"], 5, 0.32, 9, 0.5, 13, 0.65, 17, 0.85],
@@ -370,6 +442,40 @@ export default function WorldMap() {
             "icon-ignore-placement": true,
             visibility: vis(layersRef.current.webcams),
           },
+        });
+      }
+      if (!map.getLayer(WEBCAM_CLUSTER_LAYER)) {
+        // Rose count badge — the webcam analogue of the camera cluster badge.
+        map.addLayer({
+          id: WEBCAM_CLUSTER_LAYER,
+          type: "circle",
+          source: WEBCAM_SRC,
+          filter: ["has", "point_count"],
+          layout: { visibility: vis(layersRef.current.webcams) },
+          paint: {
+            "circle-color": WEBCAM_COLOR,
+            "circle-opacity": 0.82,
+            "circle-radius": ["step", ["get", "point_count"], 14, 25, 18, 100, 23, 750, 29],
+            "circle-stroke-color": "#ffffff",
+            "circle-stroke-width": 1.5,
+            "circle-stroke-opacity": 0.9,
+          },
+        });
+      }
+      if (!map.getLayer(WEBCAM_CLUSTER_COUNT)) {
+        map.addLayer({
+          id: WEBCAM_CLUSTER_COUNT,
+          type: "symbol",
+          source: WEBCAM_SRC,
+          filter: ["has", "point_count"],
+          layout: {
+            "text-field": ["get", "point_count_abbreviated"],
+            "text-font": ["Open Sans Regular"],
+            "text-size": ["step", ["get", "point_count"], 11, 100, 13, 750, 15],
+            "text-allow-overlap": true,
+            visibility: vis(layersRef.current.webcams),
+          },
+          paint: { "text-color": "#ffffff" },
         });
       }
       if (!map.getLayer(PLANE_LAYER)) {
@@ -433,7 +539,22 @@ export default function WorldMap() {
     map.on("click", WEBCAM_LAYER, webcamClick);
     map.on("click", WEBCAM_DOT_LAYER, webcamClick);
 
-    for (const layer of [CAM_LAYER, CAM_DOT_LAYER, WEBCAM_LAYER, WEBCAM_DOT_LAYER, PLANE_LAYER, SAT_LAYER]) {
+    // Click a cluster badge → ease into the zoom where it splits apart.
+    const clusterClick = (sourceId: string) => (e: maplibregl.MapLayerMouseEvent) => {
+      const f = e.features?.[0];
+      const clusterId = (f?.properties as { cluster_id?: number } | undefined)?.cluster_id;
+      if (clusterId == null || f?.geometry.type !== "Point") return;
+      void expandCluster(map, sourceId, clusterId, f.geometry.coordinates as [number, number]);
+    };
+    map.on("click", CAM_CLUSTER_LAYER, clusterClick(CAM_SRC));
+    map.on("click", WEBCAM_CLUSTER_LAYER, clusterClick(WEBCAM_SRC));
+
+    const hoverLayers = [
+      CAM_LAYER, CAM_DOT_LAYER, CAM_CLUSTER_LAYER,
+      WEBCAM_LAYER, WEBCAM_DOT_LAYER, WEBCAM_CLUSTER_LAYER,
+      PLANE_LAYER, SAT_LAYER,
+    ];
+    for (const layer of hoverLayers) {
       map.on("mouseenter", layer, () => {
         map.getCanvas().style.cursor = "pointer";
       });

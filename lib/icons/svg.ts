@@ -101,6 +101,11 @@ export const ICON_SVG: Record<IconKey, string> = {
 // violet satellites. Single source of truth for the layer's identity colour.
 export const WEBCAM_COLOR = "#ec4899";
 
+// Unavailable cameras render in this muted slate (not their live region colour)
+// so a dead feed reads as dead at a glance — the freshness/honesty signal on the
+// map. The icon dimming on top makes it unmistakable. Single source of truth.
+export const CAMERA_OFFLINE_COLOR = "#9aa6b2";
+
 // ---------------------------------------------------------------------------
 // Per-type metadata: which icon, what colour, what label.
 // ---------------------------------------------------------------------------
