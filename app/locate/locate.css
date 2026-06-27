@@ -1,0 +1,239 @@
+/* ===========================================================================
+   /locate — photo geolocation (a keyless picarta.ai equivalent).
+   Page-scoped styles only. Reuses the calm-LIGHT design tokens from globals.css
+   (--tn-*) but adds nothing to the global sheet (a parallel terminal owns it).
+   =========================================================================== */
+
+.loc-page {
+  min-height: 100vh;
+  background: var(--tn-bg);
+  color: var(--tn-text);
+  font-family: var(--tn-sans);
+  display: flex;
+  flex-direction: column;
+}
+
+.loc-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px 24px 8px;
+}
+.loc-header h1 {
+  font-size: 20px;
+  font-weight: 650;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.loc-header .loc-sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--tn-text-muted);
+  max-width: 60ch;
+}
+.loc-back {
+  font-size: 13px;
+  text-decoration: none;
+  color: var(--tn-accent);
+  white-space: nowrap;
+}
+.loc-back:hover { text-decoration: underline; }
+
+.loc-body {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) 1fr;
+  gap: 20px;
+  padding: 12px 24px 24px;
+  flex: 1;
+  min-height: 0;
+}
+@media (max-width: 880px) {
+  .loc-body { grid-template-columns: 1fr; }
+  .loc-map-wrap { min-height: 320px; }
+}
+
+/* ---- Left rail: upload + results ---- */
+.loc-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.loc-card {
+  background: var(--tn-surface-solid);
+  border: 1px solid var(--tn-border);
+  border-radius: 14px;
+  box-shadow: var(--tn-shadow-sm);
+  padding: 16px;
+}
+
+.loc-drop {
+  border: 1.5px dashed var(--tn-border-strong);
+  border-radius: 12px;
+  background: var(--tn-surface-2);
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.loc-drop:hover { border-color: var(--tn-accent); }
+.loc-drop.is-drag { border-color: var(--tn-accent); background: var(--tn-accent-soft); }
+.loc-drop p { margin: 6px 0; font-size: 13px; color: var(--tn-text-muted); }
+.loc-drop strong { color: var(--tn-text); font-weight: 600; }
+
+.loc-url-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.loc-url-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--tn-border-strong);
+  border-radius: 8px;
+  background: var(--tn-surface-solid);
+  color: var(--tn-text);
+  font-size: 13px;
+  font-family: inherit;
+}
+.loc-url-row input:focus { outline: 2px solid var(--tn-accent-soft); border-color: var(--tn-accent); }
+
+.loc-preview {
+  margin-top: 14px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--tn-border);
+}
+.loc-preview img { display: block; width: 100%; max-height: 280px; object-fit: contain; background: var(--tn-surface-2); }
+
+.loc-actions { display: flex; gap: 10px; align-items: center; margin-top: 14px; }
+.loc-btn {
+  appearance: none;
+  border: 1px solid var(--tn-accent);
+  background: var(--tn-accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.loc-btn:hover { background: var(--tn-accent-strong); border-color: var(--tn-accent-strong); }
+.loc-btn:disabled { opacity: 0.5; cursor: default; }
+.loc-btn.is-ghost { background: transparent; color: var(--tn-text-muted); border-color: var(--tn-border-strong); }
+
+.loc-method { font-size: 12px; color: var(--tn-text-faint); margin-left: auto; }
+
+.loc-spinner {
+  width: 15px; height: 15px;
+  border: 2px solid var(--tn-border-strong);
+  border-top-color: var(--tn-accent);
+  border-radius: 50%;
+  animation: loc-spin 0.7s linear infinite;
+  display: inline-block;
+}
+@keyframes loc-spin { to { transform: rotate(360deg); } }
+
+.loc-note {
+  font-size: 12px;
+  color: var(--tn-text-muted);
+  background: var(--tn-accent-soft);
+  border-radius: 8px;
+  padding: 8px 10px;
+  line-height: 1.45;
+}
+.loc-error {
+  font-size: 13px;
+  color: var(--tn-down);
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 8px;
+  padding: 9px 11px;
+  line-height: 1.45;
+}
+
+/* ---- Results list ---- */
+.loc-results { display: flex; flex-direction: column; gap: 8px; }
+.loc-results h2 { font-size: 13px; font-weight: 600; color: var(--tn-text-muted); margin: 4px 0; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.loc-cand {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: var(--tn-surface-solid);
+  border: 1px solid var(--tn-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.loc-cand:hover { border-color: var(--tn-accent); }
+.loc-cand.is-active { border-color: var(--tn-accent); box-shadow: 0 0 0 2px var(--tn-accent-soft); }
+
+.loc-rank {
+  display: grid;
+  place-items: center;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--tn-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--tn-mono);
+}
+.loc-cand-place { font-size: 14px; font-weight: 600; line-height: 1.25; }
+.loc-cand-country { font-size: 12px; color: var(--tn-text-muted); }
+.loc-cand-reason { font-size: 11.5px; color: var(--tn-text-faint); margin-top: 3px; line-height: 1.35; }
+
+.loc-conf { text-align: right; }
+.loc-conf-pct { font-size: 15px; font-weight: 700; font-family: var(--tn-mono); font-variant-numeric: tabular-nums; }
+.loc-conf-bar { width: 56px; height: 4px; border-radius: 2px; background: var(--tn-chip-bg); margin-top: 4px; overflow: hidden; }
+.loc-conf-fill { height: 100%; background: var(--tn-accent); border-radius: 2px; }
+
+/* ---- Right: map ---- */
+.loc-map-wrap {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--tn-border);
+  box-shadow: var(--tn-shadow-sm);
+  min-height: 420px;
+}
+.loc-map { position: absolute; inset: 0; }
+.loc-map-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--tn-text-faint);
+  font-size: 14px;
+  padding: 24px;
+  pointer-events: none;
+}
+
+/* Numbered candidate pins (DOM markers). */
+.loc-pin {
+  width: 26px; height: 26px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--tn-accent);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.loc-pin span { transform: rotate(45deg); color: #fff; font-size: 12px; font-weight: 700; font-family: var(--tn-mono); }
+.loc-pin.is-active { background: var(--tn-accent-strong); width: 32px; height: 32px; z-index: 5; }
