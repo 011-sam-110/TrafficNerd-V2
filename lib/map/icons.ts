@@ -11,6 +11,7 @@ import {
   cameraRegionColor,
   CAMERA_DEFAULT_REGION,
   PLANE_META,
+  SAT_META,
 } from "@/lib/icons/svg";
 
 /** Rasterise an SVG pictogram into an image MapLibre can use as a symbol icon. */
@@ -66,6 +67,17 @@ export async function loadCameraIcons(map: maplibregl.Map): Promise<void> {
 export async function loadPlaneIcons(map: maplibregl.Map): Promise<void> {
   await Promise.all(
     Object.values(PLANE_META).map(async (meta) => {
+      if (map.hasImage(meta.key)) return;
+      const img = await rasterizeIcon(ICON_SVG[meta.key].replaceAll("currentColor", meta.color));
+      if (!map.hasImage(meta.key)) map.addImage(meta.key, img, { pixelRatio: 2 });
+    }),
+  );
+}
+
+/** Register one icon per satellite category (coloured by SAT_META). */
+export async function loadSatelliteIcons(map: maplibregl.Map): Promise<void> {
+  await Promise.all(
+    Object.values(SAT_META).map(async (meta) => {
       if (map.hasImage(meta.key)) return;
       const img = await rasterizeIcon(ICON_SVG[meta.key].replaceAll("currentColor", meta.color));
       if (!map.hasImage(meta.key)) map.addImage(meta.key, img, { pixelRatio: 2 });

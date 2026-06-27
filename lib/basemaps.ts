@@ -84,4 +84,6 @@ export const BASEMAPS: Record<BasemapKey, BasemapDef> = {
   },
 };
 
-export const DEFAULT_BASEMAP: BasemapKey = "positron";
+// Real photographic Earth by default — the globe-as-hero "planetarium" look the
+// differentiation research called for; "Light" (Positron) stays one tap away.
+export const DEFAULT_BASEMAP: BasemapKey = "satellite";

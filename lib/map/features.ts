@@ -82,6 +82,7 @@ export function toSatelliteFC(sats: WorldObject[]): GeoJSON.FeatureCollection {
         id: s.id,
         name: s.label,
         color: s.color ?? "#cbd5e1",
+        icon: s.icon ?? "sat-other",
       },
     })),
   };

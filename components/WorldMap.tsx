@@ -22,11 +22,12 @@ import { useLayers, type LayerState } from "@/lib/layers";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import LayerControl from "@/components/LayerControl";
 import RegionJump, { type RegionView } from "@/components/RegionJump";
+import BasemapControl from "@/components/BasemapControl";
 import { cameraFeed } from "@/lib/cameras/classify";
 import { CAMERA_FEED_META, cameraRegionColor } from "@/lib/icons/svg";
 import { BASEMAPS, DEFAULT_BASEMAP, type BasemapKey } from "@/lib/basemaps";
 import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC } from "@/lib/map/features";
-import { loadCameraIcons, loadPlaneIcons } from "@/lib/map/icons";
+import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons } from "@/lib/map/icons";
 
 type Pt = {
   id: string;
@@ -58,6 +59,7 @@ const HOME = { center: [-30, 28] as [number, number], zoom: 1.4 };
 const SPIN_MAX_ZOOM = 4; // only auto-rotate while zoomed out this far
 const SPIN_DEG_PER_SEC = 4; // calm rotation
 const IDLE_RESUME_MS = 4000; // resume spin this long after the last user input
+const TERRAIN_MIN_ZOOM = 6; // 3D terrain only engages in the mercator regime (setTerrain crashes on globe projection)
 
 const vis = (on: boolean): "visible" | "none" => (on ? "visible" : "none");
 
@@ -133,16 +135,28 @@ export default function WorldMap() {
 
   // --- Map helpers (stable; read from refs) --------------------------------
 
-  const applyTerrain = useCallback((map: maplibregl.Map, on: boolean) => {
+  // 3D terrain (setTerrain) CRASHES MapLibre's depth pass on globe projection
+  // ("Cannot read properties of undefined (reading 'shaderPreludeCode')"), so only
+  // engage true 3D once we've zoomed into the mercator regime. Hillshade relief is
+  // a normal layer and is safe at any zoom, so it follows the toggle directly.
+  const syncTerrain = useCallback((map: maplibregl.Map) => {
+    const on = terrainRef.current && map.getZoom() >= TERRAIN_MIN_ZOOM;
     try {
       map.setTerrain(on ? { source: DEM_SRC, exaggeration: 1.3 } : null);
     } catch {
       /* terrain can briefly fight a freshly-swapped style; harmless */
     }
-    if (map.getLayer(HILLSHADE_LAYER)) {
-      map.setLayoutProperty(HILLSHADE_LAYER, "visibility", vis(on));
-    }
   }, []);
+
+  const applyTerrain = useCallback(
+    (map: maplibregl.Map, on: boolean) => {
+      if (map.getLayer(HILLSHADE_LAYER)) {
+        map.setLayoutProperty(HILLSHADE_LAYER, "visibility", vis(on));
+      }
+      syncTerrain(map);
+    },
+    [syncTerrain],
+  );
 
   const applyVisibility = useCallback((map: maplibregl.Map, l: LayerState) => {
     const set = (id: string, on: boolean) => {
@@ -203,7 +217,7 @@ export default function WorldMap() {
       applyTerrain(map, terrainRef.current);
 
       // Symbol icons are wiped by setStyle — re-rasterise/register them.
-      await Promise.all([loadCameraIcons(map), loadPlaneIcons(map)]);
+      await Promise.all([loadCameraIcons(map), loadPlaneIcons(map), loadSatelliteIcons(map)]);
 
       // Sources, seeded from the latest refs.
       ensureGeoJSON(map, TRAIL_SRC, toTrailFC(trailsRef.current));
@@ -233,25 +247,26 @@ export default function WorldMap() {
           layout: { visibility: vis(layersRef.current.satellites) },
           paint: {
             "circle-color": ["get", "color"],
-            "circle-radius": ["interpolate", ["linear"], ["zoom"], 0, 5, 4, 8, 8, 12],
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 0, 7, 4, 11, 8, 16],
             "circle-blur": 1,
-            "circle-opacity": 0.3,
+            "circle-opacity": 0.45,
           },
         });
       }
       if (!map.getLayer(SAT_LAYER)) {
+        // Type icon (coloured by SAT_META) so satellites read clearly on ANY
+        // basemap — the tiny grey dots vanished on the light globe.
         map.addLayer({
           id: SAT_LAYER,
-          type: "circle",
+          type: "symbol",
           source: SAT_SRC,
-          layout: { visibility: vis(layersRef.current.satellites) },
-          paint: {
-            "circle-color": ["get", "color"],
-            "circle-radius": ["interpolate", ["linear"], ["zoom"], 0, 1.6, 4, 2.6, 8, 3.6],
-            "circle-opacity": 0.95,
-            "circle-stroke-color": "#ffffff",
-            "circle-stroke-width": 0.6,
-            "circle-stroke-opacity": 0.7,
+          layout: {
+            // Fall back to sat-other so an unmapped/late category never renders blank.
+            "icon-image": ["coalesce", ["image", ["get", "icon"]], ["image", "sat-other"]],
+            "icon-size": ["interpolate", ["linear"], ["zoom"], 0, 0.45, 4, 0.6, 9, 0.85],
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+            visibility: vis(layersRef.current.satellites),
           },
         });
       }
@@ -376,6 +391,8 @@ export default function WorldMap() {
     map.on("style.load", () => {
       void addAppLayers(map);
     });
+    // Engage/disengage 3D terrain as we cross the mercator threshold (see syncTerrain).
+    map.on("zoom", () => syncTerrain(map));
 
     // Pause auto-spin on any direct user input (native events, not programmatic
     // camera moves) — keeps the calm idle rotation from fighting interaction.
@@ -505,6 +522,13 @@ export default function WorldMap() {
       />
 
       <RegionJump counts={regionCounts} onJump={flyToRegion} />
+
+      <BasemapControl
+        basemap={basemap}
+        onBasemap={setBasemap}
+        terrainOn={terrainOn}
+        onTerrain={setTerrainOn}
+      />
     </div>
   );
 }
