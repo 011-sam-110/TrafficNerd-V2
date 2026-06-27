@@ -108,6 +108,25 @@ export const variantStore = {
     persist();
     emit();
   },
+  /** Effective panel layout for a variant: a saved layout override, else the variant's own panels. */
+  layoutForVariant(id: string): PanelPlacement[] {
+    return state.layoutOverrides[id] ?? resolveVariant(id).panels;
+  },
+  /** Persist a per-variant layout override (the draft-commit save). */
+  commitLayout(id: string, placements: PanelPlacement[]) {
+    state = { ...state, layoutOverrides: { ...state.layoutOverrides, [id]: placements } };
+    persist();
+    emit();
+  },
+  /** Drop a per-variant layout override (back to the variant's own panels). */
+  resetLayout(id: string) {
+    if (!state.layoutOverrides[id]) return;
+    const next = { ...state.layoutOverrides };
+    delete next[id];
+    state = { ...state, layoutOverrides: next };
+    persist();
+    emit();
+  },
   get(): VariantStoreState { return state; },
   subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l); }; },
 };
@@ -115,4 +134,9 @@ export const variantStore = {
 export function useVariant(): { activeId: string; edited: boolean } {
   const snap = useSyncExternalStore(variantStore.subscribe, variantStore.get, variantStore.get);
   return { activeId: snap.activeId, edited: !!snap.overrides[snap.activeId] };
+}
+
+export function useLayout(id: string): PanelPlacement[] {
+  const snap = useSyncExternalStore(variantStore.subscribe, variantStore.get, variantStore.get);
+  return snap.layoutOverrides[id] ?? resolveVariant(id).panels;
 }
