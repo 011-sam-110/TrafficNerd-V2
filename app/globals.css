@@ -285,6 +285,56 @@ a { color: var(--tn-accent); }
 .tn-palette-foot { display: flex; gap: 14px; padding: 8px 14px; border-top: 1px solid var(--tn-border); color: var(--tn-text-faint); font-size: 11px; }
 .tn-palette-foot .tn-kbd { background: var(--tn-chip-bg); border-radius: 5px; padding: 1px 5px; margin-right: 4px; }
 
+/* ===================== Place search + near-me (M5) ===================== */
+.tn-explore {
+  position: fixed; top: calc(var(--tn-topbar-h) + 12px); left: 50%; transform: translateX(-50%);
+  z-index: 28; width: min(440px, 92vw); color: var(--tn-text);
+}
+.tn-explore-bar {
+  display: flex; align-items: center; gap: 8px; padding: 5px 6px 5px 12px;
+  background: var(--tn-surface); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--tn-border); border-radius: 12px; box-shadow: var(--tn-shadow);
+}
+.tn-explore-icon { color: var(--tn-text-faint); font-size: 15px; line-height: 1; }
+.tn-explore-input {
+  flex: 1; min-width: 0; border: none; background: transparent; color: var(--tn-text);
+  font: inherit; font-size: 14px; padding: 6px 2px; outline: none;
+}
+.tn-explore-input::placeholder { color: var(--tn-text-faint); }
+.tn-explore-input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.tn-explore-locate {
+  display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12px; font-weight: 600;
+  color: var(--tn-accent); background: var(--tn-accent-soft);
+  border: 1px solid var(--tn-border); border-radius: 8px; padding: 6px 10px; cursor: pointer; white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tn-explore-locate:hover { background: var(--tn-chip-bg); color: var(--tn-accent-strong); }
+.tn-explore-locate:disabled { opacity: 0.6; cursor: default; }
+
+.tn-explore-results {
+  margin-top: 8px; max-height: min(48vh, 420px); overflow: auto;
+  background: var(--tn-surface-solid); border: 1px solid var(--tn-border); border-radius: 12px;
+  box-shadow: var(--tn-shadow); padding: 6px; animation: tn-pop 0.16s ease;
+}
+.tn-explore-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; font: inherit; cursor: pointer;
+  background: transparent; border: none; border-radius: 9px; padding: 9px 11px; color: var(--tn-text);
+}
+.tn-explore-item:hover, .tn-explore-item:focus-visible { background: var(--tn-accent-soft); outline: none; }
+.tn-explore-item-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tn-explore-item-name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tn-explore-item-meta { font-size: 11px; color: var(--tn-text-faint); white-space: nowrap; flex-shrink: 0; }
+.tn-explore-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--tn-text-faint); }
+.tn-explore-dot.on { background: var(--tn-live); box-shadow: 0 0 6px var(--tn-live); }
+.tn-explore-status { padding: 11px 12px; font-size: 12.5px; color: var(--tn-text-faint); }
+
+@media (max-width: 720px) {
+  .tn-explore { left: auto; right: 12px; transform: none; width: min(360px, calc(100vw - 24px)); }
+}
+@media (max-width: 460px) { .tn-explore-locate-label { display: none; } }
+@media (prefers-reduced-motion: reduce) { .tn-explore-results { animation: none; } }
+
 /* ===================== Dossier bodies (camera) ===================== */
 .cam-detail h2 { margin: 0 30px 4px 0; font-size: 18px; letter-spacing: 0.01em; color: var(--tn-text); }
 .cam-detail .cam-sub { margin: 0 0 14px; font-size: 12.5px; color: var(--tn-text-muted); }

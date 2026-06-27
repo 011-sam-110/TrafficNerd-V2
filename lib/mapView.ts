@@ -20,6 +20,17 @@ export interface RegionView {
   altitude: number;
 }
 
+/**
+ * A precise point target with an explicit zoom — used by M5 place-search and
+ * "near me" to fly to an exact lat/lon, rather than the altitude-tiered RegionView
+ * the region presets use. `zoom` defaults to a mid-street level in WorldMap.
+ */
+export interface PointView {
+  lat: number;
+  lon: number;
+  zoom?: number;
+}
+
 export interface MapViewState {
   basemap: BasemapKey;
   terrain: boolean;
@@ -27,6 +38,7 @@ export interface MapViewState {
 
 let state: MapViewState = { basemap: DEFAULT_BASEMAP, terrain: true };
 let flyToFn: ((view: RegionView) => void) | null = null;
+let flyToPointFn: ((view: PointView) => void) | null = null;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -59,6 +71,13 @@ export const mapViewStore = {
   },
   flyTo(view: RegionView) {
     flyToFn?.(view);
+  },
+  /** WorldMap registers its point-flyTo here on mount (M5 search / near-me). */
+  registerFlyToPoint(fn: ((view: PointView) => void) | null) {
+    flyToPointFn = fn;
+  },
+  flyToPoint(view: PointView) {
+    flyToPointFn?.(view);
   },
 };
 

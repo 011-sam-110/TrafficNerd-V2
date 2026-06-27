@@ -22,7 +22,7 @@ import { useLayers, type LayerState } from "@/lib/layers";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import { metricsStore } from "@/lib/metrics";
 import { freshnessStore } from "@/lib/freshness";
-import { mapViewStore, useMapView, type RegionView } from "@/lib/mapView";
+import { mapViewStore, useMapView, type RegionView, type PointView } from "@/lib/mapView";
 import { cameraFeed } from "@/lib/cameras/classify";
 import { CAMERA_FEED_META, cameraRegionColor, WEBCAM_COLOR } from "@/lib/icons/svg";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
@@ -705,6 +705,20 @@ export default function WorldMap() {
     mapViewStore.registerFlyTo(flyToRegion);
     return () => mapViewStore.registerFlyTo(null);
   }, [flyToRegion]);
+
+  // Fly to a precise point at an explicit zoom (M5 place search + "near me").
+  const flyToPoint = useCallback((target: PointView) => {
+    const map = mapRef.current;
+    if (!map) return;
+    interactUntilRef.current = performance.now() + 2400; // suppress idle spin through the fly
+    const zoom = Math.max(2, Math.min(15, target.zoom ?? 11));
+    map.flyTo({ center: [target.lon, target.lat], zoom, duration: 1600, essential: true });
+  }, []);
+
+  useEffect(() => {
+    mapViewStore.registerFlyToPoint(flyToPoint);
+    return () => mapViewStore.registerFlyToPoint(null);
+  }, [flyToPoint]);
 
   return (
     <div className="world-map">
