@@ -1,0 +1,195 @@
+[
+  {
+    "category": "anti-social-behaviour",
+    "location_type": "Force",
+    "location": {
+      "latitude": "51.506236",
+      "street": {
+        "id": 1676347,
+        "name": "On or near Parking Area"
+      },
+      "longitude": "-0.141322"
+    },
+    "context": "",
+    "outcome_status": null,
+    "persistent_id": "",
+    "id": 134642993,
+    "location_subtype": "",
+    "month": "2026-04"
+  },
+  {
+    "category": "bicycle-theft",
+    "location_type": "Force",
+    "location": {
+      "latitude": "51.507201",
+      "street": {
+        "id": 1677064,
+        "name": "On or near Conference/exhibition Centre"
+      },
+      "longitude": "-0.137387"
+    },
+    "context": "",
+    "outcome_status": {
+      "category": "Investigation complete; no suspect identified",
+      "date": "2026-04"
+    },
+    "persistent_id": "9bf0024b15ac3d349d271985246207d69fbd287cb8076731bfc011cd95e855db",
+    "id": 134687972,
+    "location_subtype": "",
+    "month": "2026-04"
+  },
+  {
+    "category": "burglary",
+    "location_type": "Force",
+    "location": {
+      "latitude": "51.496523",
+      "street": {
+        "id": 1677517,
+        "name": "On or near B323"
+      },
+      "longitude": "-0.133731"
+    },
+    "context": "",
+    "outcome_status": {
+      "category": "Investigation complete; no suspect identified",
+      "date": "2026-04"
+    },
+    "persistent_id": "9c5349190fb3081306848fa51186e9bde2dd3bbe28c1965fad81af45025f33c1",
+    "id": 134677405,
+    "location_subtype": "",
+    "month": "2026-04"
+  },
+  {
+    "category": "criminal-damage-arson",
+    "location_type": "Force",
+    "location": {
+      "latitude": "51.499488",
+      "street": {
+        "id": 1679222,
+        "name": "On or near Hospital"
+      },
+      "longitude": "-0.118410"
+    },
+    "context": "",
+    "outcome_status": {
+      "category": "Under investigation",
+      "date": "2026-04"
+    },
+    "persistent_id": "41da4a3d80e00ff7d669507027ec06782636da8230ccec5290886030459053b2",
+    "id": 134668740,
+    "location_subtype": "",
+    "month": "2026-04"
+  },
+  {
+    "category": "drugs",
+    "location_type": "Force",
+    "location": {
+      "latitude": "51.512013",
+      "street": {
+        "id": 1677575,
+        "name": "On or near Winnett Street"
+      },
+      "longitude": "-0.133502"
+    },
+    "context": "",
+    "outcome_status": {
+      "category": "Under investigation",
+      "date": "2026-04"
+    },
+    "persistent_id": "0d4e610bba15c6305e3c6cb58a197a91edd2e41fbae43da115d8d43915bd0195",
+    "id": 134724762,
+    "location_subtype": "",
+    "month": "2026-04"
+  },
+  {
+    "category": "other-theft",
+    "location_type": "Force",
+    "location": {
+      "latitude": "51.516875",
+      "street": {
+        "id": 1676380,
+        "name": "On or near Nightclub"
+      },
+      "longitude": "-0.141807"
+    },
+    "context": "",
+    "outcome_status": {
+      "category": "Investigation complete; no suspect identified",
+      "date": "2026-04"
+    },
+    "persistent_id": "765bfd24c556feabd8638c8663700c4586ce8c7f4b6cf6aa612425a43f63ca80",
+    "id": 134704559,
+    "location_subtype": "",
+    "month": "2026-04"
+  },
+  {
+    "category": "possession-of-weapons",
+    "location_type": "Force",
+    "location": {
+      "latitude": "51.493697",
+      "street": {
+        "id": 1677645,
+        "name": "On or near Fynes Street"
+      },
+      "longitude": "-0.133011"
+    },
+    "context": "",
+    "outcome_status": {
+      "category": "Awaiting court outcome",
+      "date": "2026-04"
+    },
+    "persistent_id": "40fd6543875a0d4d79609626e5f40c3e62d735b96491cc8ccaa86b41b8416c39",
+    "id": 134713347,
+    "location_subtype": "",
+    "month": "2026-04"
+  },
+  {
+    "category": "public-order",
+    "location_type": "Force",
+    "location": {
+      "latitude": "51.510953",
+      "street": {
+        "id": 1677692,
+        "name": "On or near Nightclub"
+      },
+      "longitude": "-0.133012"
+    },
+    "context": "",
+    "outcome_status": {
+      "category": "Under investigation",
+      "date": "2026-04"
+    },
+    "persistent_id": "72d3847d0132e58f44ad091965a0576eb9a31c0321d2970975df575068a385b2",
+    "id": 134664960,
+    "location_subtype": "",
+    "month": "2026-04"
+  },
+  {
+    "category": "robbery",
+    "location_type": "Force",
+    "location": {
+      "latitude": "51.512513",
+      "street": {
+        "id": 1677559,
+        "name": "On or near Nightclub"
+      },
+      "longitude": "-0.133841"
+    },
+    "context": "",
+    "outcome_status": {
+      "category": "Under investigation",
+      "date": "2026-04"
+    },
+    "persistent_id": "eb7b368f0b2c1437644c0e50110d7ca4b939af6de407e1c58ba9bb89e99f66df",
+    "id": 134678224,
+    "location_subtype": "",
+    "month": "2026-04"
+  },
+  {
+    "category": "other-crime",
+    "location": null,
+    "id": 999999999,
+    "month": "2026-04",
+    "outcome_status": null
+  }
+]

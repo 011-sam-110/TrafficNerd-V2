@@ -1,0 +1,91 @@
+[
+    {
+        "latitude": 51.5,
+        "longitude": -0.10000038,
+        "generationtime_ms": 0.3389120101928711,
+        "utc_offset_seconds": 0,
+        "timezone": "GMT",
+        "timezone_abbreviation": "GMT",
+        "elevation": 29.0,
+        "current_units": {
+            "time": "iso8601",
+            "interval": "seconds",
+            "pm2_5": "\u00ce\u00bcg/m\u00c2\u00b3",
+            "pm10": "\u00ce\u00bcg/m\u00c2\u00b3",
+            "us_aqi": "USAQI",
+            "european_aqi": "EAQI",
+            "nitrogen_dioxide": "\u00ce\u00bcg/m\u00c2\u00b3",
+            "ozone": "\u00ce\u00bcg/m\u00c2\u00b3"
+        },
+        "current": {
+            "time": "2026-06-27T07:00",
+            "interval": 3600,
+            "pm2_5": 5.6,
+            "pm10": 7.5,
+            "us_aqi": 32,
+            "european_aqi": 18,
+            "nitrogen_dioxide": 17.8,
+            "ozone": 44.0
+        }
+    },
+    {
+        "latitude": 48.800003,
+        "longitude": 2.3999996,
+        "generationtime_ms": 0.1468658447265625,
+        "utc_offset_seconds": 0,
+        "timezone": "GMT",
+        "timezone_abbreviation": "GMT",
+        "elevation": 46.0,
+        "location_id": 1,
+        "current_units": {
+            "time": "iso8601",
+            "interval": "seconds",
+            "pm2_5": "\u00ce\u00bcg/m\u00c2\u00b3",
+            "pm10": "\u00ce\u00bcg/m\u00c2\u00b3",
+            "us_aqi": "USAQI",
+            "european_aqi": "EAQI",
+            "nitrogen_dioxide": "\u00ce\u00bcg/m\u00c2\u00b3",
+            "ozone": "\u00ce\u00bcg/m\u00c2\u00b3"
+        },
+        "current": {
+            "time": "2026-06-27T07:00",
+            "interval": 3600,
+            "pm2_5": 15.2,
+            "pm10": 20.0,
+            "us_aqi": 48,
+            "european_aqi": 27,
+            "nitrogen_dioxide": 14.8,
+            "ozone": 67.0
+        }
+    },
+    {
+        "latitude": 35.700005,
+        "longitude": 139.70001,
+        "generationtime_ms": 0.14579296112060547,
+        "utc_offset_seconds": 0,
+        "timezone": "GMT",
+        "timezone_abbreviation": "GMT",
+        "elevation": 38.0,
+        "location_id": 2,
+        "current_units": {
+            "time": "iso8601",
+            "interval": "seconds",
+            "pm2_5": "\u00ce\u00bcg/m\u00c2\u00b3",
+            "pm10": "\u00ce\u00bcg/m\u00c2\u00b3",
+            "us_aqi": "USAQI",
+            "european_aqi": "EAQI",
+            "nitrogen_dioxide": "\u00ce\u00bcg/m\u00c2\u00b3",
+            "ozone": "\u00ce\u00bcg/m\u00c2\u00b3"
+        },
+        "current": {
+            "time": "2026-06-27T07:00",
+            "interval": 3600,
+            "pm2_5": 14.0,
+            "pm10": 14.1,
+            "us_aqi": 47,
+            "european_aqi": 23,
+            "nitrogen_dioxide": 46.2,
+            "ozone": 4.0
+        }
+    }
+]

@@ -45,6 +45,10 @@ import { NUCLEAR_SOURCE } from "@/lib/signals/nuclear";
 import { AIRPORTS_SOURCE } from "@/lib/signals/airports";
 import { PORTS_SOURCE } from "@/lib/signals/ports";
 import { CONFLICT_SOURCE, PROTESTS_SOURCE } from "@/lib/signals/gdelt";
+import { GDACS_SOURCE } from "@/lib/signals/gdacs";
+import { WEATHER_SOURCE } from "@/lib/signals/weather";
+import { AIR_QUALITY_SOURCE } from "@/lib/signals/airquality";
+import { UK_CRIME_SOURCE } from "@/lib/signals/crime";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
@@ -53,6 +57,7 @@ export const SIGNALS: SignalSource[] = [
   VOLCANOES_SOURCE,
   SEVERE_STORMS_SOURCE,
   FLOODS_SOURCE,
+  GDACS_SOURCE, // multi-hazard GDACS alerts (EQ/TC/FL/VO/DR/WF), alert-coloured
   AURORA_SOURCE,
   // Space
   LAUNCHES_SOURCE,
@@ -65,6 +70,10 @@ export const SIGNALS: SignalSource[] = [
   // Intel (GDELT geolocated news coverage)
   CONFLICT_SOURCE,
   PROTESTS_SOURCE,
+  // Environment & civic (keyless Open-Meteo + data.police.uk)
+  WEATHER_SOURCE,
+  AIR_QUALITY_SOURCE,
+  UK_CRIME_SOURCE,
 ];
 
 /** Lookup a source by id (the dynamic route + store key). */
