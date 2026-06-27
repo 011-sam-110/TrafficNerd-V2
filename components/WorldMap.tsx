@@ -16,13 +16,15 @@ import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { WorldObject } from "@/lib/world";
 import { overlay } from "@/lib/overlay";
+import { cinematic } from "@/lib/cinematic/store";
+import { computeDive } from "@/lib/cinematic/dive";
 import { useSatellites } from "@/lib/satellites/useSatellites";
 import { usePlanes, type PlaneTrail, type PlanesLayer } from "@/lib/planes/usePlanes";
 import { useLayers, layersStore, ACTIVE_LAYERS, type LayerState } from "@/lib/layers";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import { metricsStore } from "@/lib/metrics";
 import { freshnessStore } from "@/lib/freshness";
-import { mapViewStore, useMapView, type RegionView, type PointView } from "@/lib/mapView";
+import { mapViewStore, useMapView, type RegionView, type PointView, type DiveView } from "@/lib/mapView";
 import { cameraFeed } from "@/lib/cameras/classify";
 import { CAMERA_FEED_META, cameraRegionColor, WEBCAM_COLOR } from "@/lib/icons/svg";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
@@ -666,7 +668,7 @@ export default function WorldMap() {
       if (!f || f.geometry.type !== "Point") return;
       const [lon, lat] = f.geometry.coordinates as [number, number];
       const p = f.properties as { id: string; name: string; available: boolean | string };
-      overlay.open({
+      cinematic.dive({
         kind: "camera",
         id: p.id,
         lat,
@@ -953,6 +955,32 @@ export default function WorldMap() {
     mapViewStore.registerFlyToPoint(flyToPoint);
     return () => mapViewStore.registerFlyToPoint(null);
   }, [flyToPoint]);
+
+  // Cinematic dive (SP6): a pitched flyTo to a single camera; on arrival, promote
+  // the dive store to "landed" so <CinematicDive> materialises the hero feed.
+  // animate=false (reduced motion) jumps instantly and lands at once.
+  const diveTo = useCallback((view: DiveView, animate: boolean, onArrive: () => void) => {
+    const map = mapRef.current;
+    if (!map) { onArrive(); return; }
+    const p = computeDive({ lat: view.lat, lon: view.lon });
+    // Suppress the idle spin through the dive (+ a little slack).
+    interactUntilRef.current = performance.now() + p.duration + 600;
+    if (!animate) {
+      map.jumpTo({ center: p.center, zoom: p.zoom, pitch: p.pitch, bearing: p.bearing });
+      onArrive();
+      return;
+    }
+    map.once("moveend", onArrive);
+    map.flyTo({
+      center: p.center, zoom: p.zoom, pitch: p.pitch, bearing: p.bearing,
+      duration: p.duration, essential: true,
+    });
+  }, []);
+
+  useEffect(() => {
+    mapViewStore.registerDiveTo(diveTo);
+    return () => mapViewStore.registerDiveTo(null);
+  }, [diveTo]);
 
   return (
     <div className="world-map">
