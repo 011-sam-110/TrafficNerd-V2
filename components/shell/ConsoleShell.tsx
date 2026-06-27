@@ -1,8 +1,8 @@
 "use client";
 // The calm light console shell. Wraps the full-bleed WorldMap (children) with the
-// thin chrome that recedes around it: top status bar, left layer rail, bottom
-// freshness ticker, the ⌘K palette, and the right slide-in dossier. Owns the
-// global ⌘K shortcut and the one-time client hydration of the persisted stores.
+// thin chrome that recedes around it: a thin top status bar + variant switcher,
+// the variant-driven PanelHost, the ⌘K palette, and the right slide-in dossiers.
+// Owns the global ⌘K shortcut and the one-time client hydration of the persisted stores.
 
 import { useEffect, useState } from "react";
 import { uiStore } from "@/lib/shell/ui";

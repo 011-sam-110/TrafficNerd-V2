@@ -83,7 +83,7 @@ export function encodeViewState(state: ViewState): string {
     p.set("obj", state.obj);
   }
   if (state.v && VARIANT_RE.test(state.v)) p.set("v", state.v);
-  if (state.sig) {
+  if (state.sig?.length) {
     const ids = state.sig.filter((s) => VALID_SIGNALS.has(s)).slice(0, SIG_MAX);
     p.set("sig", ids.join(","));
   }
