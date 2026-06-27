@@ -18,7 +18,7 @@ import type { WorldObject } from "@/lib/world";
 import { overlay } from "@/lib/overlay";
 import { useSatellites } from "@/lib/satellites/useSatellites";
 import { usePlanes, type PlaneTrail, type PlanesLayer } from "@/lib/planes/usePlanes";
-import { useLayers, type LayerState } from "@/lib/layers";
+import { useLayers, layersStore, ACTIVE_LAYERS, type LayerState } from "@/lib/layers";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import { metricsStore } from "@/lib/metrics";
 import { freshnessStore } from "@/lib/freshness";
@@ -29,6 +29,11 @@ import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC, toWebcamFC } from "@/lib/map/features";
 import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons, loadWebcamIcons } from "@/lib/map/icons";
 import { CAMERA_CLUSTER, WEBCAM_CLUSTER, expandCluster } from "@/lib/map/cluster";
+import {
+  readInitialViewState,
+  scheduleUrlWrite,
+  cancelUrlWrite,
+} from "@/lib/share/deepLink";
 
 type Pt = {
   id: string;
@@ -78,6 +83,9 @@ export default function WorldMap() {
   const rafRef = useRef(0);
   const interactUntilRef = useRef(0);
   const terrainRef = useRef(true);
+  // A deep-linked object id (?obj=) waiting to be resolved once its layer's data
+  // has streamed in — see the restore effect below. Cleared after it opens.
+  const pendingObjRef = useRef<string | null>(null);
 
   const [pts, setPts] = useState<Pt[]>([]);
 
@@ -567,11 +575,31 @@ export default function WorldMap() {
   // --- Init (once) ---------------------------------------------------------
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
+
+    // Restore a shared deep-link view (?lat=&lon=&z=&layers=&base=&obj=) BEFORE
+    // the map is built so we open at the saved camera/basemap with no fly/flash.
+    // This runs after ConsoleShell's localStorage hydrate (WorldMap is lazy /
+    // ssr:false → it mounts later), so URL state wins over persisted toggles.
+    const initial = readInitialViewState();
+    if (initial.basemap) mapViewStore.setBasemap(initial.basemap);
+    if (initial.layers) {
+      for (const k of ACTIVE_LAYERS) layersStore.set(k, initial.layers.includes(k));
+    }
+    pendingObjRef.current = initial.obj ?? null;
+    const center: [number, number] =
+      initial.lat != null && initial.lon != null ? [initial.lon, initial.lat] : HOME.center;
+    const zoom = initial.zoom ?? HOME.zoom;
+    // A deep-linked camera/zoom means the user wants that exact view — don't let
+    // the idle spin immediately drag it away on first paint.
+    if (initial.lat != null || initial.zoom != null) {
+      interactUntilRef.current = performance.now() + IDLE_RESUME_MS;
+    }
+
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: BASEMAPS[mapViewStore.get().basemap].style,
-      center: HOME.center,
-      zoom: HOME.zoom,
+      center,
+      zoom,
       maxZoom: 18,
       renderWorldCopies: false,
       attributionControl: false,
@@ -599,6 +627,22 @@ export default function WorldMap() {
     const inputs: (keyof HTMLElementEventMap)[] = ["mousedown", "wheel", "touchstart", "pointerdown"];
     for (const ev of inputs) el.addEventListener(ev, markInteract, { passive: true });
 
+    // Shareable deep links: mirror the live view into the URL (debounced,
+    // replaceState — no history spam, no reload). moveend writes are skipped while
+    // the calm idle spin is running so the URL doesn't churn on its own; deliberate
+    // moves (user pan/zoom, region fly-to) and store changes always persist.
+    const isAutoSpinning = () =>
+      performance.now() > interactUntilRef.current &&
+      !overlay.get().object &&
+      map.getZoom() < SPIN_MAX_ZOOM;
+    const onMoveEnd = () => {
+      if (!isAutoSpinning()) scheduleUrlWrite(map);
+    };
+    map.on("moveend", onMoveEnd);
+    const unsubLayers = layersStore.subscribe(() => scheduleUrlWrite(map));
+    const unsubView = mapViewStore.subscribe(() => scheduleUrlWrite(map));
+    const unsubOverlay = overlay.subscribe(() => scheduleUrlWrite(map));
+
     // Calm idle rotation: nudge centre longitude while zoomed out + idle.
     let last = performance.now();
     const spin = (t: number) => {
@@ -619,6 +663,10 @@ export default function WorldMap() {
     return () => {
       cancelAnimationFrame(rafRef.current);
       for (const ev of inputs) el.removeEventListener(ev, markInteract);
+      cancelUrlWrite();
+      unsubLayers();
+      unsubView();
+      unsubOverlay();
       map.remove();
       mapRef.current = null;
       readyRef.current = false;
@@ -681,6 +729,24 @@ export default function WorldMap() {
     (map.getSource(PLANE_SRC) as GeoJSONSource | undefined)?.setData(toPlaneFC(planesLayer.objects));
     (map.getSource(TRAIL_SRC) as GeoJSONSource | undefined)?.setData(toTrailFC(planesLayer.trails));
   }, [planesLayer]);
+
+  // Restore a deep-linked dossier (?obj=) once its layer's data has streamed in.
+  // Planes/satellites stream after first paint, so this retries on each data tick
+  // until the id resolves, then clears the pending marker. A stale id (a landed
+  // flight, a decayed sat) simply never resolves — the map view is still restored.
+  useEffect(() => {
+    const id = pendingObjRef.current;
+    if (!id) return;
+    const found =
+      camerasRef.current.find((c) => c.id === id) ??
+      planesRef.current.find((p) => p.id === id) ??
+      satsRef.current.find((s) => s.id === id) ??
+      webcamsRef.current.find((w) => w.id === id);
+    if (found) {
+      overlay.open(found);
+      pendingObjRef.current = null;
+    }
+  }, [filteredCameras, planesLayer, satellites, webcams]);
 
   // Debug handle for live tuning (basemap / terrain).
   useEffect(() => {

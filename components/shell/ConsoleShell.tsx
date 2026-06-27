@@ -12,6 +12,7 @@ import LayerRail from "@/components/shell/LayerRail";
 import FreshnessTicker from "@/components/shell/FreshnessTicker";
 import CommandPalette from "@/components/shell/CommandPalette";
 import PlaceSearch from "@/components/shell/PlaceSearch";
+import CoveragePanel from "@/components/shell/CoveragePanel";
 import { FeedOverlay } from "@/components/FeedOverlay";
 
 export default function ConsoleShell({ children }: { children: React.ReactNode }) {
@@ -44,6 +45,7 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
       <LayerRail />
       <FreshnessTicker />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <CoveragePanel />
       <FeedOverlay />
     </div>
   );

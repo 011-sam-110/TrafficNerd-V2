@@ -4,12 +4,14 @@
 // badge + the basemap switcher + a ⌘K affordance + the light/dark toggle. It
 // floats over the full-bleed globe and recedes; the map stays the hero.
 
+import { useEffect, useRef, useState } from "react";
 import { useMetrics } from "@/lib/metrics";
 import { useFreshness, classifyFreshness, type FreshState } from "@/lib/freshness";
 import { useMapView, mapViewStore } from "@/lib/mapView";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { uiStore, useUI } from "@/lib/shell/ui";
 import { useNow } from "@/lib/shell/useNow";
+import { copyShareLink } from "@/lib/share/deepLink";
 
 type Health = { label: string; tone: "live" | "degraded" | "down" | "connecting" };
 
@@ -40,6 +42,22 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
   const now = useNow(5000); // re-evaluate health a couple of times a minute
 
   const health = deriveHealth(fresh.map((r) => classifyFreshness(r, now)));
+
+  // "Share" copies a deep link to the current view. Calm confirmation: the label
+  // flips to "Copied" for ~1.6s, then restores. The URL itself is kept current by
+  // WorldMap (it mirrors the live view), so there's nothing to compute here.
+  const [shared, setShared] = useState(false);
+  const sharedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (sharedTimer.current) clearTimeout(sharedTimer.current);
+  }, []);
+  const onShare = async () => {
+    const ok = await copyShareLink();
+    if (!ok) return;
+    setShared(true);
+    if (sharedTimer.current) clearTimeout(sharedTimer.current);
+    sharedTimer.current = setTimeout(() => setShared(false), 1600);
+  };
 
   return (
     <header className="tn-topbar" role="banner">
@@ -96,7 +114,17 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
           </button>
         </div>
 
-        <button type="button" className="tn-icon-btn" onClick={onOpenPalette} title="Command palette (⌘K)">
+        <button
+          type="button"
+          className={`tn-icon-btn tn-share-btn${shared ? " is-copied" : ""}`}
+          onClick={onShare}
+          title="Copy a link to this exact view"
+          aria-live="polite"
+        >
+          {shared ? "✓ Copied" : "Share"}
+        </button>
+
+        <button type="button" className="tn-icon-btn tn-palette-trigger" onClick={onOpenPalette} title="Command palette (⌘K)">
           <span className="tn-kbd">⌘K</span>
         </button>
 
