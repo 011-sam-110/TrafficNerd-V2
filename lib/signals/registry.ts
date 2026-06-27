@@ -62,6 +62,7 @@ import { INTERNET_OUTAGES_SOURCE } from "@/lib/signals/internet-outages";
 import { SPACE_WEATHER_SOURCE } from "@/lib/signals/space-weather";
 import { INSTABILITY_SOURCE } from "@/lib/signals/instability";
 import { AIR_QUALITY_STATIONS_SOURCE } from "@/lib/signals/airquality-stations";
+import { TROPICAL_CYCLONES_SOURCE } from "@/lib/signals/tropical-cyclones";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
@@ -74,6 +75,7 @@ export const SIGNALS: SignalSource[] = [
   SEVERE_STORMS_SOURCE,
   FLOODS_SOURCE,
   GDACS_SOURCE, // multi-hazard GDACS alerts (EQ/TC/FL/VO/DR/WF), alert-coloured
+  TROPICAL_CYCLONES_SOURCE, // NOAA NHC active named storms (keyless; empty in quiet season)
   FIRE_FIRMS_SOURCE, // NASA FIRMS active-fire detections (key-gated: FIRMS_MAP_KEY)
   EMSC_SOURCE, // EMSC quakes — a 2nd, faster Euro-Med catalogue alongside USGS
   AURORA_SOURCE,

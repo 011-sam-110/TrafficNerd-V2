@@ -1,0 +1,49 @@
+{
+  "activeStorms": [
+    {
+      "id": "al012026",
+      "binNumber": "AT1",
+      "name": "Alberto",
+      "classification": "HU",
+      "intensity": "120",
+      "pressure": "947",
+      "latitude": "24.6N",
+      "longitude": "84.3W",
+      "latitudeNumeric": 24.6,
+      "longitudeNumeric": -84.3,
+      "movementDir": 315,
+      "movementSpeed": 12,
+      "lastUpdate": "2026-06-27T09:00:00.000Z"
+    },
+    {
+      "id": "ep032026",
+      "binNumber": "EP3",
+      "name": "Carlotta",
+      "classification": "TS",
+      "intensity": "50",
+      "pressure": "994",
+      "latitude": "14.2N",
+      "longitude": "108.7W",
+      "latitudeNumeric": 14.2,
+      "longitudeNumeric": -108.7,
+      "movementDir": 285,
+      "movementSpeed": 9,
+      "lastUpdate": "2026-06-27T09:00:00.000Z"
+    },
+    {
+      "id": "wp052026",
+      "name": "Unnamed depression (string coords only)",
+      "classification": "TD",
+      "intensity": "25",
+      "pressure": "1004",
+      "latitude": "18.0N",
+      "longitude": "135.0E"
+    },
+    {
+      "id": "bad000",
+      "name": "Bad coords",
+      "classification": "TS",
+      "intensity": "40"
+    }
+  ]
+}
