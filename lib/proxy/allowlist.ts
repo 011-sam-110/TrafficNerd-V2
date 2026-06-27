@@ -20,6 +20,15 @@ const RULES: { host: string; prefix: string; suffix?: string }[] = [
   { host: "tripcheck.com", prefix: "/RoadCams/cams/" },
   // DriveBC (British Columbia).
   { host: "www.drivebc.ca", prefix: "/images/", suffix: ".jpg" },
+  // NZTA / Waka Kotahi (New Zealand) — snapshots at /camera/{id}.jpg.
+  { host: "trafficnz.info", prefix: "/camera/", suffix: ".jpg" },
+  // Iceland Vegagerðin — full JPEG URLs under /vgdata/vefmyndavelar/.
+  { host: "www.vegagerdin.is", prefix: "/vgdata/vefmyndavelar/", suffix: ".jpg" },
+  // Estonia Tark Tee — timestamped snapshots under /images/.
+  { host: "tarktee.transpordiamet.ee", prefix: "/images/", suffix: ".jpg" },
+  // Scotland Traffic Scotland — the "image" is the camerahtml page; the proxy
+  // fetches it and extracts the embedded base64 JPEG (not a direct .jpg).
+  { host: "www.traffic.gov.scot", prefix: "/tsis/camerahtml" },
 ];
 
 export function isAllowed(url: URL): boolean {

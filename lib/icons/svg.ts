@@ -147,6 +147,10 @@ export const CAMERA_REGIONS: RegionMeta[] = [
   { source: "castlerock", label: "US & Canada 511", color: "#0ea5e9", view: { lat: 40, lng: -88, altitude: 1.6 } },
   { source: "tripcheck", label: "Oregon", color: "#10b981", view: { lat: 44, lng: -120.5, altitude: 0.8 } },
   { source: "drivebc", label: "British Columbia", color: "#5eead4", view: { lat: 53.5, lng: -125, altitude: 0.9 } },
+  { source: "nzta", label: "New Zealand", color: "#34d399", view: { lat: -41, lng: 173, altitude: 0.85 } },
+  { source: "iceland", label: "Iceland", color: "#2dd4bf", view: { lat: 64.9, lng: -18.6, altitude: 0.7 } },
+  { source: "estonia", label: "Estonia", color: "#6ee7b7", view: { lat: 58.7, lng: 25.5, altitude: 0.55 } },
+  { source: "trafficscotland", label: "Scotland", color: "#22d3ee", view: { lat: 56.5, lng: -4, altitude: 0.55 } },
 ];
 
 export const CAMERA_DEFAULT_REGION: RegionMeta = {

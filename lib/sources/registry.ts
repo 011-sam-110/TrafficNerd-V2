@@ -6,6 +6,10 @@ import { fetchRegistry as fetchDigitraffic } from "@/lib/sources/digitraffic";
 import { fetchRegistry as fetchCastlerock } from "@/lib/sources/castlerock";
 import { fetchRegistry as fetchTripcheck } from "@/lib/sources/tripcheck";
 import { fetchRegistry as fetchDriveBc } from "@/lib/sources/drivebc";
+import { fetchRegistry as fetchNzta } from "@/lib/sources/nzta";
+import { fetchRegistry as fetchIceland } from "@/lib/sources/iceland";
+import { fetchRegistry as fetchEstonia } from "@/lib/sources/estonia";
+import { fetchRegistry as fetchTrafficScotland } from "@/lib/sources/trafficscotland";
 import { findById, nearest } from "@/lib/sources/select";
 
 const TTL_MS = 5 * 60 * 1000;
@@ -19,6 +23,10 @@ const SOURCES: Array<() => Promise<Camera[]>> = [
   fetchCastlerock,
   fetchTripcheck,
   fetchDriveBc,
+  fetchNzta,
+  fetchIceland,
+  fetchEstonia,
+  fetchTrafficScotland,
 ];
 let cache: { cameras: Camera[]; at: number } | null = null;
 let inflight: Promise<Camera[]> | null = null;
