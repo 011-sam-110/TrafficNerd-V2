@@ -1,0 +1,45 @@
+{
+  "fields": [
+    { "name": "cameraId", "alias": "Camera ID", "type": "esriFieldTypeInteger" },
+    { "name": "publishedImageId", "alias": "Published Image ID", "type": "esriFieldTypeInteger" },
+    { "name": "filename", "alias": "Filename", "type": "esriFieldTypeString", "length": 255 },
+    { "name": "iconType", "alias": "Icon Type", "type": "esriFieldTypeInteger" },
+    { "name": "latitude", "alias": "Latitude", "type": "esriFieldTypeDouble" },
+    { "name": "longitude", "alias": "Longitude", "type": "esriFieldTypeDouble" },
+    { "name": "route", "alias": "Route Name", "type": "esriFieldTypeString", "length": 6 },
+    { "name": "title", "alias": "Title", "type": "esriFieldTypeString", "length": 100 },
+    { "name": "videoId", "alias": "Video ID", "type": "esriFieldTypeInteger" }
+  ],
+  "geometryType": "esriGeometryPoint",
+  "spatialReference": { "wkid": 3857 },
+  "features": [
+    {
+      "attributes": { "cameraId": 277, "publishedImageId": 392, "filename": "AstoriaUS101MeglerBrNB_pid392.jpg", "iconType": 1, "latitude": 46.18785, "longitude": -123.85347, "route": "US101 ", "title": "US101 at Astoria - ODOT District Office", "videoId": 0 },
+      "geometry": { "x": -13787305.211460776, "y": 5810503.585109143 }
+    },
+    {
+      "attributes": { "cameraId": 157, "publishedImageId": 404, "filename": "217allen_pid404.jpg", "iconType": 1, "latitude": 45.47911, "longitude": -122.79119, "route": "OR217 ", "title": "OR217 at Allen", "videoId": 5419 },
+      "geometry": { "x": -13669052.742797358, "y": 5697265.564834039 }
+    },
+    {
+      "attributes": { "cameraId": 211, "publishedImageId": 654, "filename": "Snake River_pid654.JPG", "iconType": 1, "latitude": 44.00876, "longitude": -116.94171, "route": "I-84  ", "title": "I-84 at Snake River", "videoId": 0 },
+      "geometry": { "x": -13017891.607882563, "y": 5466797.912827794 }
+    },
+    {
+      "attributes": { "cameraId": 379, "publishedImageId": 1583, "filename": "i84@257th_pid1583.JPG", "iconType": 1, "latitude": 45.54487, "longitude": -122.39041, "route": "I-84  ", "title": "I-84 at 257th", "videoId": 0 },
+      "geometry": { "x": -13624438.117283443, "y": 5707711.896026184 }
+    },
+    {
+      "attributes": { "cameraId": 900, "publishedImageId": 900, "filename": "no_coords_pid900.jpg", "iconType": 1, "route": "OR99  ", "title": "geometry-only (no WGS84 attrs) — must be skipped", "videoId": 0 },
+      "geometry": { "x": -13650000.0, "y": 5700000.0 }
+    },
+    {
+      "attributes": { "cameraId": 901, "publishedImageId": 901, "filename": "", "iconType": 1, "latitude": 45.5, "longitude": -122.6, "route": "I-5   ", "title": "empty filename — must be skipped", "videoId": 0 },
+      "geometry": { "x": -13651000.0, "y": 5701000.0 }
+    },
+    {
+      "attributes": { "cameraId": 902, "publishedImageId": 902, "filename": "nullisland_pid902.jpg", "iconType": 1, "latitude": 0, "longitude": 0, "route": "", "title": "null island — must be skipped", "videoId": 0 },
+      "geometry": { "x": 0.0, "y": 0.0 }
+    }
+  ]
+}

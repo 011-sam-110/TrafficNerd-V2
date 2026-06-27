@@ -9,7 +9,7 @@ import type { WorldObject } from "@/lib/world";
 import type { PlaneTrail } from "@/lib/planes/usePlanes";
 import { cameraRegionColor } from "@/lib/icons/svg";
 
-const KNOWN_REGIONS = ["tfl", "caltrans", "scdot", "digitraffic"];
+const KNOWN_REGIONS = ["tfl", "caltrans", "scdot", "digitraffic", "castlerock", "tripcheck", "drivebc"];
 
 /** Camera source id → icon region key ("default" for anything unmapped). */
 export function regionKeyOf(source: string | undefined): string {

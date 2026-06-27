@@ -44,7 +44,12 @@ export function useSatellites(group = "visual", stepMs = 1000): WorldObject[] {
         builtRef.current = recs
           .map((r): Built | null => {
             try {
-              const meta = SAT_META[classifySatellite(r.name)];
+              const category = classifySatellite(r.name);
+              // Drop spent upper stages, rocket bodies and fragments — they're
+              // dead hardware, not live objects worth tracking, and just clutter
+              // the layer. (The classifier still tags them so we can filter here.)
+              if (category === "debris") return null;
+              const meta = SAT_META[category];
               return {
                 ...r,
                 satrec: buildSatrec(r.line1, r.line2),

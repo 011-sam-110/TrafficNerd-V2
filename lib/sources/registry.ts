@@ -3,10 +3,23 @@ import { fetchRegistry as fetchTfl } from "@/lib/sources/tfl";
 import { fetchRegistry as fetchCaltrans } from "@/lib/sources/caltrans";
 import { fetchRegistry as fetchScdot } from "@/lib/sources/scdot";
 import { fetchRegistry as fetchDigitraffic } from "@/lib/sources/digitraffic";
+import { fetchRegistry as fetchCastlerock } from "@/lib/sources/castlerock";
+import { fetchRegistry as fetchTripcheck } from "@/lib/sources/tripcheck";
+import { fetchRegistry as fetchDriveBc } from "@/lib/sources/drivebc";
 import { findById, nearest } from "@/lib/sources/select";
 
 const TTL_MS = 5 * 60 * 1000;
-const SOURCES: Array<() => Promise<Camera[]>> = [fetchTfl, fetchCaltrans, fetchScdot, fetchDigitraffic];
+// One thunk per feed. Promise.allSettled (below) means a slow or blocked source
+// degrades gracefully — the others still populate the map.
+const SOURCES: Array<() => Promise<Camera[]>> = [
+  fetchTfl,
+  fetchCaltrans,
+  fetchScdot,
+  fetchDigitraffic,
+  fetchCastlerock,
+  fetchTripcheck,
+  fetchDriveBc,
+];
 let cache: { cameras: Camera[]; at: number } | null = null;
 
 export function mergeResults(

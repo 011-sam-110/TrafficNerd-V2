@@ -1,0 +1,80 @@
+[
+  {
+    "DT_RowId": "1",
+    "visible": true,
+    "images": [
+      {
+        "id": 1,
+        "cameraSiteId": 1,
+        "description": "0517N_75_Alligator_Alley_M052",
+        "imageUrl": "/map/Cctv/1",
+        "imageType": 0,
+        "videoUrl": "https://dis-se18.divas.cloud:8200/chan-1_h/index.m3u8",
+        "videoType": "application/x-mpegURL",
+        "isVideoAuthRequired": true,
+        "disabled": false,
+        "blocked": false
+      }
+    ],
+    "id": 1,
+    "source": "DIVAS-District 1",
+    "roadway": "I-75",
+    "direction": "Northbound",
+    "location": "0517N_75_Alligator_Alley_M052",
+    "latLng": { "geography": { "coordinateSystemId": 4326, "wellKnownText": "POINT (-80.892882 26.17325)" } },
+    "state": "Florida",
+    "county": "Collier",
+    "country": "United States"
+  },
+  {
+    "DT_RowId": "3",
+    "visible": true,
+    "images": [
+      {
+        "id": 3,
+        "cameraSiteId": 3,
+        "description": "0555S_75_Alligator_Alley_M056",
+        "imageUrl": "/map/Cctv/3",
+        "imageType": 0,
+        "videoUrl": "https://dis-se16.divas.cloud:8200/chan-3_h/index.m3u8",
+        "videoType": "application/x-mpegURL",
+        "isVideoAuthRequired": true,
+        "disabled": false,
+        "blocked": true
+      }
+    ],
+    "id": 3,
+    "source": "DIVAS-District 1",
+    "roadway": "I-75",
+    "direction": "Southbound",
+    "location": "0555S_75_Alligator_Alley_M056",
+    "latLng": { "geography": { "coordinateSystemId": 4326, "wellKnownText": "POINT (-80.954844 26.17025)" } },
+    "state": "Florida",
+    "county": "Collier",
+    "country": "United States"
+  },
+  {
+    "DT_RowId": "99",
+    "visible": true,
+    "images": [{ "id": 99, "imageUrl": "/map/Cctv/99", "disabled": false, "blocked": false }],
+    "id": 99,
+    "roadway": "SR-826",
+    "direction": "Eastbound",
+    "location": "broken_geometry_camera",
+    "latLng": null,
+    "state": "Florida",
+    "country": "United States"
+  },
+  {
+    "DT_RowId": "100",
+    "visible": true,
+    "images": [],
+    "id": 100,
+    "roadway": "I-95",
+    "direction": "Southbound",
+    "location": "no_image_camera",
+    "latLng": { "geography": { "coordinateSystemId": 4326, "wellKnownText": "POINT (-81.01725 26.1705)" } },
+    "state": "Florida",
+    "country": "United States"
+  }
+]
