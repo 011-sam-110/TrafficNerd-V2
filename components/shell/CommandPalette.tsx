@@ -9,7 +9,6 @@ import { mapViewStore } from "@/lib/mapView";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { coverageStore } from "@/lib/shell/coverage";
 import { marketsStore } from "@/lib/shell/markets";
-import { uiStore } from "@/lib/shell/ui";
 import { CAMERA_REGIONS } from "@/lib/icons/svg";
 
 interface Command {
@@ -97,16 +96,6 @@ function buildCommands(close: () => void): Command[] {
     hint: "panel",
     run: () => {
       marketsStore.open();
-      close();
-    },
-  });
-
-  cmds.push({
-    id: "news-ticker",
-    label: "Toggle news ticker",
-    hint: "view",
-    run: () => {
-      uiStore.toggleNewsTicker();
       close();
     },
   });

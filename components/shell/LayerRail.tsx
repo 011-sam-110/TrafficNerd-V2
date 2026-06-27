@@ -28,7 +28,6 @@ import {
 import { useMetrics } from "@/lib/metrics";
 import { useFreshness, classifyFreshness, freshnessAgeMs, type FreshSourceId } from "@/lib/freshness";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
-import { uiStore, useUI } from "@/lib/shell/ui";
 import { coverageStore } from "@/lib/shell/coverage";
 import { marketsStore } from "@/lib/shell/markets";
 import { watchlistPanelStore } from "@/lib/shell/watchlist";
@@ -289,7 +288,7 @@ function GlobalSignals() {
 }
 
 export default function LayerRail() {
-  const ui = useUI();
+  const [railOpen, setRailOpen] = useState(true);
   const m = useMetrics();
   const t = useT();
 
@@ -301,9 +300,9 @@ export default function LayerRail() {
     return null;
   };
 
-  if (!ui.railOpen) {
+  if (!railOpen) {
     return (
-      <button type="button" className="tn-rail-fab" onClick={() => uiStore.setRailOpen(true)} title="Show layers">
+      <button type="button" className="tn-rail-fab" onClick={() => setRailOpen(true)} title="Show layers">
         <span className="tn-rail-fab-bars" aria-hidden>≡</span>
         {t("railLayers")}
       </button>
@@ -314,7 +313,7 @@ export default function LayerRail() {
     <aside className="tn-rail" aria-label={t("railLayers")}>
       <div className="tn-rail-header">
         <span className="tn-rail-title">{t("railLayers")}</span>
-        <button type="button" className="tn-rail-collapse" onClick={() => uiStore.setRailOpen(false)} aria-label="Collapse layers">
+        <button type="button" className="tn-rail-collapse" onClick={() => setRailOpen(false)} aria-label="Collapse layers">
           ‹
         </button>
       </div>

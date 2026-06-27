@@ -11,7 +11,6 @@ import { useEffect, useState } from "react";
 import { marketsStore, useMarketsOpen } from "@/lib/shell/markets";
 import { type MarketsPayload, type MarketRow } from "@/lib/markets";
 import { useNow, formatAge } from "@/lib/shell/useNow";
-import DailyBrief from "@/components/shell/DailyBrief";
 
 const REFRESH_MS = 60_000;
 
@@ -107,8 +106,6 @@ export default function MarketsPanel() {
           ×
         </button>
       </header>
-
-      <DailyBrief />
 
       {status === "error" && !data && (
         <p className="tn-markets-status">Market data is unavailable right now.</p>
