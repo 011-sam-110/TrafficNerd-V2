@@ -31,6 +31,16 @@ export interface PointView {
   zoom?: number;
 }
 
+/**
+ * A cinematic-dive target (SP6). WorldMap turns this into a pitched flyTo via
+ * computeDive; `animate=false` (reduced motion) jumps instead. `onArrive` fires
+ * when the camera settles, so the dive store can promote diving → landed.
+ */
+export interface DiveView {
+  lat: number;
+  lon: number;
+}
+
 export interface MapViewState {
   basemap: BasemapKey;
   terrain: boolean;
@@ -39,6 +49,7 @@ export interface MapViewState {
 let state: MapViewState = { basemap: DEFAULT_BASEMAP, terrain: true };
 let flyToFn: ((view: RegionView) => void) | null = null;
 let flyToPointFn: ((view: PointView) => void) | null = null;
+let diveToFn: ((view: DiveView, animate: boolean, onArrive: () => void) => void) | null = null;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -78,6 +89,14 @@ export const mapViewStore = {
   },
   flyToPoint(view: PointView) {
     flyToPointFn?.(view);
+  },
+  /** WorldMap registers its cinematic-dive handler here on mount (SP6). */
+  registerDiveTo(fn: ((view: DiveView, animate: boolean, onArrive: () => void) => void) | null) {
+    diveToFn = fn;
+  },
+  diveTo(view: DiveView, animate: boolean, onArrive: () => void) {
+    if (diveToFn) diveToFn(view, animate, onArrive);
+    else onArrive(); // no map yet → land immediately so the store never hangs
   },
 };
 

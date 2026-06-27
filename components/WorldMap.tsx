@@ -16,19 +16,23 @@ import maplibregl, { type GeoJSONSource } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { WorldObject } from "@/lib/world";
 import { overlay } from "@/lib/overlay";
+import { cinematic } from "@/lib/cinematic/store";
+import { computeDive } from "@/lib/cinematic/dive";
+import { loadedCamerasStore } from "@/lib/cameras/loaded";
 import { useSatellites } from "@/lib/satellites/useSatellites";
 import { usePlanes, type PlaneTrail, type PlanesLayer } from "@/lib/planes/usePlanes";
 import { useLayers, layersStore, ACTIVE_LAYERS, type LayerState } from "@/lib/layers";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import { metricsStore } from "@/lib/metrics";
 import { freshnessStore } from "@/lib/freshness";
-import { mapViewStore, useMapView, type RegionView, type PointView } from "@/lib/mapView";
+import { mapViewStore, useMapView, type RegionView, type PointView, type DiveView } from "@/lib/mapView";
 import { cameraFeed } from "@/lib/cameras/classify";
 import { CAMERA_FEED_META, cameraRegionColor, WEBCAM_COLOR } from "@/lib/icons/svg";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC, toWebcamFC, toSignalFC, toSignalLineFC, toSignalFillFC } from "@/lib/map/features";
 import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons, loadWebcamIcons } from "@/lib/map/icons";
 import { CAMERA_CLUSTER, WEBCAM_CLUSTER, expandCluster } from "@/lib/map/cluster";
+import { createThumbnailManager } from "@/lib/map/liveThumbnails";
 import { SIGNALS } from "@/lib/signals/registry";
 import { useSignals, signalCountsStore } from "@/lib/signals/store";
 import { signalFreshnessStore } from "@/lib/signals/freshness";
@@ -100,6 +104,7 @@ const vis = (on: boolean): "visible" | "none" => (on ? "visible" : "none");
 export default function WorldMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const thumbMgrRef = useRef<{ update(): void; destroy(): void } | null>(null);
   const readyRef = useRef(false);
   const rafRef = useRef(0);
   const interactUntilRef = useRef(0);
@@ -666,7 +671,7 @@ export default function WorldMap() {
       if (!f || f.geometry.type !== "Point") return;
       const [lon, lat] = f.geometry.coordinates as [number, number];
       const p = f.properties as { id: string; name: string; available: boolean | string };
-      overlay.open({
+      cinematic.dive({
         kind: "camera",
         id: p.id,
         lat,
@@ -771,6 +776,26 @@ export default function WorldMap() {
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
 
     wireInteractions(map);
+
+    // SP6 — live thumbnail markers: a capped pool of poster thumbnails over the
+    // in-viewport cameras above THUMB_MIN_ZOOM, so streams are visible at a glance.
+    const thumbMgr = createThumbnailManager({
+      map,
+      layerId: CAM_LAYER,
+      onPick: (c) =>
+        cinematic.dive({ kind: "camera", id: c.id, lat: c.lat, lon: c.lon, label: c.name, meta: { available: true } }),
+    });
+    thumbMgrRef.current = thumbMgr;
+    const onThumbRefresh = () => thumbMgr.update();
+    const onThumbSource = (e: maplibregl.MapSourceDataEvent) => {
+      // Re-evaluate when the camera source finishes loading (cameras can arrive
+      // after the user has already stopped moving over a dense region).
+      if (e.sourceId === CAM_SRC && e.isSourceLoaded) thumbMgr.update();
+    };
+    map.on("moveend", onThumbRefresh);
+    map.on("zoomend", onThumbRefresh);
+    map.on("sourcedata", onThumbSource);
+
     map.on("style.load", () => {
       void addAppLayers(map);
     });
@@ -826,6 +851,11 @@ export default function WorldMap() {
       unsubLayers();
       unsubView();
       unsubOverlay();
+      map.off("moveend", onThumbRefresh);
+      map.off("zoomend", onThumbRefresh);
+      map.off("sourcedata", onThumbSource);
+      thumbMgr.destroy();
+      thumbMgrRef.current = null;
       map.remove();
       mapRef.current = null;
       readyRef.current = false;
@@ -954,6 +984,32 @@ export default function WorldMap() {
     return () => mapViewStore.registerFlyToPoint(null);
   }, [flyToPoint]);
 
+  // Cinematic dive (SP6): a pitched flyTo to a single camera; on arrival, promote
+  // the dive store to "landed" so <CinematicDive> materialises the hero feed.
+  // animate=false (reduced motion) jumps instantly and lands at once.
+  const diveTo = useCallback((view: DiveView, animate: boolean, onArrive: () => void) => {
+    const map = mapRef.current;
+    if (!map) { onArrive(); return; }
+    const p = computeDive({ lat: view.lat, lon: view.lon });
+    // Suppress the idle spin through the dive (+ a little slack).
+    interactUntilRef.current = performance.now() + p.duration + 600;
+    if (!animate) {
+      map.jumpTo({ center: p.center, zoom: p.zoom, pitch: p.pitch, bearing: p.bearing });
+      onArrive();
+      return;
+    }
+    map.once("moveend", onArrive);
+    map.flyTo({
+      center: p.center, zoom: p.zoom, pitch: p.pitch, bearing: p.bearing,
+      duration: p.duration, essential: true,
+    });
+  }, []);
+
+  useEffect(() => {
+    mapViewStore.registerDiveTo(diveTo);
+    return () => mapViewStore.registerDiveTo(null);
+  }, [diveTo]);
+
   return (
     <div className="world-map">
       <div ref={containerRef} className="map-canvas" />
@@ -1058,6 +1114,7 @@ function CamerasFeed({ onData }: { onData: (pts: Pt[]) => void }) {
         if (!alive) return;
         const cams = (d.cameras as Pt[]) ?? [];
         onData(cams);
+        loadedCamerasStore.set(cams);
         freshnessStore.record("cameras", { count: cams.length, ok: true });
       })
       .catch(() => {

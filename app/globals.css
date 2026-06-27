@@ -733,3 +733,110 @@ a { color: var(--tn-accent); }
 /* Variant switcher + workspace toggle live in the header's left cluster. */
 .tn-topbar-variant { display: flex; align-items: center; gap: 8px; align-self: center; }
 @media (max-width: 900px) { .tn-tagline { display: none; } }
+
+/* SP6 — cinematic dive hero card -------------------------------------------- */
+.tn-dive {
+  position: fixed;
+  inset: 0;
+  z-index: 39; /* above the map + dossier slide-ins, below the topbar (40+) */
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 4vw, 48px);
+  pointer-events: none; /* during the dive, let the globe fly untouched */
+}
+.tn-dive-landed {
+  pointer-events: auto;
+  background: rgba(15, 23, 42, 0.28); /* gentle scrim once we land */
+}
+.tn-dive-card {
+  position: relative;
+  width: min(760px, 92vw);
+  max-height: 86vh;
+  overflow: auto;
+  background: var(--tn-surface, #ffffff);
+  border: 1px solid var(--tn-border, #d6dee6);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+  padding: 18px 18px 14px;
+  /* Materialise on landing. */
+  opacity: 0;
+  transform: scale(0.965) translateY(8px);
+  transition: opacity 280ms ease, transform 280ms ease;
+}
+.tn-dive-landed .tn-dive-card {
+  opacity: 1;
+  transform: none;
+}
+/* While diving the card is mounted (pre-warming the feed) but invisible — opacity,
+   NOT display:none, so the <video>/<img> actually loads. */
+.tn-dive-diving .tn-dive-card {
+  opacity: 0;
+  pointer-events: none;
+}
+.tn-dive-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: var(--tn-surface-2, #f1f5f9);
+  color: var(--tn-text, #0f172a);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.tn-dive-close:hover { background: var(--tn-border, #d6dee6); }
+.tn-dive-curtain {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  grid-auto-flow: row;
+}
+.tn-dive-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid var(--tn-border, #d6dee6);
+  border-top-color: var(--tn-accent, #0ea5e9);
+  animation: tn-dive-spin 0.8s linear infinite;
+}
+.tn-dive-curtain-label {
+  font-size: 13px;
+  color: var(--tn-text-dim, #64748b);
+}
+@keyframes tn-dive-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .tn-dive-card { transition: none; transform: none; }
+  .tn-dive-spinner { animation: none; }
+}
+
+/* SP6 — live thumbnail markers ---------------------------------------------- */
+.tn-thumb {
+  display: block;
+  width: 64px;
+  height: 44px;
+  padding: 0;
+  border: 2px solid #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--tn-surface-2, #f1f5f9);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.28);
+  cursor: pointer;
+  transition: transform 120ms ease;
+}
+.tn-thumb:hover { transform: scale(1.08); }
+.tn-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tn-thumb-failed { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .tn-thumb { transition: none; }
+}
