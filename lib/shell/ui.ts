@@ -1,10 +1,13 @@
 "use client";
-// Shell chrome state: whether the left rail is open, and the light/dark theme.
+// Shell chrome state: theme only.
 //
 // Calm LIGHT is the default and the whole point of the redesign; dark survives
 // only as an optional toggle (the shell drives it via a `data-theme` attribute on
-// <html>, consumed by the CSS variables in globals.css). Rail-open + theme persist
-// to localStorage so a composed view survives a reload.
+// <html>, consumed by the CSS variables in globals.css). Theme persists to
+// localStorage so a composed view survives a reload.
+//
+// Rail collapse is now local component state in LayerRail.tsx.
+// News-ticker visibility is variant-driven via PanelHost (Task 9).
 
 import { useSyncExternalStore } from "react";
 import { loadPersisted, savePersisted } from "@/lib/shell/persist";
@@ -12,16 +15,13 @@ import { loadPersisted, savePersisted } from "@/lib/shell/persist";
 export type Theme = "light" | "dark";
 
 export interface UIState {
-  railOpen: boolean;
   theme: Theme;
-  /** Whether the bottom news ticker is shown (dismissible, persisted). */
-  newsTicker: boolean;
 }
 
 const PERSIST_KEY = "tn.ui.v1";
 const PERSIST_VERSION = 1;
 
-let state: UIState = { railOpen: true, theme: "light", newsTicker: true };
+let state: UIState = { theme: "light" };
 const listeners = new Set<() => void>();
 
 function applyTheme(theme: Theme) {
@@ -34,15 +34,6 @@ function emit() {
 }
 
 export const uiStore = {
-  setRailOpen(open: boolean) {
-    if (state.railOpen === open) return;
-    state = { ...state, railOpen: open };
-    emit();
-  },
-  toggleRail() {
-    state = { ...state, railOpen: !state.railOpen };
-    emit();
-  },
   setTheme(theme: Theme) {
     if (state.theme === theme) return;
     state = { ...state, theme };
@@ -52,21 +43,13 @@ export const uiStore = {
   toggleTheme() {
     uiStore.setTheme(state.theme === "light" ? "dark" : "light");
   },
-  setNewsTicker(on: boolean) {
-    if (state.newsTicker === on) return;
-    state = { ...state, newsTicker: on };
-    emit();
-  },
-  toggleNewsTicker() {
-    uiStore.setNewsTicker(!state.newsTicker);
-  },
   get(): UIState {
     return state;
   },
   /** Pull persisted UI back in + apply the theme. Call once, client-side. */
   hydrate() {
     const saved = loadPersisted<Partial<UIState>>(PERSIST_KEY, PERSIST_VERSION);
-    if (saved) state = { ...state, ...saved };
+    if (saved?.theme) state = { ...state, theme: saved.theme };
     applyTheme(state.theme);
     emit();
   },

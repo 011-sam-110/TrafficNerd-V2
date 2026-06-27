@@ -1,22 +1,18 @@
 "use client";
 // A thin, calm world-headlines strip that sits just above the freshness ticker.
-// Dismissible (× / ⌘K toggle, persisted via uiStore) so it never nags. Headlines
-// come from /api/news (merged keyless RSS, server-parsed) and each links to its
-// source article. The scroll is gentle and pauses on hover; reduced-motion users
-// get a static, scrollable list instead. Dormant-safe: empty feed → nothing.
+// Dormant-safe: empty feed → nothing rendered. Visibility is variant-driven via
+// PanelHost (Task 9) which only mounts this component when the active variant
+// includes the `news` panel.
 
 import { useEffect, useState } from "react";
-import { uiStore, useUI } from "@/lib/shell/ui";
 import type { NewsItem, NewsPayload } from "@/lib/news";
 
 const REFRESH_MS = 5 * 60 * 1000;
 
 export default function NewsTicker() {
-  const ui = useUI();
   const [items, setItems] = useState<NewsItem[]>([]);
 
   useEffect(() => {
-    if (!ui.newsTicker) return;
     let alive = true;
     const load = () => {
       fetch("/api/news")
@@ -34,9 +30,9 @@ export default function NewsTicker() {
       alive = false;
       clearInterval(id);
     };
-  }, [ui.newsTicker]);
+  }, []);
 
-  if (!ui.newsTicker || items.length === 0) return null;
+  if (items.length === 0) return null;
 
   // Duplicate the run so the marquee wraps seamlessly.
   const run = [...items, ...items];
@@ -64,15 +60,6 @@ export default function NewsTicker() {
           ))}
         </div>
       </div>
-      <button
-        type="button"
-        className="tn-news-close"
-        onClick={() => uiStore.setNewsTicker(false)}
-        aria-label="Hide news ticker"
-        title="Hide headlines (re-enable from ⌘K)"
-      >
-        ×
-      </button>
     </div>
   );
 }
