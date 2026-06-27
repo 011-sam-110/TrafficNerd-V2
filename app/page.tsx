@@ -2,12 +2,12 @@
 import dynamic from "next/dynamic";
 import { FeedOverlay } from "@/components/FeedOverlay";
 
-const GlobeView = dynamic(() => import("@/components/GlobeView"), { ssr: false });
+const WorldMap = dynamic(() => import("@/components/WorldMap"), { ssr: false });
 
 export default function Home() {
   return (
     <main className="globe">
-      <GlobeView />
+      <WorldMap />
       <FeedOverlay />
     </main>
   );
