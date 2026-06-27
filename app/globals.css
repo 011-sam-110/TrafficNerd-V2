@@ -197,6 +197,8 @@ a { color: var(--tn-accent); }
 .tn-fresh-lagging { color: var(--tn-lagging); } .tn-fresh-lagging .tn-fresh-dot { background: var(--tn-lagging); }
 .tn-fresh-stale { color: var(--tn-stale); } .tn-fresh-stale .tn-fresh-dot { background: var(--tn-stale); }
 .tn-fresh-down { color: var(--tn-down); } .tn-fresh-down .tn-fresh-dot { background: var(--tn-down); }
+/* empty = fetched OK but nothing to show right now (e.g. no active storms): a calm, dimmed-live dot, not an error. */
+.tn-fresh-empty { color: var(--tn-text-faint); } .tn-fresh-empty .tn-fresh-dot { background: var(--tn-live); opacity: 0.45; }
 
 .tn-toggle { position: relative; width: 36px; height: 20px; border: none; border-radius: 10px; cursor: pointer; padding: 0; transition: background 0.2s ease; flex-shrink: 0; }
 .tn-toggle-knob { position: absolute; top: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); transition: left 0.2s cubic-bezier(0.4, 0, 0.2, 1); }

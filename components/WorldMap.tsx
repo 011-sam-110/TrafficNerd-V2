@@ -31,6 +31,7 @@ import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons, loadWebcamIcons } 
 import { CAMERA_CLUSTER, WEBCAM_CLUSTER, expandCluster } from "@/lib/map/cluster";
 import { SIGNALS } from "@/lib/signals/registry";
 import { useSignals, signalCountsStore } from "@/lib/signals/store";
+import { signalFreshnessStore } from "@/lib/signals/freshness";
 import type { SignalFeature, SignalSource } from "@/lib/signals/types";
 import { useTimeWindow, windowMsFor, withinWindow } from "@/lib/shell/timeWindow";
 import { useNow } from "@/lib/shell/useNow";
@@ -1019,11 +1020,13 @@ function SignalFeed({
           }));
           onData(id, objs);
           signalCountsStore.set(id, objs.length);
+          signalFreshnessStore.record(id, { ok: true, count: objs.length });
         })
         .catch(() => {
           if (!alive) return;
           onData(id, []);
           signalCountsStore.set(id, 0);
+          signalFreshnessStore.record(id, { ok: false, count: 0 });
         });
     };
     load();
@@ -1034,6 +1037,7 @@ function SignalFeed({
       clearInterval(t);
       onData(id, []);
       signalCountsStore.set(id, null);
+      signalFreshnessStore.clear(id);
     };
   }, [id, source, onData]);
   return null;
