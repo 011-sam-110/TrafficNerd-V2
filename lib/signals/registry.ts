@@ -61,6 +61,7 @@ import { AIS_SOURCE } from "@/lib/signals/ais";
 import { INTERNET_OUTAGES_SOURCE } from "@/lib/signals/internet-outages";
 import { SPACE_WEATHER_SOURCE } from "@/lib/signals/space-weather";
 import { INSTABILITY_SOURCE } from "@/lib/signals/instability";
+import { AIR_QUALITY_STATIONS_SOURCE } from "@/lib/signals/airquality-stations";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
@@ -94,6 +95,7 @@ export const SIGNALS: SignalSource[] = [
   // Environment & civic (keyless Open-Meteo + data.police.uk)
   WEATHER_SOURCE,
   AIR_QUALITY_SOURCE,
+  AIR_QUALITY_STATIONS_SOURCE, // real OpenAQ station PM2.5 (key-gated: OPENAQ_API_KEY)
   UK_CRIME_SOURCE,
   // Cyber threat (keyless abuse.ch + Ransomware.live, country-aggregated)
   CYBER_C2_SOURCE,
