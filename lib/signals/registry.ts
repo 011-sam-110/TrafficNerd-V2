@@ -52,6 +52,8 @@ import { UK_CRIME_SOURCE } from "@/lib/signals/crime";
 import { CYBER_C2_SOURCE } from "@/lib/signals/cyber-c2";
 import { CYBER_RANSOMWARE_SOURCE } from "@/lib/signals/cyber-ransomware";
 import { DISPLACEMENT_SOURCE } from "@/lib/signals/displacement";
+import { FOOD_SECURITY_SOURCE } from "@/lib/signals/food-security";
+import { MILITARY_AIR_SOURCE } from "@/lib/signals/military-air";
 
 /** Every registered signal layer, in rail display order. */
 export const SIGNALS: SignalSource[] = [
@@ -80,8 +82,11 @@ export const SIGNALS: SignalSource[] = [
   // Cyber threat (keyless abuse.ch + Ransomware.live, country-aggregated)
   CYBER_C2_SOURCE,
   CYBER_RANSOMWARE_SOURCE,
-  // Human cost (keyless UNHCR displacement, country-aggregated)
+  // Human cost (keyless UNHCR displacement + WFP HungerMap, country-aggregated)
   DISPLACEMENT_SOURCE,
+  FOOD_SECURITY_SOURCE,
+  // Military (keyless unfiltered military ADS-B)
+  MILITARY_AIR_SOURCE,
 ];
 
 /** Lookup a source by id (the dynamic route + store key). */
