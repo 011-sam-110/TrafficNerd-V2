@@ -1084,3 +1084,21 @@ a { color: var(--tn-accent); }
   background: var(--tn-surface); color: var(--tn-text);
   border: 1px solid var(--tn-border); box-shadow: var(--tn-shadow-sm);
 }
+
+/* ===========================================================================
+   WidgetFrame chrome — Task 6
+   =========================================================================== */
+.tn-cw{display:flex;flex-direction:column;background:#fff;border:1px solid var(--tn-border,#dbe2ea);border-radius:8px;overflow:hidden}
+.tn-cw-head{display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid #f1f5f9;cursor:grab;font-size:12px}
+.tn-cw-title{font-weight:700;color:#2b3640}.tn-cw-count{font-size:11px;color:#8a97a6}.tn-cw-sp{flex:1}
+.tn-cw-badge{font-size:10px;font-weight:800;color:#fff;border-radius:8px;padding:0 5px;background:#8a97a6}
+.tn-cw-badge.tn-sev-critical{background:#d9534f}.tn-cw-badge.tn-sev-warn{background:#d9882f}.tn-cw-badge.tn-sev-info{background:#4a78c9}
+.tn-cw-fresh{font-size:10px;color:#3f8f5c}.tn-cw-menu{border:0;background:none;cursor:pointer;color:#b3bdc8;font-size:14px}
+.tn-cw-menu-pop{display:flex;flex-direction:column;border-bottom:1px solid #eef2f6}
+.tn-cw-menu-pop button{text-align:left;border:0;background:none;padding:7px 10px;font-size:12px;cursor:pointer}
+.tn-cw-menu-pop button:hover{background:#f6f9fb}.tn-cw-danger{color:#d9534f}
+.tn-cw-attn{border-bottom:1px solid #f1f5f9}.tn-cw-attn-h{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#a9b4bf;padding:5px 8px 2px}
+.tn-cw-alert{font-size:11px;padding:4px 8px;border-left:3px solid #d9534f;background:#fdf3f2}
+.tn-cw-alert.tn-sev-warn{border-left-color:#d9882f;background:#fdf7ee}.tn-cw-alert.tn-sev-info{border-left-color:#4a78c9;background:#f1f5fc}
+.tn-cw-body{flex:1;overflow:auto;min-height:0}
+.tn-cw-resize{height:6px;cursor:row-resize;background:linear-gradient(#f1f5f9,#fff)}
