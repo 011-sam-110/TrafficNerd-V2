@@ -9,11 +9,11 @@
  * - `attribution` is NOT a field → falls back to "".
  * - `license` is NOT a field → falls back to "".
  * - `refreshSeconds` is NOT a field → falls back to 30.
- * - loadedCamerasStore has only set()/get(); NO subscribe method (intentionally
- *   "not reactive"). We use useState with an initial snapshot instead of
- *   useSyncExternalStore to avoid calling undefined .subscribe.
+ * - loadedCamerasStore now has subscribe(); we use useSyncExternalStore so the
+ *   widget rerenders whenever WorldMap publishes cameras (instead of reading once
+ *   on mount and showing an empty grid forever if it mounts first).
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { loadedCamerasStore } from "@/lib/cameras/loaded";
 import { CameraVideo } from "@/components/CameraVideo";
 import { registerWidget, type WidgetBodyProps } from "@/lib/console/registry";
@@ -22,9 +22,8 @@ import { runAlertRule } from "@/lib/console/alerts";
 import { cameraAlerts, type CameraLite } from "@/lib/console/widgets/cameras.rules";
 
 function CamerasBody({ config }: WidgetBodyProps) {
-  // loadedCamerasStore is a non-reactive snapshot store (set/get only, no subscribe).
-  // Read once on mount; the store is refreshed by WorldMap whenever CamerasFeed lands.
-  const [cams] = useState(() => loadedCamerasStore.get());
+  // Reactive: rerenders whenever WorldMap calls loadedCamerasStore.set().
+  const cams = useSyncExternalStore(loadedCamerasStore.subscribe, loadedCamerasStore.get, loadedCamerasStore.get);
 
   // Map to CameraLite for the alert rule.
   // available is a real field on LoadedCamera; attribution/license/refreshSeconds are not.
@@ -40,10 +39,11 @@ function CamerasBody({ config }: WidgetBodyProps) {
       count: cams.length,
       freshLabel: "live",
     });
-  }, [lite, cams.length, report, config]);
+  }, [lite, report, config]);
 
   return (
     <div className="tn-cam-grid">
+      {cams.length === 0 && <p className="tn-cam-empty">No cameras loaded yet…</p>}
       {cams.slice(0, 6).map((c) => (
         <div key={c.id} className="tn-cam-cell">
           <CameraVideo

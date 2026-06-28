@@ -2,7 +2,7 @@
 // A lightweight snapshot of the cameras currently loaded on the map, so the ⌘K
 // "Dive to a live feed" command can pick a known-live one without re-fetching the
 // full /api/cameras payload. WorldMap publishes here whenever CamerasFeed lands.
-// Not reactive on purpose — the command reads it on demand.
+// Now reactive: subscribe() lets widgets (e.g. Cameras widget) rerender on updates.
 
 export interface LoadedCamera {
   id: string;
@@ -14,12 +14,18 @@ export interface LoadedCamera {
 }
 
 let cams: LoadedCamera[] = [];
+const listeners = new Set<() => void>();
 
 export const loadedCamerasStore = {
   set(next: LoadedCamera[]) {
     cams = next;
+    for (const fn of listeners) fn();
   },
   get(): LoadedCamera[] {
     return cams;
+  },
+  subscribe(cb: () => void): () => void {
+    listeners.add(cb);
+    return () => { listeners.delete(cb); };
   },
 };

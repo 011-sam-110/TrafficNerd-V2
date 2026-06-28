@@ -1152,3 +1152,5 @@ a { color: var(--tn-accent); }
 .tn-cam-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;padding:6px}
 .tn-cam-cell{display:flex;flex-direction:column;gap:3px;background:var(--tn-surface-2);border:1px solid var(--tn-border);border-radius:8px;overflow:hidden}
 .tn-cam-label{font-size:10px;color:var(--tn-text-muted);padding:3px 6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.tn-cam-empty{font-size:11px;color:#9aa6b2;text-align:center;padding:14px}
