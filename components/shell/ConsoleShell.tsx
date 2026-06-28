@@ -22,6 +22,8 @@ import BreakingBanner from "@/components/shell/BreakingBanner";
 import { FeedOverlay } from "@/components/FeedOverlay";
 import PanelHost from "@/components/shell/PanelHost";
 import VariantSwitcher from "@/components/shell/VariantSwitcher";
+import Workspace from "@/components/shell/Workspace";
+import { placementStore } from "@/lib/widgets/placement";
 
 export default function ConsoleShell({ children }: { children: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -37,6 +39,7 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
     timeWindowStore.hydrate();
     alertStore.hydrate();
     langStore.hydrate();
+    placementStore.hydrate();
     registerServiceWorker(); // production-only; a no-op under `next dev`
   }, []);
 
@@ -60,6 +63,7 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
       <BreakingBanner />
       <PlaceSearch />
       <PanelHost />
+      <Workspace />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <CoveragePanel />
       <MarketsPanel />
