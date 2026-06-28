@@ -128,7 +128,7 @@ export default function EventFeed() {
           {projected.rows.map((e) => (
             <li key={e.id}>
               <button type="button" className="tn-feed-item" onClick={() => open(e.id)}>
-                <span className="tn-feed-sev" style={{ background: e.color }}>
+                <span className="tn-feed-sev" style={{ background: e.color, color: e.severity.tier === "S3" || e.severity.tier === "S4" ? "#fff" : "#111827" }}>
                   {e.severity.tier}
                 </span>
                 <span className="tn-feed-main">

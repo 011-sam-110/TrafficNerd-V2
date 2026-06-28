@@ -62,6 +62,9 @@ function gdacsTimeToIso(s: string | undefined): string | undefined {
   return Number.isFinite(t) ? new Date(t).toISOString() : undefined;
 }
 
+/** Maps GDACS alert level to a 0–10 normalized magnitude for the severity ramp. */
+const GDACS_MAG: Record<string, number> = { Green: 3, Orange: 6, Red: 8 };
+
 /** Pure: GDACS FeatureCollection → SignalFeature[]. Skips features without coords/id. */
 export function normalizeGdacs(geojson: { features?: GdacsFeature[] }): SignalFeature[] {
   const out: SignalFeature[] = [];
@@ -90,6 +93,7 @@ export function normalizeGdacs(geojson: { features?: GdacsFeature[] }): SignalFe
       props: {
         hazard: typeLabel,
         alertLevel: level,
+        magnitude: GDACS_MAG[level] ?? 5,
         severity: p.severitydata?.severitytext?.trim() || "—",
         country: p.country?.trim() || "—",
         from: p.fromdate?.slice(0, 10) ?? "—",

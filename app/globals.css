@@ -1014,7 +1014,7 @@ a { color: var(--tn-accent); }
 .tn-feed-item:hover { background: var(--tn-surface-2); }
 .tn-feed-sev {
   flex: none; align-self: flex-start; font-family: var(--tn-mono);
-  font-size: 11px; font-weight: 700; color: #fff; padding: 1px 6px; border-radius: 5px;
+  font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px;
 }
 .tn-feed-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tn-feed-item-title { font-size: 13px; line-height: 1.3; }

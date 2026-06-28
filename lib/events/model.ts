@@ -41,8 +41,8 @@ export const SEVERITY_COLOR: Record<SeverityTier, string> = {
   S0: "#94a3b8",
   S1: "#eab308",
   S2: "#f97316",
-  S3: "#ef4444",
-  S4: "#b91c1c",
+  S3: "#b91c1c",
+  S4: "#7f1d1d",
 };
 
 /** Map the shared 0–10 normalized magnitude to a display tier (interim — see header). */

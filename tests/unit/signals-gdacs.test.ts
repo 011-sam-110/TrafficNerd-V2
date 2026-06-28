@@ -29,3 +29,18 @@ test("event-type labels and alert-level colours", () => {
   expect(gdacsAlertColor("Orange")).toBe("#f59e0b");
   expect(gdacsAlertColor("Green")).toBe("#16a34a");
 });
+
+test("alertLevel maps to the expected magnitude (0–10 ramp)", () => {
+  const make = (alertlevel: string) => ({
+    features: [
+      {
+        geometry: { coordinates: [10, 20] },
+        properties: { eventid: 1, episodeid: 1, eventtype: "EQ", alertlevel },
+      },
+    ],
+  });
+  expect(normalizeGdacs(make("Red") as never)[0].props?.magnitude).toBe(8);
+  expect(normalizeGdacs(make("Orange") as never)[0].props?.magnitude).toBe(6);
+  expect(normalizeGdacs(make("Green") as never)[0].props?.magnitude).toBe(3);
+  expect(normalizeGdacs(make("Unknown") as never)[0].props?.magnitude).toBe(5);
+});
