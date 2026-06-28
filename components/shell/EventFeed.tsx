@@ -127,12 +127,12 @@ export default function EventFeed() {
         <ol className="tn-feed-list">
           {projected.rows.map((e) => (
             <li key={e.id}>
-              <button type="button" className="tn-feed-row" onClick={() => open(e.id)}>
+              <button type="button" className="tn-feed-item" onClick={() => open(e.id)}>
                 <span className="tn-feed-sev" style={{ background: e.color }}>
                   {e.severity.tier}
                 </span>
                 <span className="tn-feed-main">
-                  <span className="tn-feed-row-title">
+                  <span className="tn-feed-item-title">
                     <span className="tn-feed-kind">{e.type}</span> {e.place.name}
                   </span>
                   <span className="tn-feed-meta">

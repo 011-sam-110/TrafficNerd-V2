@@ -1006,18 +1006,18 @@ a { color: var(--tn-accent); }
 }
 .tn-feed-type.on { background: var(--tn-accent-soft); color: var(--tn-accent-strong); border-color: var(--tn-accent); }
 .tn-feed-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
-.tn-feed-row {
+.tn-feed-item {
   display: flex; gap: 10px; width: 100%; text-align: left; cursor: pointer;
   padding: 9px 12px; background: transparent; border: 0; border-bottom: 1px solid var(--tn-border);
   color: inherit;
 }
-.tn-feed-row:hover { background: var(--tn-surface-2); }
+.tn-feed-item:hover { background: var(--tn-surface-2); }
 .tn-feed-sev {
   flex: none; align-self: flex-start; font-family: var(--tn-mono);
   font-size: 11px; font-weight: 700; color: #fff; padding: 1px 6px; border-radius: 5px;
 }
 .tn-feed-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.tn-feed-row-title { font-size: 13px; line-height: 1.3; }
+.tn-feed-item-title { font-size: 13px; line-height: 1.3; }
 .tn-feed-kind { color: var(--tn-text-muted); text-transform: capitalize; font-weight: 600; }
 .tn-feed-meta { font-size: 11px; color: var(--tn-text-faint); }
 .tn-feed-prec { font-variant: small-caps; }
