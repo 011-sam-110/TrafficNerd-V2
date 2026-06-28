@@ -21,7 +21,6 @@ export interface CatalogSource {
 }
 
 export const CORE_IDS = ["cameras", "planes", "satellites", "webcams"] as const;
-type CoreId = (typeof CORE_IDS)[number];
 
 // Core-layer descriptors. refreshMs mirrors lib/freshness.ts seed(); groups use the
 // roll-up vocabulary (a group with one source still yields a valid 1-source roll-up).

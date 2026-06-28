@@ -52,8 +52,3 @@ export function widgetForKey(key: string): WidgetDescriptor | undefined {
   }
   return undefined;
 }
-
-/** All leaf source ids (used by the catalog "add widget" tray). */
-export function allSourceKeys(): string[] {
-  return SOURCE_CATALOG.map((s) => sourceKey(s.id));
-}
