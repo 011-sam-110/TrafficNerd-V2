@@ -3,7 +3,7 @@
 // placement + (later) layout-override identity. Utility widgets (map/video/etc.)
 // are NOT defined here in Phase 1 — they keep their existing PANEL_REGISTRY entries.
 
-import { SOURCE_CATALOG, catalogByGroup, getCatalogSource } from "@/lib/sources/catalog";
+import { catalogByGroup, getCatalogSource } from "@/lib/sources/catalog";
 
 export type WidgetKind = "rollup" | "source";
 
