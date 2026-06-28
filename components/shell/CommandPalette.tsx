@@ -14,6 +14,10 @@ import { CAMERA_REGIONS } from "@/lib/icons/svg";
 import { cinematic } from "@/lib/cinematic/store";
 import { pickLiveCamera } from "@/lib/cinematic/livePick";
 import { loadedCamerasStore } from "@/lib/cameras/loaded";
+import "@/lib/console/widgets";
+import { widgetsByCategory } from "@/lib/console/registry";
+import { shellLayoutStore } from "@/lib/console/store";
+import type { StageId } from "@/lib/console/types";
 
 interface Command {
   id: string;
@@ -30,6 +34,10 @@ const LAYER_NAMES: Record<LayerKey, string> = {
   webcams: "Webcams",
   weather: "Weather",
 };
+
+function alertCapacity() {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("tn-toast", { detail: "50-widget limit — remove one to add another" }));
+}
 
 function buildCommands(close: () => void): Command[] {
   const cmds: Command[] = [];
@@ -135,6 +143,21 @@ function buildCommands(close: () => void): Command[] {
       close();
     },
   });
+
+  for (const group of widgetsByCategory()) {
+    for (const t of group.types) {
+      const openCount = shellLayoutStore.get().widgets.filter((w) => w.type === t.id).length;
+      cmds.push({
+        id: `add-${t.id}`,
+        label: `Add ${t.title}${openCount ? ` (${openCount} open)` : ""}`,
+        hint: group.category.toLowerCase(),
+        run: () => { const r = shellLayoutStore.add(t.id, { config: { ...t.defaultConfig }, height: t.defaultHeight }); if (!r.ok) alertCapacity(); close(); },
+      });
+    }
+  }
+
+  const STAGES: { id: StageId; label: string }[] = [{ id: "map3d", label: "3D map" }, { id: "map2d", label: "2D map" }, { id: "clock", label: "World clock" }];
+  for (const s of STAGES) cmds.push({ id: `stage-${s.id}`, label: `Stage → ${s.label}`, hint: "stage", run: () => { shellLayoutStore.stage(s.id); close(); } });
 
   return cmds;
 }
