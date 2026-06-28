@@ -18,6 +18,8 @@ import "@/lib/console/widgets";
 import { widgetsByCategory } from "@/lib/console/registry";
 import { shellLayoutStore } from "@/lib/console/store";
 import type { StageId } from "@/lib/console/types";
+import { listPresets, applyPreset, saveCustomPreset } from "@/lib/console/presets";
+import { encodeLayout } from "@/lib/console/share";
 
 interface Command {
   id: string;
@@ -158,6 +160,10 @@ function buildCommands(close: () => void): Command[] {
 
   const STAGES: { id: StageId; label: string }[] = [{ id: "map3d", label: "3D map" }, { id: "map2d", label: "2D map" }, { id: "clock", label: "World clock" }];
   for (const s of STAGES) cmds.push({ id: `stage-${s.id}`, label: `Stage → ${s.label}`, hint: "stage", run: () => { shellLayoutStore.stage(s.id); close(); } });
+
+  for (const p of listPresets()) cmds.push({ id: `cpreset-${p.id}`, label: `Preset: ${p.title}`, hint: "preset", run: () => { applyPreset(p.id); close(); } });
+  cmds.push({ id: "save-preset", label: "Save layout as preset…", hint: "preset", run: () => { const t = window.prompt("Preset name?"); if (t) saveCustomPreset(t); close(); } });
+  cmds.push({ id: "share-layout", label: "Copy shareable link", hint: "share", run: () => { const url = `${location.origin}${location.pathname}?c=${encodeLayout(shellLayoutStore.get())}`; navigator.clipboard?.writeText(url); close(); } });
 
   return cmds;
 }
