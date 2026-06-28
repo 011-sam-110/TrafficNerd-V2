@@ -1102,3 +1102,12 @@ a { color: var(--tn-accent); }
 .tn-cw-alert.tn-sev-warn{border-left-color:#d9882f;background:#fdf7ee}.tn-cw-alert.tn-sev-info{border-left-color:#4a78c9;background:#f1f5fc}
 .tn-cw-body{flex:1;overflow:auto;min-height:0}
 .tn-cw-resize{height:6px;cursor:row-resize;background:linear-gradient(#f1f5f9,#fff)}
+
+/* ===========================================================================
+   StageHost + WorldClock + StageSwitch — Task 8
+   =========================================================================== */
+.tn-clock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:32px;background:radial-gradient(circle at 50% 40%,#26323d,#141c24)}
+.tn-clock-time{font-size:34px;font-weight:800;color:#fff;letter-spacing:1px}.tn-clock-zone{font-size:11px;color:#9fb0bf;letter-spacing:1px;text-align:center}
+.tn-stage-switch{display:inline-flex;gap:2px;background:#fff;border:1px solid #d7dee6;border-radius:7px;padding:2px}
+.tn-stage-switch button{border:0;background:none;font-size:11px;font-weight:700;color:#5a6470;padding:2px 8px;border-radius:5px;cursor:pointer}
+.tn-stage-switch button.is-on{background:#27313b;color:#fff}
