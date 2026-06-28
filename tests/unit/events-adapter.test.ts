@@ -4,16 +4,16 @@ import { EVENT_SOURCES } from "@/lib/events/sources";
 import { toEvent, rankEvents } from "@/lib/events/adapter";
 
 const QUAKE = EVENT_SOURCES.find((s) => s.id === "earthquakes")!;
-const FIRE = EVENT_SOURCES.find((s) => s.id === "fire-active")!;
+const CYC = EVENT_SOURCES.find((s) => s.id === "tropical-cyclones")!;
 
 const sf = (over: Partial<SignalFeature>): SignalFeature => ({
   id: "x", lat: 1, lon: 2, title: "T", signalId: "s", ...over,
 });
 
 describe("EVENT_SOURCES", () => {
-  it("seeds the 4 proven event ids", () => {
+  it("seeds the 3 curated event ids", () => {
     expect(EVENT_SOURCES.map((s) => s.id)).toEqual([
-      "earthquakes", "fire-active", "gdacs", "tropical-cyclones",
+      "earthquakes", "gdacs", "tropical-cyclones",
     ]);
   });
 });
@@ -36,9 +36,9 @@ describe("toEvent", () => {
   });
 
   it("omits native magnitude for a source with no known unit (no MW mislabel)", () => {
-    const e = toEvent(sf({ title: "Active fire — Sonoma", props: { magnitude: 7 } }), FIRE);
-    expect(e.type).toBe("fire");
-    expect(e.magnitude).toBeUndefined();     // FIRE has no magnitudeUnit
+    const e = toEvent(sf({ title: "Tropical Storm Alpha", props: { magnitude: 7 } }), CYC);
+    expect(e.type).toBe("cyclone");
+    expect(e.magnitude).toBeUndefined();     // CYC has no magnitudeUnit
     expect(e.severity.tier).toBe("S3");      // 7 → S3
   });
 

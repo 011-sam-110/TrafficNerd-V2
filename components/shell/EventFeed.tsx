@@ -30,7 +30,7 @@ export default function EventFeed() {
   const now = useNow(1000);
   const { bySource, status, updatedAt } = useEventFeeds();
 
-  const [minTier, setMinTier] = useState<SeverityTier>("S0");
+  const [minTier, setMinTier] = useState<SeverityTier>("S1");
   const [sort, setSort] = useState<FeedSort>("severity");
   const [type, setType] = useState<EventType | null>(null);
 
