@@ -1154,3 +1154,17 @@ a { color: var(--tn-accent); }
 .tn-cam-label{font-size:10px;color:var(--tn-text-muted);padding:3px 6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .tn-cam-empty{font-size:11px;color:#9aa6b2;text-align:center;padding:14px}
+
+/* ===========================================================================
+   Widget body — Live Video News (Task 12)
+   =========================================================================== */
+.tn-news{display:flex;flex-direction:column;height:100%}
+.tn-news-screen{position:relative;aspect-ratio:16/9;background:#15212b}
+.tn-news-video{position:absolute;inset:0;width:100%;height:100%;border:0}
+.tn-news-ch{position:absolute;left:6px;bottom:6px;color:#fff;font-size:10px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.tn-news-tabs{display:flex;gap:4px;padding:6px;flex-wrap:wrap}
+.tn-news-tabs button{font-size:9px;border:1px solid #e1e8ef;border-radius:10px;padding:2px 7px;background:#fff;cursor:pointer}
+.tn-news-tabs button.is-on{background:#27313b;color:#fff;border-color:#27313b}.tn-news-more{color:#3f8f5c;border-style:dashed!important}
+.tn-news-picker{display:flex;flex-direction:column;border-top:1px solid #eef2f6;max-height:160px;overflow:auto}
+.tn-news-picker button{text-align:left;border:0;background:none;padding:5px 9px;font-size:11px;cursor:pointer}
+.tn-news-cat{color:#9aa6b2;font-size:9px;float:right}.tn-news-custom{margin:6px 9px;padding:4px;font-size:11px;border:1px solid #e1e8ef;border-radius:5px}
