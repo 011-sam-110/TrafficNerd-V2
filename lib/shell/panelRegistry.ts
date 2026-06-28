@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import type { PanelKey } from "@/lib/variants/types";
-import LayerRail from "@/components/shell/LayerRail";
+import SourceCatalog from "@/components/shell/SourceCatalog";
 import FreshnessTicker from "@/components/shell/FreshnessTicker";
 import NewsTicker from "@/components/shell/NewsTicker";
 import MarketsPanel from "@/components/shell/MarketsPanel";
@@ -18,7 +18,7 @@ export const PANEL_REGISTRY: Record<PanelKey, {
   category: "core" | "intelligence" | "markets";
   defaultGrid: { x: number; y: number; w: number; h: number };
 }> = {
-  layerRail:  { component: LayerRail,      title: "Layers",    category: "core",         defaultGrid: { x: 0, y: 0, w: 3, h: 8 } },
+  layerRail:  { component: SourceCatalog,  title: "Sources",   category: "core",         defaultGrid: { x: 0, y: 0, w: 3, h: 8 } },
   freshness:  { component: FreshnessTicker, title: "Freshness", category: "core",         defaultGrid: { x: 0, y: 8, w: 12, h: 1 } },
   news:       { component: NewsTicker,      title: "News",      category: "intelligence", defaultGrid: { x: 0, y: 7, w: 12, h: 1 } },
   markets:    { component: MarketsPanel,    title: "Markets",   category: "markets",      defaultGrid: { x: 9, y: 0, w: 3, h: 6 } },

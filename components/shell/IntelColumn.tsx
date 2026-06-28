@@ -9,12 +9,12 @@ import type { ComponentType } from "react";
 import { useVariant, variantStore } from "@/lib/variants/store";
 import { useWorkspace } from "@/lib/shell/workspace";
 import { PANEL_REGISTRY } from "@/lib/shell/panelRegistry";
-import type { PanelKey } from "@/lib/variants/types";
 
 // Only the dock-only intel widgets live in the always-on column. markets/coverage/
 // watchlist keep their own slide-in behaviour (rendered elsewhere), so they are
 // deliberately excluded here to avoid double-mounting.
-const COLUMN_PANELS = new Set<PanelKey>(["instability", "conflict", "topEvents", "risk"]);
+const COLUMN_PANELS = new Set<string>(["instability", "conflict", "topEvents", "risk"]);
+const REGISTRY = PANEL_REGISTRY as Record<string, { component: ComponentType<{ docked?: boolean }>; title: string }>;
 
 export default function IntelColumn() {
   const { activeId } = useVariant();
@@ -30,7 +30,7 @@ export default function IntelColumn() {
   return (
     <aside className="tn-intel-column" aria-label="Intelligence">
       {placements.map((p) => {
-        const Cmp = PANEL_REGISTRY[p.panel].component as ComponentType<{ docked?: boolean }>;
+        const Cmp = REGISTRY[p.panel].component;
         return (
           <section key={p.panel} className="tn-intel-card">
             <Cmp docked />

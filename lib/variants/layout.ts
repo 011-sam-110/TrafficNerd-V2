@@ -2,10 +2,11 @@
 // No RGL import — RglItem mirrors RGL's Layout item shape so this stays
 // dependency-light and node-testable. SP1b's DockableWorkspace feeds these to
 // ResponsiveGridLayout and folds onLayoutChange results back into placements.
-import type { PanelKey, PanelPlacement } from "@/lib/variants/types";
+import type { PanelPlacement } from "@/lib/variants/types";
 
 export type RglItem = {
-  i: PanelKey;
+  /** PanelKey or a dynamic widget key (`source:<id>` / `rollup:<group>`). */
+  i: string;
   x: number;
   y: number;
   w: number;

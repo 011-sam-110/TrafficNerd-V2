@@ -11,7 +11,11 @@ export type PanelKey =
 // (transient, deep-linked via ?obj=), kept as overlay chrome.
 
 export interface PanelPlacement {
-  panel: PanelKey;
+  /**
+   * A PanelKey for a registered panel, OR a dynamic widget key
+   * (`source:<id>` / `rollup:<group>`) resolved by the dock at render time.
+   */
+  panel: string;
   /** Grid geometry — carried for SP1b (react-grid-layout); unused in SP1a. */
   grid: { x: number; y: number; w: number; h: number; minW?: number; minH?: number };
   visible: boolean;
