@@ -1,0 +1,83 @@
+"use client";
+import { useEffect, useMemo } from "react";
+import { usePlanes } from "@/lib/planes/usePlanes";
+import { registerWidget, type WidgetBodyProps } from "@/lib/console/registry";
+import { useWidgetReport } from "@/components/console/WidgetFrame";
+import { runAlertRule } from "@/lib/console/alerts";
+import { aviationAlerts, type PlaneLite } from "@/lib/console/widgets/aviation.rules";
+
+/**
+ * Aviation widget body.
+ *
+ * Field-mapping notes (real usePlanes() shape vs brief's assumed fields):
+ * - usePlanes() returns PlanesLayer { objects: WorldObject[], trails: PlaneTrail[] }
+ *   → we use .objects (not the top-level array the brief assumed).
+ * - WorldObject.label  → callsign (adsb.ts sets label = a.callsign ?? a.hex)
+ * - WorldObject.altKm  → altitude in km (NOT feet; brief used p.altitude)
+ * - WorldObject.typeLabel → human type ("Airliner", "Regional / jet", etc.)
+ * - NO squawk field   — adsb.lol's raw data does include squawk but parseAdsb()
+ *   does not extract it; squawk will be undefined for all planes until the
+ *   upstream parser is extended. Emergency alerts are spec-correct but dormant.
+ * - NO isMilitary     — classifyPlane() has no military category; the ADS-B A6
+ *   "heavy military" code exists but is not mapped. isMilitary is always undefined.
+ * - NO origin/destination — not present in the WorldObject/Aircraft schema.
+ */
+function AviationBody({ config }: WidgetBodyProps) {
+  const layer = usePlanes();
+  const planes = layer.objects;
+
+  // Map to PlaneLite for alert rules. squawk + isMilitary are unavailable in
+  // the current pipeline (see notes above).
+  const lite: PlaneLite[] = useMemo(
+    () => planes.map((p) => ({ callsign: p.label })),
+    [planes],
+  );
+
+  const sortKey = (config.sort as string) ?? "alt";
+  const rows = useMemo(() => {
+    const r = [...planes];
+    r.sort((a, b) =>
+      sortKey === "alt"
+        ? (b.altKm ?? 0) - (a.altKm ?? 0)
+        : a.label.localeCompare(b.label),
+    );
+    return r.slice(0, 200);
+  }, [planes, sortKey]);
+
+  const report = useWidgetReport();
+  useEffect(() => {
+    report({
+      alerts: runAlertRule(aviationAlerts, lite, config),
+      count: planes.length,
+      freshLabel: "live",
+    });
+  }, [lite, planes.length, report, config]);
+
+  return (
+    <table className="tn-w-table">
+      <tbody>
+        {rows.map((p) => (
+          <tr key={p.id}>
+            <td className="tn-w-strong">{p.label}</td>
+            <td className="tn-w-muted">{p.typeLabel ?? ""}</td>
+            <td className="tn-w-num">
+              {p.altKm != null ? `${p.altKm.toFixed(1)}k` : ""}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export const AVIATION_WIDGET = {
+  id: "aviation",
+  title: "Aviation",
+  icon: "✈",
+  category: "Aviation",
+  defaultHeight: 280,
+  defaultConfig: { sort: "alt" },
+  component: AviationBody,
+  capabilities: { filter: true, sort: true },
+};
+registerWidget(AVIATION_WIDGET);

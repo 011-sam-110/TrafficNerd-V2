@@ -1124,3 +1124,13 @@ a { color: var(--tn-accent); }
 .tn-seg-slot{flex:none}.tn-seg-empty{font-size:11px;color:#9aa6b2;text-align:center;margin:auto;padding:16px}
 .tn-grip{width:6px;flex:none;cursor:col-resize;background:#cdd6e0}
 .tn-grip:hover{background:#aebac6}.tn-grip-h{width:auto;height:6px;cursor:row-resize}
+
+/* ===========================================================================
+   Widget body — shared table primitives (Task 9 Aviation widget)
+   =========================================================================== */
+.tn-w-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.tn-w-table tr{border-bottom:1px solid var(--tn-border)}
+.tn-w-table td{padding:4px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.tn-w-strong{font-weight:600;color:var(--tn-text)}
+.tn-w-muted{color:var(--tn-text-muted)}
+.tn-w-num{font-family:var(--tn-mono);text-align:right;color:var(--tn-text-muted)}
