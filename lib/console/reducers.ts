@@ -36,7 +36,12 @@ export function addWidget(
 }
 
 export function removeWidget(l: ShellLayout, id: string): ShellLayout {
-  return { ...l, widgets: l.widgets.filter((w) => w.id !== id) };
+  const removed = l.widgets.find((w) => w.id === id);
+  if (!removed) return l;
+  const kept = l.widgets.filter((w) => w.id !== id);
+  const segSorted = kept.filter((w) => w.segment === removed.segment).sort((a, b) => a.order - b.order);
+  const orderMap = new Map(segSorted.map((w, i) => [w.id, i] as const));
+  return { ...l, widgets: kept.map((w) => (orderMap.has(w.id) ? { ...w, order: orderMap.get(w.id)! } : w)) };
 }
 
 export function moveWidget(l: ShellLayout, id: string, toSegment: SegmentId, toIndex: number): ShellLayout {

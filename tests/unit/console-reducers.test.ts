@@ -58,3 +58,25 @@ test("removeWidget drops the instance and leaves others intact", () => {
   l = removeWidget(l, "a");
   expect(l.widgets.map((w) => w.id)).toEqual(["b"]);
 });
+
+test("add→remove→add keeps dense, unique order in the segment (regression)", () => {
+  let l = createDefaultLayout();
+  l = addWidget(l, "aviation", "a", { segment: "left" });
+  l = addWidget(l, "events", "b", { segment: "left" });
+  l = removeWidget(l, "a");
+  l = addWidget(l, "cameras", "c", { segment: "left" });
+  const seg = widgetsInSegment(l, "left");
+  expect(seg.map((w) => w.id)).toEqual(["b", "c"]);
+  expect(seg.map((w) => w.order)).toEqual([0, 1]); // dense + unique, no duplicate order
+});
+
+test("setWidgetHeight clamps the UPPER bound to 1200", () => {
+  let l = addWidget(createDefaultLayout(), "aviation", "a");
+  l = setWidgetHeight(l, "a", 9999);
+  expect(l.widgets[0].height).toBe(1200);
+});
+
+test("setSegmentSize clamps the UPPER bound to 900", () => {
+  let l = setSegmentSize(createDefaultLayout(), "left", 9999);
+  expect(l.segments.left.size).toBe(900);
+});
