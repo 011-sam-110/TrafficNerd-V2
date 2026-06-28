@@ -1111,3 +1111,16 @@ a { color: var(--tn-accent); }
 .tn-stage-switch{display:inline-flex;gap:2px;background:#fff;border:1px solid #d7dee6;border-radius:7px;padding:2px}
 .tn-stage-switch button{border:0;background:none;font-size:11px;font-weight:700;color:#5a6470;padding:2px 8px;border-radius:5px;cursor:pointer}
 .tn-stage-switch button.is-on{background:#27313b;color:#fff}
+
+/* ===========================================================================
+   ConsoleWorkspace + Segment — Task 7
+   =========================================================================== */
+.tn-cw-shell{position:absolute;inset:0;display:flex;min-height:0}
+.tn-cw-col{flex:none;overflow:hidden;display:flex}
+.tn-cw-center{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+.tn-cw-stage{flex:1;position:relative;min-height:0}
+.tn-cw-bottom{flex:none;overflow:hidden;display:flex}
+.tn-seg{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:8px;padding:8px;background:#eef2f6}
+.tn-seg-slot{flex:none}.tn-seg-empty{font-size:11px;color:#9aa6b2;text-align:center;margin:auto;padding:16px}
+.tn-grip{width:6px;flex:none;cursor:col-resize;background:#cdd6e0}
+.tn-grip:hover{background:#aebac6}.tn-grip-h{width:auto;height:6px;cursor:row-resize}
