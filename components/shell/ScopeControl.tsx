@@ -17,6 +17,7 @@ export default function ScopeControl() {
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [note, setNote] = useState<string | null>(null);
   const reqRef = useRef(0);
+  const geoReqRef = useRef(0);
   const rootRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => {
@@ -30,8 +31,13 @@ export default function ScopeControl() {
     const onDown = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) close();
     };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [close]);
 
   // Debounced region search.
@@ -74,10 +80,10 @@ export default function ScopeControl() {
       return;
     }
     setNote("Finding your location…");
-    const myReq = ++reqRef.current;
+    const myReq = ++geoReqRef.current;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        if (myReq !== reqRef.current) return;
+        if (myReq !== geoReqRef.current) return;
         const { latitude, longitude } = pos.coords;
         scopeStore.set({
           mode: "near-me",
@@ -89,7 +95,7 @@ export default function ScopeControl() {
         close();
       },
       () => {
-        if (myReq !== reqRef.current) return;
+        if (myReq !== geoReqRef.current) return;
         setNote("Location denied — still showing World. Search a region instead.");
       },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
@@ -102,7 +108,7 @@ export default function ScopeControl() {
         type="button"
         className="tn-scope-btn"
         onClick={() => setOpen((o) => !o)}
-        aria-haspopup="true"
+        aria-haspopup="menu"
         aria-expanded={open}
       >
         <span aria-hidden>◎</span> {scope.label}
@@ -133,7 +139,7 @@ export default function ScopeControl() {
                     key={`${r.name}:${r.lat},${r.lon}`}
                     type="button"
                     role="option"
-                    aria-selected={false}
+                    aria-selected={scope.mode === "region" && scope.label === r.name}
                     className="tn-scope-result"
                     onClick={() => setRegion(r)}
                   >
