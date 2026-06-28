@@ -24,7 +24,7 @@ export const NEWS_PROVIDERS: NewsProvider[] = [
   { id: "iss", name: "ISS Live", category: "Space", kind: "youtube", ref: "DIgkvm2nmHc" },
 ];
 
-const YT_ID = /(?:v=|youtu\.be\/|\/live\/|\/embed\/)([A-Za-z0-9_-]{6,})/;
+const YT_ID = /(?:v=|youtu\.be\/|\/live\/|\/embed\/)([A-Za-z0-9_-]{11})/;
 
 export function parseCustomStream(url: string): NewsProvider | null {
   const u = url.trim();

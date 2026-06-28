@@ -7,9 +7,9 @@ test("seeds at least 10 free providers with valid kinds", () => {
 });
 
 test("parseCustomStream reads a YouTube live URL", () => {
-  const p = parseCustomStream("https://www.youtube.com/watch?v=abc123XYZ");
+  const p = parseCustomStream("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
   expect(p?.kind).toBe("youtube");
-  expect(p?.ref).toBe("abc123XYZ");
+  expect(p?.ref).toBe("dQw4w9WgXcQ");
 });
 
 test("parseCustomStream reads an HLS url and rejects junk", () => {
@@ -18,9 +18,10 @@ test("parseCustomStream reads an HLS url and rejects junk", () => {
 });
 
 test("resolveEmbed builds a youtube embed src", () => {
-  const e = resolveEmbed({ id: "x", name: "X", category: "World", kind: "youtube", ref: "abc123XYZ" });
+  const e = resolveEmbed({ id: "x", name: "X", category: "World", kind: "youtube", ref: "dQw4w9WgXcQ" });
   expect(e.kind).toBe("youtube");
-  expect(e.src).toContain("youtube.com/embed/abc123XYZ");
+  expect(e.src).toContain("youtube.com/embed/dQw4w9WgXcQ");
   expect(e.src).toContain("autoplay=1");
   expect(e.src).toContain("mute=1");
+  expect(e.src).toContain("playsinline=1");
 });
