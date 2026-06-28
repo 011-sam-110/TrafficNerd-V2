@@ -1063,3 +1063,24 @@ a { color: var(--tn-accent); }
 }
 .tn-scope-result:hover { background: var(--tn-surface-2); }
 .tn-scope-note { font-size: 11px; color: var(--tn-text-muted); margin: 6px 4px 2px; }
+
+/* ── Console top bar (floating cluster) ────────────────────────────────────── */
+.tn-console-topbar {
+  position: fixed; top: calc(var(--tn-topbar-h) + 8px); left: 12px; z-index: 26;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.tn-console-explore {
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
+  background: var(--tn-surface); color: var(--tn-text);
+  border: 1px solid var(--tn-border); box-shadow: var(--tn-shadow-sm);
+}
+.tn-console-explore:hover { border-color: var(--tn-border-strong); }
+/* A small "← Console" affordance lives in the existing globe chrome (Explore). */
+.tn-explore-return {
+  position: fixed; top: calc(var(--tn-topbar-h) + 8px); left: 12px; z-index: 26;
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 8px;
+  background: var(--tn-surface); color: var(--tn-text);
+  border: 1px solid var(--tn-border); box-shadow: var(--tn-shadow-sm);
+}

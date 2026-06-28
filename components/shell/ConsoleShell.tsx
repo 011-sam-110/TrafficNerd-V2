@@ -25,10 +25,16 @@ import { CinematicDive } from "@/components/CinematicDive";
 import PanelHost from "@/components/shell/PanelHost";
 import DockableWorkspace from "@/components/shell/DockableWorkspace";
 import IntelColumn from "@/components/shell/IntelColumn";
+import { scopeStore } from "@/lib/shell/scope";
+import { viewModeStore, useViewMode } from "@/lib/shell/viewMode";
+import EventFeed from "@/components/shell/EventFeed";
+import ConsoleTopBar from "@/components/shell/ConsoleTopBar";
 
 export default function ConsoleShell({ children }: { children: React.ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const ws = useWorkspace();
+  const view = useViewMode();
+  const isConsole = view === "console";
 
   // Re-hydrate persisted view state once, client-side (render defaults on the
   // server, reconcile after mount → no hydration mismatch).
@@ -41,6 +47,8 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
     timeWindowStore.hydrate();
     alertStore.hydrate();
     langStore.hydrate();
+    scopeStore.hydrate();
+    viewModeStore.hydrate();
     registerServiceWorker(); // production-only; a no-op under `next dev`
   }, []);
 
@@ -61,15 +69,33 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
       {children}
       <StatusBar onOpenPalette={() => setPaletteOpen(true)} />
       <BreakingBanner />
-      <PlaceSearch />
       <PanelHost />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      {/* Dockable slide-ins are suppressed while the workspace dock owns them. */}
-      {!ws.open && <CoveragePanel />}
-      {!ws.open && <MarketsPanel />}
-      {!ws.open && <WatchlistPanel />}
-      <DockableWorkspace />
-      <IntelColumn />
+
+      {isConsole ? (
+        <>
+          <ConsoleTopBar />
+          <EventFeed />
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            className="tn-explore-return"
+            onClick={() => viewModeStore.set("console")}
+            title="Back to the console"
+          >
+            <span aria-hidden>←</span> Console
+          </button>
+          <PlaceSearch />
+          {!ws.open && <CoveragePanel />}
+          {!ws.open && <MarketsPanel />}
+          {!ws.open && <WatchlistPanel />}
+          <DockableWorkspace />
+          <IntelColumn />
+        </>
+      )}
+
       <FeedOverlay />
       <CinematicDive />
     </div>
