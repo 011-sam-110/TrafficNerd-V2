@@ -8,3 +8,4 @@ test-results/
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+.superpowers/
