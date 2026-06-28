@@ -20,3 +20,10 @@ test("widgetsByCategory groups and preserves insertion order", () => {
   expect(groups.map((g) => g.category)).toEqual(["Aviation", "News"]);
   expect(groups[0].types.map((t) => t.id)).toEqual(["aviation", "emerg"]);
 });
+
+test("listWidgetTypes preserves registration order; getWidgetType misses return undefined", () => {
+  registerWidget(stub("aviation", "Aviation"));
+  registerWidget(stub("news", "News"));
+  expect(listWidgetTypes().map((t) => t.id)).toEqual(["aviation", "news"]);
+  expect(getWidgetType("nope")).toBeUndefined();
+});
