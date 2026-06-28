@@ -1134,3 +1134,14 @@ a { color: var(--tn-accent); }
 .tn-w-strong{font-weight:600;color:var(--tn-text)}
 .tn-w-muted{color:var(--tn-text-muted)}
 .tn-w-num{font-family:var(--tn-mono);text-align:right;color:var(--tn-text-muted)}
+.tn-w-empty{padding:12px 8px;font-size:12px;color:var(--tn-text-muted);text-align:center}
+
+/* ===========================================================================
+   Widget body — list primitives (Task 10 Disasters & Events widget)
+   =========================================================================== */
+.tn-w-list{list-style:none;margin:0;padding:0;font-size:12px}
+.tn-w-list li{display:flex;align-items:baseline;gap:4px;padding:4px 6px;border-bottom:1px solid var(--tn-border);line-height:1.4}
+.tn-w-sev{flex:none;font-size:10px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.03em;background:var(--tn-border);color:var(--tn-text-muted)}
+.tn-w-kind{flex:none;font-size:11px;color:var(--tn-text-muted);font-weight:500}
+.tn-w-place{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tn-text)}
+.tn-w-mag{flex:none;font-family:var(--tn-mono);font-size:11px;color:var(--tn-text-muted)}
