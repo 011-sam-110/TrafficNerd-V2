@@ -149,7 +149,7 @@ Each reuses data the app already fetches.
 
 | Widget | Body | Curated alert rules (examples) | Reuses |
 |--------|------|--------------------------------|--------|
-| **Live Video News** | Live **video** player + channel lower-third + `● LIVE`; tabs switch channel (Al Jazeera, DW, France 24, Sky News, Bloomberg, NASA TV — free 24/7 YouTube-live/HLS). Muted by default, click to unmute, `⛶` expand. | (none in v1 — a "breaking" hook can come later) | `CameraVideo`/HLS player; news source list |
+| **Live Video News** | Live **video** player + channel lower-third + `● LIVE`; **favourite tabs** for quick-switch + a **"More…" provider catalogue** (search + categories, ★ favourites) + **add-custom-stream** (HLS `.m3u8` / YouTube-live). Provider is **per-instance**. ~12 free 24/7 channels seeded (Al Jazeera, DW, France 24, Sky, Euronews, CNA, TRT, NHK, Bloomberg, NASA…). Muted by default, click to unmute, `⛶` expand. | (none in v1 — a "breaking" hook can come later) | `CameraVideo`/HLS player; news source list |
 | **Aviation** | Filter/sort flights board (callsign, route, alt, speed, status). Filter by airline/region; sort by alt/speed. | squawk **7700/7600/7500**; rapid descent; new **military** callsign in region; airport traffic surge | `adsb.lol` plane layer (already live) |
 | **Cameras** | Grid/list of live camera thumbnails/streams for the active region; click → dive. | camera went **offline**; new incident camera in region | existing HLS camera feeds + `CinematicDive` |
 | **Disasters & Events** | The ranked event feed (filter by type/severity, sort by severity/time). | **M5+** quake; new **S3+** GDACS disaster; FIRMS cluster spike | the `EventFeed` projection you already built |
@@ -239,8 +239,9 @@ from MapLibre's globe/flat projection (the app already renders the globe) — an
 - **Assumption:** widget placement on add = "segment with most room, else Left." Loose by design; user
   confirmed they'll rearrange.
 - **Assumption:** 50-instance cap is global (not per-type).
-- **Assumption:** Live News channels are free public livestreams (YouTube-live/HLS); exact channel list and
-  default audio (muted) are tunable.
+- **Assumption:** Live News = free public livestreams (YouTube-live/HLS). v1 seeds ~12 channels with
+  favourite-tabs + a searchable provider catalogue + **add-custom-stream**; provider is per-instance; audio
+  muted by default. Channel list is tunable.
 - **Open:** intra-segment widget sizing — confirm height-only resize (vs. also a 2-col option in the wide
   Bottom segment). Default: height-only everywhere for v1.
 - **Open:** does the Bottom segment span the **full width** (under the rails too) or only under the stage?
