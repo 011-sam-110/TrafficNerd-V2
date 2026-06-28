@@ -1,12 +1,15 @@
 "use client";
-// Left layer rail — the calm-light reframe of the ops-console left panel.
-// Collapsible, persistent. Lists each world layer with an on/off toggle, a live
-// tabular count, and a tiny source + freshness note. Cameras expand to the
-// region + live-only sub-filters. Planned layers (Ships/Webcams/Weather) render
-// disabled so the structure is visible without shipping dead toggles.
-//
-// Toggling a layer flips lib/layers — and because WorldMap mounts each data hook
-// only while its layer is on, a hidden layer stops fetching/ticking entirely.
+// Source Catalog — the redesigned left rail. It is LayerRail's full control set
+// (presets, monitor bar, camera region/live filters, global-signal feeds, coverage/
+// markets/watchlist entry points) PLUS the "widgetize everything" affordances:
+//   • a search box that filters every source by label,
+//   • a per-source ▦ toggle that docks/undocks that source as its own widget tile,
+//   • a per-group ▦ toggle that docks the group's roll-up widget,
+//   • a header counter of how many sources are currently widgeted.
+// Map on/off still flips lib/layers / lib/signals (so a hidden source stops
+// fetching); the widget toggle writes the active variant's dock layout via
+// lib/widgets/dock. Both states are shown side by side so the rail is the one
+// place to answer "is this on the map, and is it a widget?".
 
 import { useState } from "react";
 import {
@@ -17,7 +20,7 @@ import {
   PLANNED_LAYERS,
   type LayerKey,
 } from "@/lib/layers";
-import { SIGNALS, signalsByGroup } from "@/lib/signals/registry";
+import { signalsByGroup } from "@/lib/signals/registry";
 import { signalsStore, useSignals, useSignalCounts } from "@/lib/signals/store";
 import {
   useSignalFreshness,
@@ -36,6 +39,10 @@ import { CAMERA_REGIONS, CAMERA_FEED_META } from "@/lib/icons/svg";
 import { useT } from "@/lib/i18n/store";
 import MonitorBar from "@/components/shell/MonitorBar";
 import TimeWindowControl from "@/components/shell/TimeWindowControl";
+import { useVariant, useLayout } from "@/lib/variants/store";
+import { toggleTileDock } from "@/lib/widgets/dock";
+import { sourceKey, rollupKey } from "@/lib/widgets/registry";
+import { SOURCE_CATALOG } from "@/lib/sources/catalog";
 
 interface LayerMeta {
   name: string;
@@ -67,6 +74,23 @@ function Toggle({ on, accent, onClick, label }: { on: boolean; accent: string; o
       style={{ background: on ? accent : "var(--tn-toggle-off)" }}
     >
       <span className="tn-toggle-knob" style={{ left: on ? 18 : 2 }} />
+    </button>
+  );
+}
+
+// ＋ / ▦ — adds or removes this source (or group roll-up) as a dock widget tile.
+function WidgetToggle({ on, label, onClick }: { on: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      className="tn-widget-toggle"
+      data-on={on}
+      aria-pressed={on}
+      title={on ? `Remove the ${label} widget` : `Add ${label} as a widget`}
+      aria-label={on ? `Remove the ${label} widget` : `Add ${label} as a widget`}
+      onClick={onClick}
+    >
+      {on ? "▦" : "＋"}
     </button>
   );
 }
@@ -142,10 +166,14 @@ function LayerRow({
   layerKey,
   count,
   expandable,
+  widgeted,
+  activeId,
 }: {
   layerKey: LayerKey;
   count: number | null;
   expandable?: boolean;
+  widgeted: boolean;
+  activeId: string;
 }) {
   const layers = useLayers();
   const meta = LAYER_META[layerKey];
@@ -184,20 +212,18 @@ function LayerRow({
         </div>
       </button>
       <span className="tn-layer-count tn-num">{count == null ? "—" : count.toLocaleString()}</span>
+      <WidgetToggle on={widgeted} label={meta.name} onClick={() => toggleTileDock(activeId, sourceKey(layerKey))} />
       <Toggle on={on} accent={meta.accent} label={`Toggle ${meta.name}`} onClick={() => layersStore.toggle(layerKey)} />
       {expandable && open && on ? <CameraFilters /> : null}
     </div>
   );
 }
 
-// Per-signal freshness chip — honest "is this layer actually live?" beside each
-// ON signal layer, reading the trust spine (lib/signals/freshness). Only shown
-// when the layer is on (a SignalFeed must be mounted to have a record).
 function SignalFreshNote({ id, refreshMs }: { id: string; refreshMs: number }) {
   const records = useSignalFreshness();
   const now = useNow(1000);
   const raw = records[id];
-  if (!raw) return null; // not mounted / no fetch yet
+  if (!raw) return null;
   const rec = { ...raw, refreshMs };
   const state = classifySignalFreshness(rec, now);
   const age = signalFreshAgeMs(rec, now);
@@ -210,10 +236,23 @@ function SignalFreshNote({ id, refreshMs }: { id: string; refreshMs: number }) {
   );
 }
 
-// One global-signal layer: dot + label + attribution + freshness + live count + toggle.
-// Mirrors LayerRow but reads the SEPARATE signals store (default off, opt-in).
-function SignalRow({ id }: { id: string }) {
-  const source = SIGNALS.find((s) => s.id === id)!;
+function SignalRow({
+  id,
+  label,
+  color,
+  attribution,
+  refreshMs,
+  widgeted,
+  activeId,
+}: {
+  id: string;
+  label: string;
+  color: string;
+  attribution: string;
+  refreshMs: number;
+  widgeted: boolean;
+  activeId: string;
+}) {
   const on = useSignals()[id] === true;
   const count = useSignalCounts()[id];
   const countLabel = count != null ? count.toLocaleString() : on ? "…" : "—";
@@ -222,60 +261,85 @@ function SignalRow({ id }: { id: string }) {
       <div className="tn-layer-head" style={{ cursor: "default" }}>
         <span
           className="tn-layer-dot"
-          style={{ background: source.color, boxShadow: on ? `0 0 7px ${source.color}88` : "none" }}
+          style={{ background: color, boxShadow: on ? `0 0 7px ${color}88` : "none" }}
         />
         <div className="tn-layer-main">
-          <span className="tn-layer-name">{source.label}</span>
-          <span className="tn-layer-source">{source.attribution}</span>
-          {on ? <SignalFreshNote id={id} refreshMs={source.refreshMs} /> : null}
+          <span className="tn-layer-name">{label}</span>
+          <span className="tn-layer-source">{attribution}</span>
+          {on ? <SignalFreshNote id={id} refreshMs={refreshMs} /> : null}
         </div>
       </div>
       <span className="tn-layer-count tn-num">{countLabel}</span>
-      <Toggle
-        on={on}
-        accent={source.color}
-        label={`Toggle ${source.label}`}
-        onClick={() => signalsStore.toggle(id)}
-      />
+      <WidgetToggle on={widgeted} label={label} onClick={() => toggleTileDock(activeId, sourceKey(id))} />
+      <Toggle on={on} accent={color} label={`Toggle ${label}`} onClick={() => signalsStore.toggle(id)} />
     </div>
   );
 }
 
-// Collapsible "Global signals" section. Default COLLAPSED — these are heavy,
-// global, opt-in feeds, so they stay out of the way until deliberately opened.
-function GlobalSignals() {
+function GlobalSignals({
+  match,
+  forceOpen,
+  activeId,
+  widgetedIds,
+}: {
+  match: (label: string) => boolean;
+  forceOpen: boolean;
+  activeId: string;
+  widgetedIds: Set<string>;
+}) {
   const [open, setOpen] = useState(false);
   const groups = signalsByGroup();
   const onCount = useSignals();
   const t = useT();
-  const activeCount = SIGNALS.filter((s) => onCount[s.id]).length;
+  const isOpen = open || forceOpen;
+  const activeCount = SOURCE_CATALOG.filter((s) => s.kind === "signal" && onCount[s.id]).length;
   return (
     <div className="tn-signals">
       <button
         type="button"
         className="tn-signals-header"
         onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
+        aria-expanded={isOpen}
       >
         <span className="tn-signals-title">
           {t("sectionGlobalSignals")}
           {activeCount > 0 ? <span className="tn-signals-badge">{activeCount}</span> : null}
         </span>
-        <span className="tn-layer-caret" data-open={open}>
+        <span className="tn-layer-caret" data-open={isOpen}>
           ›
         </span>
       </button>
-      {open && (
+      {isOpen && (
         <div className="tn-signals-body">
           <TimeWindowControl />
-          {groups.map((g) => (
-            <div key={g.group} className="tn-rail-section">
-              <div className="tn-subhead">{g.group}</div>
-              {g.sources.map((s) => (
-                <SignalRow key={s.id} id={s.id} />
-              ))}
-            </div>
-          ))}
+          {groups.map((g) => {
+            const sources = g.sources.filter((s) => match(s.label));
+            if (sources.length === 0) return null;
+            return (
+              <div key={g.group} className="tn-rail-section">
+                <div className="tn-subhead tn-subhead-row">
+                  <span>{g.group}</span>
+                  <WidgetToggle
+                    on={widgetedIds.has(rollupKey(g.group))}
+                    label={`${g.group} roll-up`}
+                    onClick={() => toggleTileDock(activeId, rollupKey(g.group))}
+                  />
+                </div>
+                {sources.map((s) => (
+                  <SignalRow
+                    key={s.id}
+                    id={s.id}
+                    label={s.label}
+                    color={s.color}
+                    attribution={s.attribution}
+                    refreshMs={s.refreshMs}
+                    widgeted={widgetedIds.has(sourceKey(s.id))}
+                    activeId={activeId}
+                  />
+                ))}
+              </div>
+            );
+          })}
           <p className="tn-rail-foot">
             Opt-in intelligence layers — hazards, conflict, cyber, maritime, human cost &amp; the
             Country Instability Index. Fetched only while on; most are keyless, a few unlock with a
@@ -287,10 +351,21 @@ function GlobalSignals() {
   );
 }
 
-export default function LayerRail() {
+export default function SourceCatalog() {
   const [railOpen, setRailOpen] = useState(true);
+  const [query, setQuery] = useState("");
   const m = useMetrics();
   const t = useT();
+  const { activeId } = useVariant();
+  const layout = useLayout(activeId);
+
+  const widgetedIds = new Set(layout.filter((p) => p.visible).map((p) => p.panel));
+  const widgetCount = layout.filter(
+    (p) => p.visible && (p.panel.startsWith("source:") || p.panel.startsWith("rollup:")),
+  ).length;
+
+  const q = query.trim().toLowerCase();
+  const match = (label: string): boolean => q === "" || label.toLowerCase().includes(q);
 
   const count = (k: LayerKey): number | null => {
     if (k === "cameras") return m.camerasTotal || null;
@@ -302,21 +377,36 @@ export default function LayerRail() {
 
   if (!railOpen) {
     return (
-      <button type="button" className="tn-rail-fab" onClick={() => setRailOpen(true)} title="Show layers">
+      <button type="button" className="tn-rail-fab" onClick={() => setRailOpen(true)} title="Show sources">
         <span className="tn-rail-fab-bars" aria-hidden>≡</span>
-        {t("railLayers")}
+        Sources
       </button>
     );
   }
 
+  const visibleActive = ACTIVE_LAYERS.filter((k) => match(LAYER_META[k].name));
+  const visiblePlanned = q === "" ? PLANNED_LAYERS : PLANNED_LAYERS.filter((k) => match(LAYER_META[k].name));
+
   return (
-    <aside className="tn-rail" aria-label={t("railLayers")}>
+    <aside className="tn-rail" aria-label="Sources">
       <div className="tn-rail-header">
-        <span className="tn-rail-title">{t("railLayers")}</span>
-        <button type="button" className="tn-rail-collapse" onClick={() => setRailOpen(false)} aria-label="Collapse layers">
+        <span className="tn-rail-title">Sources</span>
+        <span className="tn-cat-count" title="Sources docked as widgets">
+          {widgetCount} ▦
+        </span>
+        <button type="button" className="tn-rail-collapse" onClick={() => setRailOpen(false)} aria-label="Collapse sources">
           ‹
         </button>
       </div>
+
+      <input
+        type="search"
+        className="tn-cat-search"
+        placeholder="Search sources…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label="Search sources"
+      />
 
       <MonitorBar />
 
@@ -329,22 +419,32 @@ export default function LayerRail() {
       </div>
 
       <div className="tn-rail-section">
-        {ACTIVE_LAYERS.map((k) => (
-          <LayerRow key={k} layerKey={k} count={count(k)} expandable={k === "cameras"} />
+        {visibleActive.map((k) => (
+          <LayerRow
+            key={k}
+            layerKey={k}
+            count={count(k)}
+            expandable={k === "cameras"}
+            widgeted={widgetedIds.has(sourceKey(k))}
+            activeId={activeId}
+          />
         ))}
       </div>
 
+      {visiblePlanned.length > 0 ? (
+        <>
+          <div className="tn-rail-divider" />
+          <div className="tn-rail-section">
+            {visiblePlanned.map((k) => (
+              <LayerRow key={k} layerKey={k} count={null} widgeted={false} activeId={activeId} />
+            ))}
+          </div>
+        </>
+      ) : null}
+
       <div className="tn-rail-divider" />
 
-      <div className="tn-rail-section">
-        {PLANNED_LAYERS.map((k) => (
-          <LayerRow key={k} layerKey={k} count={null} />
-        ))}
-      </div>
-
-      <div className="tn-rail-divider" />
-
-      <GlobalSignals />
+      <GlobalSignals match={match} forceOpen={q !== ""} activeId={activeId} widgetedIds={widgetedIds} />
 
       <div className="tn-rail-divider" />
 
@@ -360,7 +460,7 @@ export default function LayerRail() {
         ★ {t("sectionSaved")}
       </button>
 
-      <p className="tn-rail-foot">Only layers you can see are fetched. Everything here is a real, live, attributable feed.</p>
+      <p className="tn-rail-foot">Only sources you can see are fetched. ▦ docks any source as a live widget.</p>
     </aside>
   );
 }
