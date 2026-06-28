@@ -1145,3 +1145,10 @@ a { color: var(--tn-accent); }
 .tn-w-kind{flex:none;font-size:11px;color:var(--tn-text-muted);font-weight:500}
 .tn-w-place{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tn-text)}
 .tn-w-mag{flex:none;font-family:var(--tn-mono);font-size:11px;color:var(--tn-text-muted)}
+
+/* ===========================================================================
+   Widget body — camera grid (Task 11 Cameras widget)
+   =========================================================================== */
+.tn-cam-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;padding:6px}
+.tn-cam-cell{display:flex;flex-direction:column;gap:3px;background:var(--tn-surface-2);border:1px solid var(--tn-border);border-radius:8px;overflow:hidden}
+.tn-cam-label{font-size:10px;color:var(--tn-text-muted);padding:3px 6px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
