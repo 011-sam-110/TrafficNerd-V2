@@ -38,6 +38,7 @@ import { useSignals, signalCountsStore } from "@/lib/signals/store";
 import { signalFreshnessStore } from "@/lib/signals/freshness";
 import type { SignalFeature, SignalSource } from "@/lib/signals/types";
 import { useTimeWindow, windowMsFor, withinWindow } from "@/lib/shell/timeWindow";
+import { viewModeStore } from "@/lib/shell/viewMode";
 import { useNow } from "@/lib/shell/useNow";
 import {
   readInitialViewState,
@@ -304,9 +305,10 @@ export default function WorldMap() {
   // safely on the first load AND after each basemap swap (setStyle wipes them).
   const addAppLayers = useCallback(
     async (map: maplibregl.Map) => {
-      // Force globe projection (a freshly-set style may reset to mercator).
+      // Projection follows the view mode: flat (console, default) vs globe (Explore).
+      const wantProjection = viewModeStore.get() === "explore" ? "globe" : "mercator";
       try {
-        map.setProjection({ type: "globe" });
+        map.setProjection({ type: wantProjection });
       } catch {
         /* older styles ignore this */
       }
@@ -983,6 +985,16 @@ export default function WorldMap() {
     mapViewStore.registerFlyToPoint(flyToPoint);
     return () => mapViewStore.registerFlyToPoint(null);
   }, [flyToPoint]);
+
+  // Re-project live when the user toggles Console ⇄ Explore.
+  useEffect(() => {
+    return viewModeStore.subscribe(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      const want = viewModeStore.get() === "explore" ? "globe" : "mercator";
+      if (map.getProjection?.()?.type !== want) map.setProjection({ type: want });
+    });
+  }, []);
 
   // Cinematic dive (SP6): a pitched flyTo to a single camera; on arrival, promote
   // the dive store to "landed" so <CinematicDive> materialises the hero feed.
