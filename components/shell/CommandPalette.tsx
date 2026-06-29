@@ -7,13 +7,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { layersStore, LAYER_PRESETS, ACTIVE_LAYERS, type LayerKey } from "@/lib/layers";
 import { mapViewStore } from "@/lib/mapView";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
-import { coverageStore } from "@/lib/shell/coverage";
-import { marketsStore } from "@/lib/shell/markets";
-import { workspaceStore } from "@/lib/shell/workspace";
 import { CAMERA_REGIONS } from "@/lib/icons/svg";
 import { cinematic } from "@/lib/cinematic/store";
 import { pickLiveCamera } from "@/lib/cinematic/livePick";
 import { loadedCamerasStore } from "@/lib/cameras/loaded";
+import "@/lib/console/widgets";
+import { widgetsByCategory } from "@/lib/console/registry";
+import { shellLayoutStore } from "@/lib/console/store";
+import type { StageId } from "@/lib/console/types";
+import { listPresets, applyPreset, saveCustomPreset } from "@/lib/console/presets";
+import { encodeLayout } from "@/lib/console/share";
 
 interface Command {
   id: string;
@@ -30,6 +33,10 @@ const LAYER_NAMES: Record<LayerKey, string> = {
   webcams: "Webcams",
   weather: "Weather",
 };
+
+function alertCapacity() {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("tn-toast", { detail: "50-widget limit — remove one to add another" }));
+}
 
 function buildCommands(close: () => void): Command[] {
   const cmds: Command[] = [];
@@ -85,38 +92,6 @@ function buildCommands(close: () => void): Command[] {
   }
 
   cmds.push({
-    id: "coverage",
-    label: "Coverage details",
-    hint: "info",
-    run: () => {
-      coverageStore.open();
-      close();
-    },
-  });
-
-  cmds.push({
-    id: "markets",
-    label: "Markets — crypto prices",
-    hint: "panel",
-    run: () => {
-      marketsStore.open();
-      close();
-    },
-  });
-
-  cmds.push({
-    id: "toggle-workspace",
-    label: "Toggle workspace dock",
-    hint: "layout",
-    run: () => {
-      const ws = workspaceStore.get();
-      if (ws.open) workspaceStore.closeWorkspace();
-      else workspaceStore.openWorkspace();
-      close();
-    },
-  });
-
-  cmds.push({
     id: "dive-live",
     label: "Dive to a live feed",
     hint: "live",
@@ -135,6 +110,25 @@ function buildCommands(close: () => void): Command[] {
       close();
     },
   });
+
+  for (const group of widgetsByCategory()) {
+    for (const t of group.types) {
+      const openCount = shellLayoutStore.get().widgets.filter((w) => w.type === t.id).length;
+      cmds.push({
+        id: `add-${t.id}`,
+        label: `Add ${t.title}${openCount ? ` (${openCount} open)` : ""}`,
+        hint: group.category.toLowerCase(),
+        run: () => { const r = shellLayoutStore.add(t.id, { config: { ...t.defaultConfig }, height: t.defaultHeight }); if (!r.ok) alertCapacity(); close(); },
+      });
+    }
+  }
+
+  const STAGES: { id: StageId; label: string }[] = [{ id: "map3d", label: "3D map" }, { id: "map2d", label: "2D map" }, { id: "clock", label: "World clock" }];
+  for (const s of STAGES) cmds.push({ id: `stage-${s.id}`, label: `Stage → ${s.label}`, hint: "stage", run: () => { shellLayoutStore.stage(s.id); close(); } });
+
+  for (const p of listPresets()) cmds.push({ id: `cpreset-${p.id}`, label: `Preset: ${p.title}`, hint: "preset", run: () => { applyPreset(p.id); close(); } });
+  cmds.push({ id: "save-preset", label: "Save layout as preset…", hint: "preset", run: () => { const t = window.prompt("Preset name?"); if (t) saveCustomPreset(t); close(); } });
+  cmds.push({ id: "share-layout", label: "Copy shareable link", hint: "share", run: () => { const url = `${location.origin}${location.pathname}?c=${encodeLayout(shellLayoutStore.get())}`; navigator.clipboard?.writeText(url); close(); } });
 
   return cmds;
 }

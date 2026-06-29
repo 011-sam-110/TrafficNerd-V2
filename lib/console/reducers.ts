@@ -1,0 +1,79 @@
+import type { ShellLayout, WidgetInstance, SegmentId, StageId } from "@/lib/console/types";
+import { MAX_WIDGETS } from "@/lib/console/types";
+
+const SEGMENTS: SegmentId[] = ["left", "right", "bottom"];
+const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+
+export function widgetsInSegment(l: ShellLayout, seg: SegmentId): WidgetInstance[] {
+  return l.widgets.filter((w) => w.segment === seg).sort((a, b) => a.order - b.order);
+}
+export function isAtCapacity(l: ShellLayout): boolean {
+  return l.widgets.length >= MAX_WIDGETS;
+}
+
+function emptiestSegment(l: ShellLayout): SegmentId {
+  let best: SegmentId = "left";
+  let min = Infinity;
+  for (const s of SEGMENTS) {
+    const n = l.widgets.filter((w) => w.segment === s).length;
+    if (n < min) { min = n; best = s; }
+  }
+  return best;
+}
+
+export function addWidget(
+  l: ShellLayout, type: string, instanceId: string,
+  opts: { segment?: SegmentId; config?: Record<string, unknown>; height?: number } = {},
+): ShellLayout {
+  if (isAtCapacity(l)) return l;
+  const segment = opts.segment ?? emptiestSegment(l);
+  const order = l.widgets.filter((w) => w.segment === segment).length;
+  const inst: WidgetInstance = {
+    id: instanceId, type, segment, order,
+    height: opts.height ?? 260, collapsed: false, config: opts.config ?? {},
+  };
+  return { ...l, widgets: [...l.widgets, inst] };
+}
+
+export function removeWidget(l: ShellLayout, id: string): ShellLayout {
+  const removed = l.widgets.find((w) => w.id === id);
+  if (!removed) return l;
+  const kept = l.widgets.filter((w) => w.id !== id);
+  const segSorted = kept.filter((w) => w.segment === removed.segment).sort((a, b) => a.order - b.order);
+  const orderMap = new Map(segSorted.map((w, i) => [w.id, i] as const));
+  return { ...l, widgets: kept.map((w) => (orderMap.has(w.id) ? { ...w, order: orderMap.get(w.id)! } : w)) };
+}
+
+export function moveWidget(l: ShellLayout, id: string, toSegment: SegmentId, toIndex: number): ShellLayout {
+  const moving = l.widgets.find((w) => w.id === id);
+  if (!moving) return l;
+  const from = widgetsInSegment(l, moving.segment).filter((w) => w.id !== id);
+  const to = toSegment === moving.segment ? from : widgetsInSegment(l, toSegment);
+  const idx = clamp(toIndex, 0, to.length);
+  const nextTo = [...to.slice(0, idx), { ...moving, segment: toSegment }, ...to.slice(idx)];
+  const reindex = (arr: WidgetInstance[], seg: SegmentId) => arr.map((w, i) => ({ ...w, segment: seg, order: i }));
+  const untouched = l.widgets.filter((w) => w.segment !== moving.segment && w.segment !== toSegment);
+  const rebuilt = toSegment === moving.segment
+    ? reindex(nextTo, toSegment)
+    : [...reindex(from, moving.segment), ...reindex(nextTo, toSegment)];
+  return { ...l, widgets: [...untouched, ...rebuilt] };
+}
+
+export function setWidgetHeight(l: ShellLayout, id: string, height: number): ShellLayout {
+  return { ...l, widgets: l.widgets.map((w) => w.id === id ? { ...w, height: clamp(height, 120, 1200) } : w) };
+}
+export function setWidgetCollapsed(l: ShellLayout, id: string, collapsed: boolean): ShellLayout {
+  return { ...l, widgets: l.widgets.map((w) => w.id === id ? { ...w, collapsed } : w) };
+}
+export function setWidgetConfig(l: ShellLayout, id: string, patch: Record<string, unknown>): ShellLayout {
+  return { ...l, widgets: l.widgets.map((w) => w.id === id ? { ...w, config: { ...w.config, ...patch } } : w) };
+}
+export function setSegmentSize(l: ShellLayout, seg: SegmentId, size: number): ShellLayout {
+  return { ...l, segments: { ...l.segments, [seg]: { ...l.segments[seg], size: clamp(size, 0, 900) } } };
+}
+export function setSegmentCollapsed(l: ShellLayout, seg: SegmentId, collapsed: boolean): ShellLayout {
+  return { ...l, segments: { ...l.segments, [seg]: { ...l.segments[seg], collapsed } } };
+}
+export function setStage(l: ShellLayout, stage: StageId): ShellLayout {
+  return { ...l, stage };
+}

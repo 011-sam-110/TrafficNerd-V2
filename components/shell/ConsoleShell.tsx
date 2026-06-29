@@ -1,8 +1,10 @@
 "use client";
-// The calm light console shell. Wraps the full-bleed WorldMap (children) with the
-// thin chrome that recedes around it: a thin top status bar + variant switcher,
-// the variant-driven PanelHost, the ⌘K palette, and the right slide-in dossiers.
-// Owns the global ⌘K shortcut and the one-time client hydration of the persisted stores.
+// The calm light console shell. Hosts the widget workspace (3 resizable segments
+// around a fixed centre stage) with the thin chrome that recedes around it: a thin
+// top status bar, the ⌘K palette, the breaking banner, and the cinematic/feed
+// overlays. Owns the global ⌘K shortcut, the one-time client hydration of the
+// persisted stores (including the console layout + ?c= shared-layout / first-run
+// seed), and the global capacity toast.
 
 import { useEffect, useState } from "react";
 import { uiStore } from "@/lib/shell/ui";
@@ -12,23 +14,22 @@ import { watchlistStore } from "@/lib/shell/watchlist";
 import { timeWindowStore } from "@/lib/shell/timeWindow";
 import { registerServiceWorker } from "@/lib/pwa/register";
 import { variantStore } from "@/lib/variants/store";
-import { useWorkspace } from "@/lib/shell/workspace";
 import StatusBar from "@/components/shell/StatusBar";
 import CommandPalette from "@/components/shell/CommandPalette";
-import PlaceSearch from "@/components/shell/PlaceSearch";
-import CoveragePanel from "@/components/shell/CoveragePanel";
-import MarketsPanel from "@/components/shell/MarketsPanel";
-import WatchlistPanel from "@/components/shell/WatchlistPanel";
 import BreakingBanner from "@/components/shell/BreakingBanner";
 import { FeedOverlay } from "@/components/FeedOverlay";
 import { CinematicDive } from "@/components/CinematicDive";
-import PanelHost from "@/components/shell/PanelHost";
-import DockableWorkspace from "@/components/shell/DockableWorkspace";
-import IntelColumn from "@/components/shell/IntelColumn";
+import { scopeStore } from "@/lib/shell/scope";
+import { viewModeStore } from "@/lib/shell/viewMode";
+import ConsoleWorkspace from "@/components/console/ConsoleWorkspace";
+import { shellLayoutStore } from "@/lib/console/store";
+import { applyPreset } from "@/lib/console/presets";
+import { decodeLayout } from "@/lib/console/share";
+import "@/lib/console/widgets";
 
-export default function ConsoleShell({ children }: { children: React.ReactNode }) {
+export default function ConsoleShell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const ws = useWorkspace();
+  const [toast, setToast] = useState<string | null>(null);
 
   // Re-hydrate persisted view state once, client-side (render defaults on the
   // server, reconcile after mount → no hydration mismatch).
@@ -41,6 +42,12 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
     timeWindowStore.hydrate();
     alertStore.hydrate();
     langStore.hydrate();
+    scopeStore.hydrate();
+    viewModeStore.hydrate();
+    shellLayoutStore.hydrate();
+    const c = new URLSearchParams(window.location.search).get("c");
+    if (c) { const l = decodeLayout(c); if (l) shellLayoutStore.replace(l); }
+    else if (shellLayoutStore.get().widgets.length === 0) applyPreset("world"); // first-run seed
     registerServiceWorker(); // production-only; a no-op under `next dev`
   }, []);
 
@@ -56,22 +63,30 @@ export default function ConsoleShell({ children }: { children: React.ReactNode }
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // The ⌘K palette dispatches a `tn-toast` CustomEvent (e.g. the 50-widget cap).
+  // This always-mounted shell is the host that surfaces it as a calm pill.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onToast = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (typeof detail !== "string") return;
+      setToast(detail);
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setToast(null), 3200);
+    };
+    window.addEventListener("tn-toast", onToast as EventListener);
+    return () => { window.removeEventListener("tn-toast", onToast as EventListener); if (timer) clearTimeout(timer); };
+  }, []);
+
   return (
     <div className="tn-shell">
-      {children}
       <StatusBar onOpenPalette={() => setPaletteOpen(true)} />
       <BreakingBanner />
-      <PlaceSearch />
-      <PanelHost />
+      <ConsoleWorkspace />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      {/* Dockable slide-ins are suppressed while the workspace dock owns them. */}
-      {!ws.open && <CoveragePanel />}
-      {!ws.open && <MarketsPanel />}
-      {!ws.open && <WatchlistPanel />}
-      <DockableWorkspace />
-      <IntelColumn />
       <FeedOverlay />
       <CinematicDive />
+      {toast && <div className="tn-toast" role="status" aria-live="polite">{toast}</div>}
     </div>
   );
 }
