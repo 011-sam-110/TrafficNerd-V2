@@ -60,6 +60,7 @@ const LAYER_META: Record<LayerKey, LayerMeta> = {
   ships: { name: "Ships", group: "Sea", accent: "#0d9488", source: "AIS vessels", planned: true },
   webcams: { name: "Webcams", group: "Ground", accent: "#ec4899", source: "Windy.com — global webcams", fresh: "webcams" },
   weather: { name: "Weather", group: "Sky", accent: "#0284c7", source: "Radar & events", planned: true },
+  countries: { name: "Borders & names", group: "Reference", accent: "#94a3b8", source: "Natural Earth — clickable countries" },
 };
 
 function Toggle({ on, accent, onClick, label }: { on: boolean; accent: string; onClick: () => void; label: string }) {
@@ -215,6 +216,29 @@ function LayerRow({
       <WidgetToggle on={widgeted} label={meta.name} onClick={() => toggleTileDock(activeId, sourceKey(layerKey))} />
       <Toggle on={on} accent={meta.accent} label={`Toggle ${meta.name}`} onClick={() => layersStore.toggle(layerKey)} />
       {expandable && open && on ? <CameraFilters /> : null}
+    </div>
+  );
+}
+
+// The clickable-countries reference layer — borders + names + a click target.
+// Not a data feed, so it gets a plain toggle (no live count, no widget dock).
+function CountriesRow() {
+  const layers = useLayers();
+  const meta = LAYER_META.countries;
+  const on = layers.countries;
+  return (
+    <div className="tn-layer-row" style={{ opacity: on ? 1 : 0.55 }}>
+      <div className="tn-layer-head" style={{ cursor: "default" }}>
+        <span
+          className="tn-layer-dot"
+          style={{ background: meta.accent, boxShadow: on ? `0 0 7px ${meta.accent}88` : "none" }}
+        />
+        <div className="tn-layer-main">
+          <span className="tn-layer-name">{meta.name}</span>
+          <span className="tn-layer-source">{meta.source}</span>
+        </div>
+      </div>
+      <Toggle on={on} accent={meta.accent} label={`Toggle ${meta.name}`} onClick={() => layersStore.toggle("countries")} />
     </div>
   );
 }
@@ -438,6 +462,15 @@ export default function SourceCatalog() {
             {visiblePlanned.map((k) => (
               <LayerRow key={k} layerKey={k} count={null} widgeted={false} activeId={activeId} />
             ))}
+          </div>
+        </>
+      ) : null}
+
+      {match(LAYER_META.countries.name) ? (
+        <>
+          <div className="tn-rail-divider" />
+          <div className="tn-rail-section">
+            <CountriesRow />
           </div>
         </>
       ) : null}

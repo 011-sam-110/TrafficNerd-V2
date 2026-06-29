@@ -8,7 +8,7 @@
 import type { WorldObject } from "@/lib/world";
 import type { PlaneTrail } from "@/lib/planes/usePlanes";
 import type { SignalGeometry } from "@/lib/signals/types";
-import { cameraRegionColor } from "@/lib/icons/svg";
+import { cameraRegionColor, signalIconKey } from "@/lib/icons/svg";
 
 const KNOWN_REGIONS = ["tfl", "caltrans", "scdot", "digitraffic", "castlerock", "tripcheck", "drivebc"];
 
@@ -131,10 +131,13 @@ export function toSignalFC(signals: WorldObject[]): GeoJSON.FeatureCollection {
         const mag = Number(props.magnitude);
         // magnitude (≈0–10) scales the marker; everything else gets a calm fixed dot.
         const radius = Number.isFinite(mag) ? Math.max(4, Math.min(26, 4 + mag * 1.6)) : 7;
+        // Per-hazard pictogram drawn white on the disc — keyed by the source id
+        // (GDACS resolves per-feature from its hazard). See signalIconKey.
+        const icon = signalIconKey((s.meta?.signalId as string) ?? "", props);
         return {
           type: "Feature" as const,
           geometry: { type: "Point" as const, coordinates: [s.lon, s.lat] },
-          properties: { ...signalProps(s), radius },
+          properties: { ...signalProps(s), radius, icon },
         };
       }),
   };

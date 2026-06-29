@@ -92,8 +92,10 @@ export const BASEMAPS: Record<BasemapKey, BasemapDef> = {
   },
 };
 
-// Calm LIGHT by default — CARTO Positron is the redesign's globe-as-hero identity
-// (the dark neon dashboard is the mocked anti-pattern). The photographic Esri
-// "Satellite" imagery stays one tap away in the basemap switcher for the deep-zoom
-// payoff. [coordinator-notes §5, DECISION 2]
-export const DEFAULT_BASEMAP: BasemapKey = "positron";
+// Photographic SATELLITE by default — the Esri World Imagery globe is the hero
+// view (with our own country borders + names layered on top so the imagery still
+// reads geographically). The calm "Light" Positron vector basemap and the
+// "Topographic" relief stay one tap away in the basemap switcher. Basemap is not
+// persisted (see lib/mapView.ts), so every fresh visit opens here; a deep-link
+// `?base=light` still overrides.
+export const DEFAULT_BASEMAP: BasemapKey = "satellite";

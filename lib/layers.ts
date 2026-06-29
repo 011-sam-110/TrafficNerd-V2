@@ -13,7 +13,7 @@ import { loadPersisted, savePersisted } from "@/lib/shell/persist";
 
 // Active layers have a live data source today; planned layers render as disabled
 // "coming soon" rows in the rail (leaving room without shipping a dead toggle).
-export type LayerKey = "cameras" | "satellites" | "planes" | "ships" | "webcams" | "weather";
+export type LayerKey = "cameras" | "satellites" | "planes" | "ships" | "webcams" | "weather" | "countries";
 export type LayerState = Record<LayerKey, boolean>;
 
 export const ACTIVE_LAYERS: readonly LayerKey[] = ["cameras", "planes", "satellites", "webcams"];
@@ -26,6 +26,11 @@ export const DEFAULT_STATE: LayerState = {
   ships: false,
   webcams: false,
   weather: false,
+  // A base reference layer (borders + names + click), not a data feed — on by
+  // default and intentionally left out of ACTIVE/PLANNED + the quick presets so a
+  // preset switch never strips the map's geography. Names only show on the raster
+  // basemaps (Satellite/Topo); the Light basemap already labels itself.
+  countries: true,
 };
 
 const PERSIST_KEY = "tn.layers.v1";

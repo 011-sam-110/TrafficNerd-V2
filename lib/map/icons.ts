@@ -13,6 +13,7 @@ import {
   CAMERA_OFFLINE_COLOR,
   PLANE_META,
   SAT_META,
+  SIGNAL_ICON_KEYS,
   WEBCAM_COLOR,
 } from "@/lib/icons/svg";
 
@@ -102,6 +103,21 @@ export async function loadSatelliteIcons(map: maplibregl.Map): Promise<void> {
       if (map.hasImage(meta.key)) return;
       const img = await rasterizeIcon(ICON_SVG[meta.key].replaceAll("currentColor", meta.color));
       if (!map.hasImage(meta.key)) map.addImage(meta.key, img, { pixelRatio: 2 });
+    }),
+  );
+}
+
+/**
+ * Register every event/signal pictogram as a WHITE sprite. The colour-coded disc
+ * (the circle layer) carries the hue + magnitude; the white pictogram on top names
+ * the hazard. One image per icon (no per-source colour variants) keeps it cheap.
+ */
+export async function loadSignalIcons(map: maplibregl.Map): Promise<void> {
+  await Promise.all(
+    SIGNAL_ICON_KEYS.map(async (key) => {
+      if (map.hasImage(key)) return;
+      const img = await rasterizeIcon(ICON_SVG[key].replaceAll("currentColor", "#ffffff"));
+      if (!map.hasImage(key)) map.addImage(key, img, { pixelRatio: 2 });
     }),
   );
 }

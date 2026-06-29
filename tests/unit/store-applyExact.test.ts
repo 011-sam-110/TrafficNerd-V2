@@ -4,7 +4,7 @@ import { signalsStore } from "@/lib/signals/store";
 
 describe("applyExact", () => {
   it("layersStore.applyExact replaces the on-set over defaults", () => {
-    layersStore.applyExact({ cameras: false, planes: true, satellites: true, ships: false, webcams: false, weather: false });
+    layersStore.applyExact({ cameras: false, planes: true, satellites: true, ships: false, webcams: false, weather: false, countries: true });
     expect(layersStore.get().planes).toBe(true);
     expect(layersStore.get().cameras).toBe(false);
   });
