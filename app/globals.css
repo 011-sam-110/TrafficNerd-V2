@@ -95,7 +95,7 @@ a { color: var(--tn-accent); }
   border-bottom: 1px solid var(--tn-border);
   color: var(--tn-text);
 }
-.tn-topbar-left { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.tn-topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .tn-wordmark { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
 .tn-wordmark-accent { color: var(--tn-accent); }
 .tn-tagline { font-size: 11.5px; color: var(--tn-text-faint); white-space: nowrap; }
@@ -139,6 +139,32 @@ a { color: var(--tn-accent); }
 
 @media (max-width: 860px) { .tn-tagline { display: none; } }
 @media (max-width: 720px) { .tn-basemap { display: none; } }
+
+/* ── Compact live-data pulse (replaces the three tall Metric blocks) ────────── */
+.tn-top-pulse {
+  display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+}
+.tn-top-pulse-item {
+  display: inline-flex; align-items: baseline; gap: 3px;
+  font-size: 13px; font-weight: 650; color: var(--tn-text);
+}
+.tn-top-pulse-lbl {
+  font-size: 10px; font-weight: 500; color: var(--tn-text-faint);
+  text-decoration: none; letter-spacing: 0.04em;
+}
+.tn-top-pulse-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--tn-border-strong); flex-shrink: 0; }
+.tn-top-health-badge { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-left: 2px; display: inline-block; }
+.tn-top-health-live { background: var(--tn-live); box-shadow: 0 0 5px var(--tn-live); }
+.tn-top-health-degraded { background: var(--tn-lagging); }
+.tn-top-health-down { background: var(--tn-down); }
+.tn-top-health-connecting { background: var(--tn-text-faint); }
+@media (max-width: 768px) { .tn-top-pulse { display: none; } }
+
+/* ── Hairline divider between view-control group and utility actions ─────────── */
+.tn-top-sep {
+  display: inline-block; width: 1px; height: 18px;
+  background: var(--tn-border-strong); margin: 0 2px; flex-shrink: 0;
+}
 
 /* ===================== Left layer rail ===================== */
 .tn-rail {
