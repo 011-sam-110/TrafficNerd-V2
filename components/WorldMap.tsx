@@ -30,7 +30,8 @@ import { cameraFeed } from "@/lib/cameras/classify";
 import { CAMERA_FEED_META, cameraRegionColor, WEBCAM_COLOR } from "@/lib/icons/svg";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { toCameraFC, toPlaneFC, toTrailFC, toSatelliteFC, toWebcamFC, toSignalFC, toSignalLineFC, toSignalFillFC } from "@/lib/map/features";
-import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons, loadWebcamIcons } from "@/lib/map/icons";
+import { toCountryLabelFC, buildCountryObject, type CountryProps } from "@/lib/geo/country";
+import { loadCameraIcons, loadPlaneIcons, loadSatelliteIcons, loadWebcamIcons, loadSignalIcons } from "@/lib/map/icons";
 import { CAMERA_CLUSTER, WEBCAM_CLUSTER, expandCluster } from "@/lib/map/cluster";
 import { createThumbnailManager } from "@/lib/map/liveThumbnails";
 import { SIGNALS } from "@/lib/signals/registry";
@@ -86,12 +87,35 @@ const HILLSHADE_LAYER = "hillshade";
 // them), and a click on ANY of them resolves to the SAME signal dossier.
 const SIGNAL_SRC = "signals";
 const SIGNAL_LAYER = "signal-dots";
+const SIGNAL_ICON_LAYER = "signal-icons"; // white hazard pictogram drawn over the disc
 const SIGNAL_LABEL = "signal-labels";
 const SIGNAL_LINE_SRC = "signal-lines";
 const SIGNAL_LINE_LAYER = "signal-line-paths";
 const SIGNAL_FILL_SRC = "signal-fills";
 const SIGNAL_FILL_LAYER = "signal-fill-areas";
 const SIGNAL_FILL_OUTLINE = "signal-fill-outline";
+// Clickable countries — bundled Natural Earth polygons (borders + click hit-area)
+// plus our own centroid name labels (raster basemaps only; Light labels itself).
+const COUNTRY_SRC = "country-polys";
+const COUNTRY_FILL_LAYER = "country-fill"; // ~transparent hit-area, brightens on hover
+const COUNTRY_BORDER_LAYER = "country-borders";
+const COUNTRY_LABEL_SRC = "country-label-pts";
+const COUNTRY_LABEL_LAYER = "country-labels";
+
+const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
+
+// The Light (Positron) vector basemap ships its own country names; the Satellite
+// and Topographic rasters don't. Our name labels show only on the rasters.
+const isRasterBasemap = (b: BasemapKey): boolean => b !== "positron";
+
+// Pin/signal layers a country click must defer to (a click on a pin should open
+// the pin, not the country beneath it). Filtered to existing layers at call time.
+const COUNTRY_CLICK_GUARD_LAYERS = [
+  "camera-markers", "camera-dots", "camera-clusters",
+  "webcam-markers", "webcam-dots", "webcam-clusters",
+  "plane-markers", "satellite-core",
+  "signal-dots", "signal-icons", "signal-line-paths", "signal-fill-areas",
+];
 
 // Start zoomed out so the spinning globe is the hero. The palette / rail fly inward.
 const HOME = { center: [-30, 28] as [number, number], zoom: 1.4 };
@@ -129,6 +153,9 @@ export default function WorldMap() {
   // its slot here — so a hidden signal contributes nothing and never fetches.
   const [signals, setSignals] = useState<WorldObject[]>([]);
   const signalChunksRef = useRef<Record<string, WorldObject[]>>({});
+  // Bundled country polygons, fetched once. addAppLayers re-seeds the source from
+  // this ref after every basemap swap (setStyle wipes the source).
+  const countryGeoRef = useRef<GeoJSON.FeatureCollection | null>(null);
 
   const view = useMapView();
   const basemap = view.basemap;
@@ -275,6 +302,10 @@ export default function WorldMap() {
     set(WEBCAM_CLUSTER_COUNT, l.webcams);
     set(TRAIL_LAYER, l.planes);
     set(PLANE_LAYER, l.planes);
+    // Countries: borders + click everywhere; name labels only on the raster basemaps.
+    set(COUNTRY_FILL_LAYER, l.countries);
+    set(COUNTRY_BORDER_LAYER, l.countries);
+    set(COUNTRY_LABEL_LAYER, l.countries && isRasterBasemap(mapViewStore.get().basemap));
   }, []);
 
   const ensureGeoJSON = useCallback(
@@ -345,6 +376,7 @@ export default function WorldMap() {
         loadPlaneIcons(map),
         loadSatelliteIcons(map),
         loadWebcamIcons(map),
+        loadSignalIcons(map),
       ]);
 
       // Sources, seeded from the latest refs. Cameras + webcams cluster (kills
@@ -357,6 +389,75 @@ export default function WorldMap() {
       ensureGeoJSON(map, SIGNAL_FILL_SRC, toSignalFillFC(signalsRef.current));
       ensureGeoJSON(map, SIGNAL_LINE_SRC, toSignalLineFC(signalsRef.current));
       ensureGeoJSON(map, SIGNAL_SRC, toSignalFC(signalsRef.current));
+
+      // Clickable countries — added FIRST so borders/labels sit beneath every pin.
+      // generateId powers the hover feature-state; the polygons stream in via the
+      // fetch in the init effect (empty until then). Name labels: raster basemaps only.
+      const countryRaster = isRasterBasemap(mapViewStore.get().basemap);
+      if (!map.getSource(COUNTRY_SRC)) {
+        map.addSource(COUNTRY_SRC, {
+          type: "geojson",
+          data: countryGeoRef.current ?? EMPTY_FC,
+          generateId: true,
+        });
+      } else {
+        (map.getSource(COUNTRY_SRC) as GeoJSONSource).setData(countryGeoRef.current ?? EMPTY_FC);
+      }
+      ensureGeoJSON(map, COUNTRY_LABEL_SRC, toCountryLabelFC());
+
+      if (!map.getLayer(COUNTRY_FILL_LAYER)) {
+        map.addLayer({
+          id: COUNTRY_FILL_LAYER,
+          type: "fill",
+          source: COUNTRY_SRC,
+          layout: { visibility: vis(layersRef.current.countries) },
+          paint: {
+            "fill-color": "#ffffff",
+            // Invisible until hovered, then a faint wash so the country reads as one
+            // clickable unit over the photographic imagery.
+            "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 0.12, 0],
+          },
+        });
+      }
+      if (!map.getLayer(COUNTRY_BORDER_LAYER)) {
+        map.addLayer({
+          id: COUNTRY_BORDER_LAYER,
+          type: "line",
+          source: COUNTRY_SRC,
+          layout: { "line-join": "round", visibility: vis(layersRef.current.countries) },
+          paint: {
+            // Light hairline on the dark/photographic rasters; a touch darker on the
+            // already-bordered Light basemap so it never reads as a heavy double line.
+            "line-color": countryRaster ? "#f1f5f9" : "#475569",
+            "line-opacity": countryRaster ? 0.4 : 0.32,
+            "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.4, 3, 0.7, 6, 1, 12, 1.4],
+          },
+        });
+      }
+      if (!map.getLayer(COUNTRY_LABEL_LAYER)) {
+        map.addLayer({
+          id: COUNTRY_LABEL_LAYER,
+          type: "symbol",
+          source: COUNTRY_LABEL_SRC,
+          maxzoom: 6.5, // a country name belongs to the overview, not the street level
+          layout: {
+            "text-field": ["get", "name"],
+            "text-font": ["Open Sans Regular"], // served by CARTO_GLYPHS on every basemap
+            "text-size": ["interpolate", ["linear"], ["zoom"], 1, 9, 3, 11, 5, 13],
+            "text-transform": "uppercase",
+            "text-letter-spacing": 0.08,
+            "text-max-width": 7,
+            "text-padding": 6,
+            visibility: vis(layersRef.current.countries && countryRaster),
+          },
+          paint: {
+            "text-color": "#ffffff",
+            "text-halo-color": "rgba(15,23,42,0.85)",
+            "text-halo-width": 1.4,
+            "text-opacity": 0.92,
+          },
+        });
+      }
 
       // Layers, bottom → top.
       if (!map.getLayer(TRAIL_LAYER)) {
@@ -637,6 +738,31 @@ export default function WorldMap() {
           },
         });
       }
+      // The hazard pictogram (white) sits ON the disc — the disc carries hue +
+      // magnitude, the icon names the hazard. icon-size tracks the per-feature
+      // `radius` (so a bigger quake = bigger icon) AND the zoom, mirroring the disc.
+      if (!map.getLayer(SIGNAL_ICON_LAYER)) {
+        const iconScale: maplibregl.ExpressionSpecification = [
+          "interpolate", ["linear"], ["get", "radius"],
+          4, 0.32, 7, 0.42, 26, 0.85,
+        ];
+        map.addLayer({
+          id: SIGNAL_ICON_LAYER,
+          type: "symbol",
+          source: SIGNAL_SRC,
+          layout: {
+            "icon-image": ["coalesce", ["image", ["get", "icon"]], ["image", "sig-generic"]],
+            "icon-size": [
+              "interpolate", ["linear"], ["zoom"],
+              0, ["*", iconScale, 0.75],
+              6, iconScale,
+              12, ["*", iconScale, 1.4],
+            ],
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": true,
+          },
+        });
+      }
       if (!map.getLayer(SIGNAL_LABEL)) {
         map.addLayer({
           id: SIGNAL_LABEL,
@@ -710,8 +836,38 @@ export default function WorldMap() {
       if (sig) overlay.open(sig);
     };
     map.on("click", SIGNAL_LAYER, signalClick);
+    map.on("click", SIGNAL_ICON_LAYER, signalClick);
     map.on("click", SIGNAL_LINE_LAYER, signalClick);
     map.on("click", SIGNAL_FILL_LAYER, signalClick);
+
+    // Countries — click opens the country dossier, but only when no pin/signal is
+    // under the cursor (the fill covers the whole globe, so a pin must win). Hover
+    // washes the country via feature-state. Both survive basemap swaps (the source
+    // id is resolved at event time; addAppLayers re-creates the source).
+    map.on("click", COUNTRY_FILL_LAYER, (e) => {
+      const guard = COUNTRY_CLICK_GUARD_LAYERS.filter((id) => map.getLayer(id));
+      if (guard.length && map.queryRenderedFeatures(e.point, { layers: guard }).length) return;
+      const f = e.features?.[0];
+      if (!f) return;
+      overlay.open(buildCountryObject(f.properties as CountryProps, e.lngLat.lat, e.lngLat.lng));
+    });
+    let hoveredCountry: number | string | undefined;
+    const clearCountryHover = () => {
+      if (hoveredCountry !== undefined) {
+        map.setFeatureState({ source: COUNTRY_SRC, id: hoveredCountry }, { hover: false });
+        hoveredCountry = undefined;
+      }
+    };
+    map.on("mousemove", COUNTRY_FILL_LAYER, (e) => {
+      const f = e.features?.[0];
+      if (!f || f.id == null) return;
+      if (hoveredCountry !== f.id) {
+        clearCountryHover();
+        hoveredCountry = f.id;
+        map.setFeatureState({ source: COUNTRY_SRC, id: hoveredCountry }, { hover: true });
+      }
+    });
+    map.on("mouseleave", COUNTRY_FILL_LAYER, clearCountryHover);
 
     // Click a cluster badge → ease into the zoom where it splits apart.
     const clusterClick = (sourceId: string) => (e: maplibregl.MapLayerMouseEvent) => {
@@ -726,7 +882,7 @@ export default function WorldMap() {
     const hoverLayers = [
       CAM_LAYER, CAM_DOT_LAYER, CAM_CLUSTER_LAYER,
       WEBCAM_LAYER, WEBCAM_DOT_LAYER, WEBCAM_CLUSTER_LAYER,
-      PLANE_LAYER, SAT_LAYER, SIGNAL_LAYER, SIGNAL_LINE_LAYER, SIGNAL_FILL_LAYER,
+      PLANE_LAYER, SAT_LAYER, SIGNAL_LAYER, SIGNAL_ICON_LAYER, SIGNAL_LINE_LAYER, SIGNAL_FILL_LAYER,
     ];
     for (const layer of hoverLayers) {
       map.on("mouseenter", layer, () => {
@@ -778,6 +934,18 @@ export default function WorldMap() {
     map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "bottom-right");
 
     wireInteractions(map);
+
+    // Bundled country polygons (borders + click hit-areas). Fetched once; cached in
+    // a ref so every basemap swap re-seeds the source. Optional chrome — a failure
+    // never blocks the map (the layers just stay empty).
+    fetch("/geo/countries-110m.geojson")
+      .then((r) => (r.ok ? (r.json() as Promise<GeoJSON.FeatureCollection>) : null))
+      .then((geo) => {
+        if (!geo) return;
+        countryGeoRef.current = geo;
+        (mapRef.current?.getSource(COUNTRY_SRC) as GeoJSONSource | undefined)?.setData(geo);
+      })
+      .catch(() => {});
 
     // SP6 — live thumbnail markers: a capped pool of poster thumbnails over the
     // in-viewport cameras above THUMB_MIN_ZOOM, so streams are visible at a glance.

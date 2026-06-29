@@ -13,6 +13,7 @@ import SatelliteDetail from "@/components/SatelliteDetail";
 import PlaneDetail from "@/components/PlaneDetail";
 import WebcamDetail from "@/components/WebcamDetail";
 import SignalDetail from "@/components/SignalDetail";
+import CountryDetail from "@/components/CountryDetail";
 
 export function OverlayBody({ object }: { object: WorldObject }) {
   switch (object.kind) {
@@ -26,6 +27,8 @@ export function OverlayBody({ object }: { object: WorldObject }) {
       return <WebcamDetail object={object} />;
     case "signal":
       return <SignalDetail object={object} />;
+    case "country":
+      return <CountryDetail object={object} />;
     default:
       return null;
   }

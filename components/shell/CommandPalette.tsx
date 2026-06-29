@@ -32,6 +32,7 @@ const LAYER_NAMES: Record<LayerKey, string> = {
   ships: "Ships",
   webcams: "Webcams",
   weather: "Weather",
+  countries: "Borders & names",
 };
 
 function alertCapacity() {

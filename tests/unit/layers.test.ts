@@ -10,11 +10,11 @@ test("active and planned layer sets are disjoint and complete", () => {
   expect(PLANNED_LAYERS).toEqual(["ships", "weather"]);
 });
 
-test("presets only ever switch active layers; planned stay off", () => {
-  expect(presetState("all")).toEqual({ cameras: true, planes: true, satellites: true, ships: false, webcams: false, weather: false });
-  expect(presetState("none")).toEqual({ cameras: false, planes: false, satellites: false, ships: false, webcams: false, weather: false });
-  expect(presetState("cameras")).toEqual({ cameras: true, planes: false, satellites: false, ships: false, webcams: false, weather: false });
-  expect(presetState("air-space")).toEqual({ cameras: false, planes: true, satellites: true, ships: false, webcams: false, weather: false });
+test("presets only ever switch active layers; planned stay off; countries (a base reference) stays on", () => {
+  expect(presetState("all")).toEqual({ cameras: true, planes: true, satellites: true, ships: false, webcams: false, weather: false, countries: true });
+  expect(presetState("none")).toEqual({ cameras: false, planes: false, satellites: false, ships: false, webcams: false, weather: false, countries: true });
+  expect(presetState("cameras")).toEqual({ cameras: true, planes: false, satellites: false, ships: false, webcams: false, weather: false, countries: true });
+  expect(presetState("air-space")).toEqual({ cameras: false, planes: true, satellites: true, ships: false, webcams: false, weather: false, countries: true });
 });
 
 test("applyPreset drives the live store", () => {
