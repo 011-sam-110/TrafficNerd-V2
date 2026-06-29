@@ -1,8 +1,17 @@
 "use client";
-// Thin top status bar — the calm-light reframe of the "ops console" header.
-// Wordmark + live global counts (monospaced numerics only) + a single data-health
-// badge + the basemap switcher + a ⌘K affordance + the light/dark toggle. It
-// floats over the full-bleed globe and recedes; the map stays the hero.
+// Top status bar — the global chrome that recedes while the map stays the hero.
+//
+// Layout (left → right):
+//   Brand + variant  ·  live-data pulse (fills remaining width)  ·  view controls | utilities
+//
+// View controls:  StageSwitch (3D / 2D / clock)  +  Basemap segmented (Light / Sat / Topo)
+// Utilities:      LangSwitcher  +  Share  +  ⌘K  +  theme toggle
+//
+// The disabled OS UK basemap button is removed from the DOM — it has no public
+// keyless tile source, so showing it as a dead button is misleading.
+// The tagline is removed from the DOM — decorative copy that wastes header space.
+// VariantSwitcher is kept and moved directly into the brand cluster: it drives
+// layers, signals, and panels across the whole console (not orphaned).
 
 import { useEffect, useRef, useState } from "react";
 import { useMetrics } from "@/lib/metrics";
@@ -27,14 +36,55 @@ function deriveHealth(states: FreshState[]): Health {
   return { labelKey: "healthLive", tone: "live" };
 }
 
-function Metric({ label, value, sub }: { label: string; value: string; sub?: string }) {
+/** Compact thousands formatter: 13456 → "13.5k", small numbers pass through unchanged. */
+function fmtCount(n: number): string {
+  if (n >= 10_000) return `${(n / 1_000).toFixed(1)}k`;
+  return n.toLocaleString();
+}
+
+/**
+ * Single-line live-data pulse, replacing the three tall two-row Metric blocks.
+ * Renders camera online/total, plane count, satellite count, and a health dot
+ * all on one baseline — glanceable at desktop widths, hidden on mobile where
+ * screen space is too narrow.
+ */
+function LivePulse({
+  camerasOnline,
+  camerasTotal,
+  planes,
+  satellites,
+  health,
+  t,
+}: {
+  camerasOnline: number;
+  camerasTotal: number;
+  planes: number;
+  satellites: number;
+  health: Health;
+  t: (k: StringKey) => string;
+}) {
   return (
-    <div className="tn-metric" title={label}>
-      <span className="tn-metric-label">{label}</span>
-      <span className="tn-metric-value tn-num">
-        {value}
-        {sub ? <span className="tn-metric-sub"> / {sub}</span> : null}
+    <div className="tn-top-pulse" aria-label="Live data counts">
+      <span className="tn-top-pulse-item tn-num" title={t("metricCamerasOnline")}>
+        {camerasTotal ? `${fmtCount(camerasOnline)} / ${fmtCount(camerasTotal)}` : "—"}
+        <span className="tn-top-pulse-lbl">cam</span>
       </span>
+      <span className="tn-top-pulse-dot" aria-hidden />
+      <span className="tn-top-pulse-item tn-num" title={t("metricPlanes")}>
+        {fmtCount(planes)}
+        <span className="tn-top-pulse-lbl">{t("metricPlanes")}</span>
+      </span>
+      <span className="tn-top-pulse-dot" aria-hidden />
+      <span className="tn-top-pulse-item tn-num" title={t("metricSatellites")}>
+        {fmtCount(satellites)}
+        <span className="tn-top-pulse-lbl">sat</span>
+      </span>
+      <span
+        className={`tn-top-health-badge tn-top-health-${health.tone}`}
+        title={t(health.labelKey)}
+        aria-label={t(health.labelKey)}
+        role="img"
+      />
     </div>
   );
 }
@@ -45,13 +95,12 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
   const view = useMapView();
   const ui = useUI();
   const t = useT();
-  const now = useNow(5000); // re-evaluate health a couple of times a minute
+  const now = useNow(5000); // re-evaluate health a couple of times per minute
 
   const health = deriveHealth(fresh.map((r) => classifyFreshness(r, now)));
 
-  // "Share" copies a deep link to the current view. Calm confirmation: the label
-  // flips to "Copied" for ~1.6s, then restores. The URL itself is kept current by
-  // WorldMap (it mirrors the live view), so there's nothing to compute here.
+  // "Share" copies a deep link to the current view. The label flips to "Copied"
+  // for ~1.6 s then restores.
   const [shared, setShared] = useState(false);
   const sharedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
@@ -67,42 +116,41 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
 
   return (
     <header className="tn-topbar" role="banner">
-      {/* Canonical machine-readable pulse (visually hidden) — kept for the e2e
-          smoke test and screen readers; the visible cells below mirror it. */}
+      {/* Canonical machine-readable pulse — visually hidden, kept for the e2e
+          smoke test and screen readers; the visible LivePulse below mirrors it. */}
       <span data-testid="stat-line" className="tn-sr-only">
         {m.camerasTotal.toLocaleString()} cameras · {m.planes.toLocaleString()} planes ·{" "}
         {m.satellites.toLocaleString()} satellites
       </span>
 
+      {/* ── Brand + variant ─────────────────────────────────────────────── */}
       <div className="tn-topbar-left">
         <span className="tn-wordmark">
           Traffic<span className="tn-wordmark-accent">Nerd</span>
         </span>
-        <span className="tn-tagline">{t("appTagline")}</span>
-        <div className="tn-topbar-variant">
-          <VariantSwitcher />
-        </div>
+        <VariantSwitcher />
       </div>
 
+      {/* ── Live data pulse (grows to fill remaining space) ─────────────── */}
       <div className="tn-topbar-metrics">
-        <Metric
-          label={t("metricCamerasOnline")}
-          value={m.camerasTotal ? m.camerasOnline.toLocaleString() : "—"}
-          sub={m.camerasTotal ? m.camerasTotal.toLocaleString() : undefined}
+        <LivePulse
+          camerasOnline={m.camerasOnline}
+          camerasTotal={m.camerasTotal}
+          planes={m.planes}
+          satellites={m.satellites}
+          health={health}
+          t={t}
         />
-        <span className="tn-dot-sep" aria-hidden />
-        <Metric label={t("metricPlanes")} value={m.planes.toLocaleString()} />
-        <span className="tn-dot-sep" aria-hidden />
-        <Metric label={t("metricSatellites")} value={m.satellites.toLocaleString()} />
-        <span className={`tn-health tn-health-${health.tone}`} title="Overall data health">
-          <span className="tn-health-dot" aria-hidden />
-          {t(health.labelKey)}
-        </span>
       </div>
 
+      {/* ── View controls · utility actions ──────────────────────────────── */}
       <div className="tn-topbar-right">
+
+        {/* Primary view controls ---------------------------------------- */}
         <StageSwitch />
 
+        {/* Basemap segmented control — 3 active options (OS UK removed: needs
+            an API key and has no public keyless tile source for this build). */}
         <div className="tn-basemap" role="group" aria-label="Basemap">
           {(Object.keys(BASEMAPS) as BasemapKey[]).map((k) => (
             <button
@@ -115,16 +163,12 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
               {BASEMAPS[k].label}
             </button>
           ))}
-          <button
-            type="button"
-            className="tn-basemap-btn"
-            disabled
-            title="Ordnance Survey UK basemap — needs an API key (this build is keyless)"
-          >
-            OS UK
-          </button>
         </div>
 
+        {/* Hairline divider: view controls / utility actions */}
+        <span className="tn-top-sep" aria-hidden />
+
+        {/* Utility actions ---------------------------------------------- */}
         <LangSwitcher />
 
         <button
@@ -137,7 +181,12 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
           {shared ? "✓ Copied" : "Share"}
         </button>
 
-        <button type="button" className="tn-icon-btn tn-palette-trigger" onClick={onOpenPalette} title="Command palette (⌘K)">
+        <button
+          type="button"
+          className="tn-icon-btn tn-palette-trigger"
+          onClick={onOpenPalette}
+          title="Command palette (⌘K)"
+        >
           <span className="tn-kbd">⌘K</span>
         </button>
 
