@@ -75,7 +75,7 @@ a { color: var(--tn-accent); }
 /* ---- Stage ---- */
 .tn-shell-main { width: 100vw; height: 100vh; overflow: hidden; }
 .tn-shell { position: relative; width: 100vw; height: 100vh; }
-.world-map { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+.world-map { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; }
 .map-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 /* MapLibre chrome: light, and lifted clear of the bottom ticker. */
@@ -1159,17 +1159,20 @@ a { color: var(--tn-accent); }
 
 /* ===========================================================================
    Widget body — Live Video News (Task 12)
+   NOTE: prefix is `tn-newsw` (news-WIDGET), NOT `tn-news` — the bottom news
+   TICKER already owns `.tn-news` with position:fixed + backdrop-blur, so reusing
+   it made this in-segment widget escape to a full-viewport blurred overlay.
    =========================================================================== */
-.tn-news{display:flex;flex-direction:column;height:100%}
-.tn-news-screen{position:relative;aspect-ratio:16/9;background:#15212b}
-.tn-news-video{position:absolute;inset:0;width:100%;height:100%;border:0}
-.tn-news-ch{position:absolute;left:6px;bottom:6px;color:#fff;font-size:10px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)}
-.tn-news-tabs{display:flex;gap:4px;padding:6px;flex-wrap:wrap}
-.tn-news-tabs button{font-size:9px;border:1px solid #e1e8ef;border-radius:10px;padding:2px 7px;background:#fff;cursor:pointer}
-.tn-news-tabs button.is-on{background:#27313b;color:#fff;border-color:#27313b}.tn-news-more{color:#3f8f5c;border-style:dashed!important}
-.tn-news-picker{display:flex;flex-direction:column;border-top:1px solid #eef2f6;max-height:160px;overflow:auto}
-.tn-news-picker button{text-align:left;border:0;background:none;padding:5px 9px;font-size:11px;cursor:pointer}
-.tn-news-cat{color:#9aa6b2;font-size:9px;float:right}.tn-news-custom{margin:6px 9px;padding:4px;font-size:11px;border:1px solid #e1e8ef;border-radius:5px}
+.tn-newsw{display:flex;flex-direction:column;height:100%}
+.tn-newsw-screen{position:relative;aspect-ratio:16/9;background:#15212b}
+.tn-newsw-video{position:absolute;inset:0;width:100%;height:100%;border:0}
+.tn-newsw-ch{position:absolute;left:6px;bottom:6px;color:#fff;font-size:10px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.tn-newsw-tabs{display:flex;gap:4px;padding:6px;flex-wrap:wrap}
+.tn-newsw-tabs button{font-size:9px;border:1px solid #e1e8ef;border-radius:10px;padding:2px 7px;background:#fff;cursor:pointer}
+.tn-newsw-tabs button.is-on{background:#27313b;color:#fff;border-color:#27313b}.tn-newsw-more{color:#3f8f5c;border-style:dashed!important}
+.tn-newsw-picker{display:flex;flex-direction:column;border-top:1px solid #eef2f6;max-height:160px;overflow:auto}
+.tn-newsw-picker button{text-align:left;border:0;background:none;padding:5px 9px;font-size:11px;cursor:pointer}
+.tn-newsw-cat{color:#9aa6b2;font-size:9px;float:right}.tn-newsw-custom{margin:6px 9px;padding:4px;font-size:11px;border:1px solid #e1e8ef;border-radius:5px}
 
 /* ===========================================================================
    Global capacity toast (Task 15) — calm bottom-centre pill, auto-dismisses

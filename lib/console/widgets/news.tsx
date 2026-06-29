@@ -25,25 +25,25 @@ function NewsBody({ instanceId, config }: WidgetBodyProps) {
   }, [embed.kind, embed.src]);
 
   return (
-    <div className="tn-news">
-      <div className="tn-news-screen">
+    <div className="tn-newsw">
+      <div className="tn-newsw-screen">
         {embed.kind === "youtube"
-          ? <iframe className="tn-news-video" src={embed.src} title={active.name} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
-          : <video ref={videoRef} className="tn-news-video" muted autoPlay playsInline controls />}
-        <span className="tn-news-ch">{active.name}</span>
+          ? <iframe className="tn-newsw-video" src={embed.src} title={active.name} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
+          : <video ref={videoRef} className="tn-newsw-video" muted autoPlay playsInline controls />}
+        <span className="tn-newsw-ch">{active.name}</span>
       </div>
-      <div className="tn-news-tabs">
+      <div className="tn-newsw-tabs">
         {favorites.map((p) => (
           <button key={p.id} className={p.id === activeId ? "is-on" : ""} onClick={() => choose(p.id)}>{p.name.split(" ")[0]}</button>
         ))}
-        <button className="tn-news-more" onClick={() => setPicker((o) => !o)}>&#xFF0B; More&hellip;</button>
+        <button className="tn-newsw-more" onClick={() => setPicker((o) => !o)}>&#xFF0B; More&hellip;</button>
       </div>
       {picker && (
-        <div className="tn-news-picker">
+        <div className="tn-newsw-picker">
           {NEWS_PROVIDERS.map((p) => (
-            <button key={p.id} onClick={() => { choose(p.id); setPicker(false); }}>{p.id === activeId ? "✓ " : ""}{p.name} <span className="tn-news-cat">{p.category}</span></button>
+            <button key={p.id} onClick={() => { choose(p.id); setPicker(false); }}>{p.id === activeId ? "✓ " : ""}{p.name} <span className="tn-newsw-cat">{p.category}</span></button>
           ))}
-          <input className="tn-news-custom" placeholder="Add stream URL (YouTube / .m3u8)…"
+          <input className="tn-newsw-custom" placeholder="Add stream URL (YouTube / .m3u8)…"
                  onKeyDown={(e) => {
                    if (e.key !== "Enter") return;
                    const p = parseCustomStream((e.target as HTMLInputElement).value);
