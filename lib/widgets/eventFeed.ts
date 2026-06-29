@@ -44,10 +44,20 @@ export function projectEventFeed(
   for (const { source, features } of inputs) {
     for (const f of features) all.push(toEvent(f, source));
   }
-  const total = all.length;
+  // Dedup by id — some sources (e.g. GDACS) emit the same event id more than once
+  // (multiple episodes/updates of one alert). Collapsing keeps the counts honest and
+  // avoids duplicate feed rows / React key collisions on `event.id`.
+  const seen = new Set<string>();
+  const unique: NormalizedEvent[] = [];
+  for (const e of all) {
+    if (seen.has(e.id)) continue;
+    seen.add(e.id);
+    unique.push(e);
+  }
+  const total = unique.length;
   const floor = severityRank(filters.minTier);
 
-  let rows = all.filter(
+  let rows = unique.filter(
     (e) =>
       withinScope(e.geo.lat, e.geo.lon, scope) &&
       withinWindow(e.occurredAt, windowMs, now) &&

@@ -66,4 +66,15 @@ describe("projectEventFeed", () => {
     ]), near, null, NOW, { ...base, sort: "nearest" });
     expect(r.rows.map((x) => x.id)).toEqual(["close", "far"]);
   });
+
+  it("dedups events sharing an id (e.g. GDACS multi-episode updates)", () => {
+    const r = projectEventFeed(inputs([
+      sf({ id: "dup", props: { magnitude: 5 } }),
+      sf({ id: "dup", props: { magnitude: 5 } }),
+      sf({ id: "other", props: { magnitude: 6 } }),
+    ]), WORLD_SCOPE, null, NOW, base);
+    expect(r.rows.map((x) => x.id)).toEqual(["other", "dup"]);
+    expect(r.total).toBe(2);
+    expect(r.shown).toBe(2);
+  });
 });
