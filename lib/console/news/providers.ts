@@ -38,5 +38,5 @@ export function parseCustomStream(url: string): NewsProvider | null {
 
 export function resolveEmbed(p: NewsProvider): { kind: "youtube" | "hls"; src: string } {
   if (p.kind === "youtube") return { kind: "youtube", src: `https://www.youtube.com/embed/${p.ref}?autoplay=1&mute=1&playsinline=1` };
-  return { kind: "hls", src: p.ref };
+  return { kind: "hls", src: /^https?:\/\//i.test(p.ref) ? p.ref : "" };
 }

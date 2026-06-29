@@ -25,3 +25,9 @@ test("resolveEmbed builds a youtube embed src", () => {
   expect(e.src).toContain("mute=1");
   expect(e.src).toContain("playsinline=1");
 });
+
+test("resolveEmbed rejects a non-http(s) hls ref", () => {
+  const e = resolveEmbed({ id: "x", name: "X", category: "Custom", kind: "hls", ref: "javascript:alert(1)" });
+  expect(e.kind).toBe("hls");
+  expect(e.src).toBeFalsy();
+});

@@ -5,6 +5,7 @@ import type { WidgetInstance } from "@/lib/console/types";
 import { shellLayoutStore } from "@/lib/console/store";
 import { getWidgetType } from "@/lib/console/registry";
 import { topSeverity, type Alert } from "@/lib/console/alerts";
+import { WidgetErrorBoundary } from "@/components/console/WidgetErrorBoundary";
 
 interface Report { alerts: Alert[]; count?: number; freshLabel?: string }
 const ReportCtx = createContext<(r: Report) => void>(() => {});
@@ -18,7 +19,8 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
   if (!type) return null;
   const Body = type.component;
   const sev = topSeverity(report.alerts);
-  const alertStyle = (instance.config.alertStyle as string) ?? "top"; // "top" | "feed"
+  const cfg = instance.config ?? {};
+  const alertStyle = (cfg.alertStyle as string) ?? "top"; // "top" | "feed"
 
   const onDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("text/tn-widget", instance.id);
@@ -46,7 +48,7 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
 
       {menuOpen && (
         <div className="tn-cw-menu-pop" role="menu">
-          <button onClick={() => { shellLayoutStore.add(instance.type, { config: { ...instance.config } }); setMenuOpen(false); }}>⧉ Duplicate</button>
+          <button onClick={() => { const r = shellLayoutStore.add(instance.type, { config: { ...cfg } }); if (!r.ok) window.dispatchEvent(new CustomEvent("tn-toast", { detail: "50-widget limit — remove one to add another" })); setMenuOpen(false); }}>⧉ Duplicate</button>
           <button onClick={() => { shellLayoutStore.configure(instance.id, { alertStyle: alertStyle === "top" ? "feed" : "top" }); setMenuOpen(false); }}>
             ⚡ Alerts: {alertStyle === "top" ? "on top" : "in feed"}
           </button>
@@ -65,7 +67,16 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
             </div>
           )}
           <div className="tn-cw-body">
-            <ReportCtx.Provider value={onReport}><Body instanceId={instance.id} config={instance.config} /></ReportCtx.Provider>
+            {alertStyle === "feed" && report.alerts.length > 0 && (
+              <div className="tn-cw-attn-feed">
+                {report.alerts.slice(0, 4).map((a) => (
+                  <div key={a.id} className={`tn-cw-alert tn-sev-${a.severity}`}>{a.text}</div>
+                ))}
+              </div>
+            )}
+            <WidgetErrorBoundary>
+              <ReportCtx.Provider value={onReport}><Body instanceId={instance.id} config={cfg} /></ReportCtx.Provider>
+            </WidgetErrorBoundary>
           </div>
           <div className="tn-cw-resize" onPointerDown={onResizePointerDown} title="Drag to resize" />
         </>

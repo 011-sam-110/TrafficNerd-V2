@@ -1101,6 +1101,8 @@ a { color: var(--tn-accent); }
 .tn-cw-alert{font-size:11px;padding:4px 8px;border-left:3px solid #d9534f;background:#fdf3f2}
 .tn-cw-alert.tn-sev-warn{border-left-color:#d9882f;background:#fdf7ee}.tn-cw-alert.tn-sev-info{border-left-color:#4a78c9;background:#f1f5fc}
 .tn-cw-body{flex:1;overflow:auto;min-height:0}
+.tn-cw-attn-feed{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+.tn-cw-failed{padding:12px 10px;font-size:11px;color:#a9b4bf}
 .tn-cw-resize{height:6px;cursor:row-resize;background:linear-gradient(#f1f5f9,#fff)}
 
 /* ===========================================================================

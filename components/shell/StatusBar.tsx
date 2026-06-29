@@ -16,7 +16,6 @@ import { useT } from "@/lib/i18n/store";
 import type { StringKey } from "@/lib/i18n/catalog";
 import LangSwitcher from "@/components/shell/LangSwitcher";
 import VariantSwitcher from "@/components/shell/VariantSwitcher";
-import WorkspaceBar from "@/components/shell/WorkspaceBar";
 import StageSwitch from "@/components/console/StageSwitch";
 
 type Health = { labelKey: StringKey; tone: "live" | "degraded" | "down" | "connecting" };
@@ -82,7 +81,6 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
         <span className="tn-tagline">{t("appTagline")}</span>
         <div className="tn-topbar-variant">
           <VariantSwitcher />
-          <WorkspaceBar />
         </div>
       </div>
 

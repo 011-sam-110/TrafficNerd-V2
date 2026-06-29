@@ -335,7 +335,7 @@ git commit -m "feat(console): pure layout reducers (add/move/resize/stage, 50-ca
 
 **Interfaces:**
 - Consumes: reducers from Task 2; `createDefaultLayout`, `ShellLayout` from Task 1; `loadPersisted`/`savePersisted` from `@/lib/shell/persist`.
-- Produces: `shellLayoutStore` with `{ get(): ShellLayout; set(l): void; subscribe(fn): ()=>void; hydrate(): void; replace(l): void; add(type, opts?): {ok:boolean; id?:string}; remove(id); move(id, seg, idx); resizeWidget(id, h); setSegment(seg, size); collapseSegment(seg, c); stage(s): void; configure(id, patch); nextSeq(): number }`; hook `useShellLayout(): ShellLayout`.
+- Produces: `shellLayoutStore` with `{ get(): ShellLayout; set(l): void; subscribe(fn): ()=>void; hydrate(): void; replace(l): void; add(type, opts?): {ok:boolean; id?:string}; remove(id); move(id, seg, idx); resizeWidget(id, h); setSegment(seg, size); collapseSegment(seg, c); stage(s): void; configure(id, patch) }`; hook `useShellLayout(): ShellLayout` (ids minted internally).
 
 - [ ] **Step 1: Write the failing test**
 

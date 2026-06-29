@@ -2,6 +2,7 @@
 import { useSyncExternalStore } from "react";
 import { loadPersisted, savePersisted } from "@/lib/shell/persist";
 import { createDefaultLayout, type ShellLayout, type SegmentId, type StageId } from "@/lib/console/types";
+import { sanitizeLayout } from "@/lib/console/sanitize";
 import * as R from "@/lib/console/reducers";
 
 const KEY = "tn.console.v1";
@@ -16,9 +17,9 @@ function nextId(): string { seq += 1; return `w${Date.now().toString(36)}${seq.t
 export const shellLayoutStore = {
   get(): ShellLayout { return state; },
   set(l: ShellLayout) { state = l; emit(); },
-  replace(l: ShellLayout) { state = l; emit(); },
+  replace(l: ShellLayout) { const clean = sanitizeLayout(l); if (clean) { state = clean; emit(); } },
   subscribe(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn); }; },
-  hydrate() { const s = loadPersisted<ShellLayout>(KEY, VERSION); if (s) state = s; emit(); },
+  hydrate() { const s = loadPersisted<ShellLayout>(KEY, VERSION); const clean = s ? sanitizeLayout(s) : null; if (clean) { state = clean; emit(); } },
   add(type: string, opts: { segment?: SegmentId; config?: Record<string, unknown>; height?: number } = {}) {
     if (R.isAtCapacity(state)) return { ok: false as const };
     const id = nextId();

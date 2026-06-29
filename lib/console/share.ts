@@ -1,4 +1,5 @@
 import type { ShellLayout } from "@/lib/console/types";
+import { sanitizeLayout } from "@/lib/console/sanitize";
 
 /** Compact, URL-safe encoding of a layout (base64 of JSON). */
 export function encodeLayout(l: ShellLayout): string {
@@ -11,8 +12,7 @@ export function decodeLayout(s: string): ShellLayout | null {
   try {
     const b64 = s.replace(/-/g, "+").replace(/_/g, "/");
     const json = typeof window === "undefined" ? Buffer.from(b64, "base64").toString("utf8") : decodeURIComponent(escape(atob(b64)));
-    const l = JSON.parse(json) as ShellLayout;
-    if (!l || typeof l !== "object" || !Array.isArray(l.widgets) || !l.segments || !l.stage) return null;
-    return l;
+    const l = JSON.parse(json);
+    return sanitizeLayout(l);
   } catch { return null; }
 }

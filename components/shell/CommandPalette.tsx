@@ -7,9 +7,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { layersStore, LAYER_PRESETS, ACTIVE_LAYERS, type LayerKey } from "@/lib/layers";
 import { mapViewStore } from "@/lib/mapView";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
-import { coverageStore } from "@/lib/shell/coverage";
-import { marketsStore } from "@/lib/shell/markets";
-import { workspaceStore } from "@/lib/shell/workspace";
 import { CAMERA_REGIONS } from "@/lib/icons/svg";
 import { cinematic } from "@/lib/cinematic/store";
 import { pickLiveCamera } from "@/lib/cinematic/livePick";
@@ -93,38 +90,6 @@ function buildCommands(close: () => void): Command[] {
       },
     });
   }
-
-  cmds.push({
-    id: "coverage",
-    label: "Coverage details",
-    hint: "info",
-    run: () => {
-      coverageStore.open();
-      close();
-    },
-  });
-
-  cmds.push({
-    id: "markets",
-    label: "Markets — crypto prices",
-    hint: "panel",
-    run: () => {
-      marketsStore.open();
-      close();
-    },
-  });
-
-  cmds.push({
-    id: "toggle-workspace",
-    label: "Toggle workspace dock",
-    hint: "layout",
-    run: () => {
-      const ws = workspaceStore.get();
-      if (ws.open) workspaceStore.closeWorkspace();
-      else workspaceStore.openWorkspace();
-      close();
-    },
-  });
 
   cmds.push({
     id: "dive-live",
