@@ -1168,3 +1168,9 @@ a { color: var(--tn-accent); }
 .tn-news-picker{display:flex;flex-direction:column;border-top:1px solid #eef2f6;max-height:160px;overflow:auto}
 .tn-news-picker button{text-align:left;border:0;background:none;padding:5px 9px;font-size:11px;cursor:pointer}
 .tn-news-cat{color:#9aa6b2;font-size:9px;float:right}.tn-news-custom{margin:6px 9px;padding:4px;font-size:11px;border:1px solid #e1e8ef;border-radius:5px}
+
+/* ===========================================================================
+   Global capacity toast (Task 15) — calm bottom-centre pill, auto-dismisses
+   =========================================================================== */
+.tn-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:1200;max-width:90vw;background:#2b3640;color:#fff;font:13px/1.4 -apple-system,"Segoe UI",Roboto,sans-serif;padding:9px 16px;border-radius:999px;box-shadow:0 6px 24px rgba(20,28,38,.28);animation:tn-toast-in .18s ease-out}
+@keyframes tn-toast-in{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
