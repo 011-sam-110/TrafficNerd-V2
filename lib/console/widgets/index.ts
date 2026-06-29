@@ -4,5 +4,7 @@ import "@/lib/console/widgets/events";
 import "@/lib/console/widgets/cameras";
 import "@/lib/console/widgets/news";
 import "@/lib/console/widgets/satellites";
+import "@/lib/console/widgets/markets";
+import "@/lib/console/widgets/headlines";
 // Registers one generic monitor widget per global signal source (≈30 layers).
 import "@/lib/console/widgets/signals";
