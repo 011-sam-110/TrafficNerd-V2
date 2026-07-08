@@ -3,8 +3,17 @@
 // continuous polling (429s). adsb.lol also broadcasts the ADS-B emitter
 // `category` + type code, so planes are classified accurately (not guessed).
 //
-// We query a few point+radius regions (matching the camera regions) and merge
-// them, so planes appear wherever a viewer flies.
+// COVERAGE: adsb.lol's endpoint is point+radius (max 250 nm), with no global
+// query. We sweep a coarse worldwide grid of ~25 busy-airspace centres and merge
+// the results, so cross-border / intercontinental flights show up. (Mid-ocean is
+// inherently sparse — these are ground-receiver feeds, not satellite ADS-B.)
+//
+// STORE-AND-SERVE: the whole sweep runs inside Next's Data Cache
+// (`unstable_cache`), a store shared across every serverless instance. Upstream is
+// therefore hit at most once per REVALIDATE_S for the ENTIRE deployment, and every
+// visitor is served the same stored snapshot rather than triggering their own
+// live pull. The result is capped (MAX_AIRCRAFT) so the cached entry stays under
+// the Data Cache 2 MB limit and the client payload stays reasonable.
 
 import type { WorldObject } from "@/lib/world";
 import { classifyPlane, ADSB_CATEGORY } from "@/lib/planes/classify";
@@ -16,12 +25,44 @@ export interface AdsbRegion {
   distNm: number;
 }
 
-// Centred on the camera regions. Radii kept moderate so dense airspace stays
-// legible (individual planes + trails readable) rather than blobbing together.
-export const ADSB_REGIONS: AdsbRegion[] = [
-  { lat: 51.5, lon: -0.12, distNm: 90 }, // London / SE England
-  { lat: 36.8, lon: -119.7, distNm: 160 }, // California
-  { lat: 33.9, lon: -80.9, distNm: 140 }, // South Carolina
+// A coarse worldwide grid of busy-airspace centres, each a 250 nm (adsb.lol max)
+// point+radius query. Kept to ~25 cells so one sweep is ~25 upstream calls total —
+// shared across all users via the Data Cache below, not per visitor. Overlaps are
+// deduped by hex; "region" chips in the UI are derived from lat/lon, not these.
+const NM = 250;
+export const ADSB_GRID: AdsbRegion[] = [
+  // North America
+  { lat: 34.0, lon: -118.2, distNm: NM }, // Los Angeles
+  { lat: 39.7, lon: -104.9, distNm: NM }, // Denver
+  { lat: 41.9, lon: -87.9, distNm: NM }, // Chicago
+  { lat: 40.7, lon: -74.0, distNm: NM }, // New York
+  { lat: 25.8, lon: -80.3, distNm: NM }, // Miami
+  { lat: 19.4, lon: -99.1, distNm: NM }, // Mexico City
+  // South America
+  { lat: 4.7, lon: -74.1, distNm: NM }, // Bogotá
+  { lat: -23.5, lon: -46.6, distNm: NM }, // São Paulo
+  { lat: -34.6, lon: -58.4, distNm: NM }, // Buenos Aires
+  // Europe
+  { lat: 51.5, lon: -0.1, distNm: NM }, // London
+  { lat: 50.0, lon: 8.6, distNm: NM }, // Frankfurt
+  { lat: 40.4, lon: -3.7, distNm: NM }, // Madrid
+  { lat: 41.0, lon: 28.9, distNm: NM }, // Istanbul
+  { lat: 55.7, lon: 37.6, distNm: NM }, // Moscow
+  // Middle East
+  { lat: 25.2, lon: 55.3, distNm: NM }, // Dubai
+  // Africa
+  { lat: 30.0, lon: 31.2, distNm: NM }, // Cairo
+  { lat: 6.5, lon: 3.4, distNm: NM }, // Lagos
+  { lat: -26.2, lon: 28.0, distNm: NM }, // Johannesburg
+  // Asia
+  { lat: 28.6, lon: 77.2, distNm: NM }, // Delhi
+  { lat: 13.7, lon: 100.5, distNm: NM }, // Bangkok
+  { lat: 1.35, lon: 103.8, distNm: NM }, // Singapore
+  { lat: 22.3, lon: 114.2, distNm: NM }, // Hong Kong
+  { lat: 31.2, lon: 121.5, distNm: NM }, // Shanghai
+  { lat: 35.6, lon: 139.8, distNm: NM }, // Tokyo
+  // Oceania
+  { lat: -33.9, lon: 151.2, distNm: NM }, // Sydney
 ];
 
 export interface Aircraft {
@@ -138,9 +179,15 @@ export function aircraftToWorldObject(a: Aircraft): WorldObject {
   };
 }
 
-// Short server-side cache so rapid client polls don't hammer adsb.lol.
-const CACHE_TTL_MS = 8_000;
-let cache: { objects: WorldObject[]; at: number } | null = null;
+// How long a stored global sweep is served before the next visitor triggers a
+// refresh. Planes move, but ~25 s staleness is invisible on a world map and keeps
+// upstream load predictable regardless of traffic.
+const REVALIDATE_S = 25;
+// Cap the served set so the cached entry stays under the Data Cache's 2 MB limit
+// and the client payload stays reasonable. Airborne aircraft are kept before ground.
+export const MAX_AIRCRAFT = 3000;
+// Grid cells fetched at once — friendly to the community API, no 25-request herd.
+const CONCURRENCY = 6;
 
 async function fetchRegion(r: AdsbRegion): Promise<RawAircraft[]> {
   const url = `https://api.adsb.lol/v2/lat/${r.lat}/lon/${r.lon}/dist/${r.distNm}`;
@@ -153,25 +200,53 @@ async function fetchRegion(r: AdsbRegion): Promise<RawAircraft[]> {
   return json.ac ?? json.aircraft ?? [];
 }
 
-/**
- * Live aircraft across all regions as WorldObjects, deduped by hex, with an
- * 8 s cache. Returns the stale cache (or empty) if every region fails.
- */
-export async function fetchAircraft(nowMs: number): Promise<WorldObject[]> {
-  if (cache && nowMs - cache.at < CACHE_TTL_MS) return cache.objects;
-
-  const results = await Promise.allSettled(ADSB_REGIONS.map(fetchRegion));
-  const rows = results
-    .filter((r): r is PromiseFulfilledResult<RawAircraft[]> => r.status === "fulfilled")
-    .flatMap((r) => r.value);
-
-  if (rows.length === 0 && results.every((r) => r.status === "rejected")) {
-    return cache?.objects ?? [];
+/** Keep at most `cap` aircraft, preferring airborne over ground. Pure/testable. */
+export function capAircraft(objects: WorldObject[], cap: number): WorldObject[] {
+  if (objects.length <= cap) return objects;
+  const airborne: WorldObject[] = [];
+  const ground: WorldObject[] = [];
+  for (const o of objects) {
+    ((o.meta as { onGround?: boolean } | undefined)?.onGround ? ground : airborne).push(o);
   }
+  return [...airborne, ...ground].slice(0, cap);
+}
+
+/**
+ * Sweep the whole grid (batched by CONCURRENCY), dedupe by hex, and cap. Throws
+ * only if EVERY cell fails — that way the Data Cache keeps serving the last good
+ * snapshot instead of overwriting it with an empty one.
+ */
+async function pullAircraft(): Promise<WorldObject[]> {
+  const rows: RawAircraft[] = [];
+  let ok = 0;
+  for (let i = 0; i < ADSB_GRID.length; i += CONCURRENCY) {
+    const settled = await Promise.allSettled(ADSB_GRID.slice(i, i + CONCURRENCY).map(fetchRegion));
+    for (const s of settled) {
+      if (s.status === "fulfilled") {
+        ok++;
+        rows.push(...s.value);
+      }
+    }
+  }
+  if (ok === 0) throw new Error("all adsb.lol grid cells failed");
 
   const byHex = new Map<string, Aircraft>();
-  for (const a of parseAdsb(rows)) byHex.set(a.hex, a); // dedupe overlapping regions
+  for (const a of parseAdsb(rows)) byHex.set(a.hex, a); // dedupe overlapping cells
   const objects = [...byHex.values()].map(aircraftToWorldObject);
-  cache = { objects, at: nowMs };
-  return objects;
+  return capAircraft(objects, MAX_AIRCRAFT);
+}
+
+/**
+ * Live aircraft worldwide as WorldObjects. The sweep is wrapped in Next's Data
+ * Cache, so upstream is polled at most once per REVALIDATE_S for the whole
+ * deployment and every visitor is served the shared stored snapshot. Returns []
+ * only on a cold total failure (or outside the Next runtime, e.g. unit tests).
+ */
+export async function fetchAircraft(): Promise<WorldObject[]> {
+  try {
+    const { unstable_cache } = await import("next/cache");
+    return await unstable_cache(pullAircraft, ["aircraft-global-v1"], { revalidate: REVALIDATE_S })();
+  } catch {
+    return [];
+  }
 }

@@ -3,7 +3,6 @@
 // re-classification or fetch is needed. Unit-tested; the .tsx is a dumb shell.
 import type { WorldObject } from "@/lib/world";
 import type { PlaneCategory } from "@/lib/planes/classify";
-import { ADSB_REGIONS } from "@/lib/sources/adsb";
 
 const CATEGORY_LABEL: Record<PlaneCategory, string> = {
   airliner: "Airliner", regional: "Regional", light: "Light", helicopter: "Helicopter", ground: "Ground",
@@ -53,16 +52,29 @@ export function altitudeBand(o: WorldObject): AltBand {
   return "11+ km";
 }
 
-// Region labels are index-matched to ADSB_REGIONS.
-export const REGION_LABELS = ["London / SE England", "California", "South Carolina"];
-/** Nearest ADS-B query region (the regions are continents apart, so squared-degree distance is enough). */
+// Coarse continent buckets for the region filter/column. Derived purely from
+// lat/lon — the aircraft grid is now worldwide, so "region" means the continent a
+// flight is over, independent of which harvest cells fetched it.
+export const REGION_LABELS = [
+  "North America", "South America", "Europe", "Middle East", "Africa", "Asia", "Oceania",
+];
+// Ordered bounding boxes; the first box that contains the point wins, so overlaps
+// (Europe/Middle East/Africa around the Mediterranean) resolve by this priority.
+const CONTINENT_BOXES: { label: string; latMin: number; latMax: number; lonMin: number; lonMax: number }[] = [
+  { label: "North America", latMin: 7, latMax: 84, lonMin: -170, lonMax: -50 },
+  { label: "South America", latMin: -56, latMax: 13, lonMin: -82, lonMax: -34 },
+  { label: "Europe", latMin: 36, latMax: 72, lonMin: -25, lonMax: 40 },
+  { label: "Middle East", latMin: 12, latMax: 42, lonMin: 34, lonMax: 63 },
+  { label: "Africa", latMin: -35, latMax: 37, lonMin: -18, lonMax: 52 },
+  { label: "Asia", latMin: 5, latMax: 78, lonMin: 40, lonMax: 180 },
+  { label: "Oceania", latMin: -50, latMax: 0, lonMin: 110, lonMax: 180 },
+];
+/** Coarse continent for a coordinate (first matching box), or "—" if unclassified. */
 export function regionOf(lat: number, lon: number): string {
-  let best = -1, bestD = Infinity;
-  ADSB_REGIONS.forEach((r, i) => {
-    const d = (lat - r.lat) ** 2 + (lon - r.lon) ** 2;
-    if (d < bestD) { bestD = d; best = i; }
-  });
-  return best >= 0 ? (REGION_LABELS[best] ?? `Region ${best + 1}`) : "—";
+  for (const b of CONTINENT_BOXES) {
+    if (lat >= b.latMin && lat <= b.latMax && lon >= b.lonMin && lon <= b.lonMax) return b.label;
+  }
+  return "—";
 }
 
 export type FlightSortKey = "altitude" | "speed" | "callsign" | "region";
