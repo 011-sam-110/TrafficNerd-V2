@@ -8,7 +8,8 @@ import { useMemo, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import type { NewsItem } from "@/lib/news";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
-import { countBy } from "@/lib/widgets/buckets";
+import { countBy, timeBins } from "@/lib/widgets/buckets";
+import { Chart, type ChartPoint } from "@/components/Chart";
 
 interface NewsPayload { generatedAt: number; items: NewsItem[] }
 const EMPTY: NewsPayload = { generatedAt: 0, items: [] };
@@ -57,6 +58,11 @@ export default function HeadlinesDetail({ }: WidgetDetailProps) {
     return BUCKET_ORDER.filter((b) => by.has(b)).map((b) => [b, by.get(b)!] as const);
   }, [filtered, now]);
 
+  const volume: ChartPoint[] = useMemo(() => {
+    const ts = filtered.map((it) => it.ts).filter((n) => n > 0);
+    return timeBins(ts, 60 * 60_000, now, 24 * 60 * 60_000).map((b) => ({ x: b.start, y: b.count }));
+  }, [filtered, now]);
+
   return (
     <div className="tn-hd">
       <div className="tn-hd-bar">
@@ -68,6 +74,13 @@ export default function HeadlinesDetail({ }: WidgetDetailProps) {
         </div>
         <input className="tn-hd-search" placeholder="Search headlines…" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
+
+      {volume.some((p) => p.y > 0) && (
+        <div className="tn-hd-vol">
+          <div className="tn-hd-group-h">Headlines per hour · last 24h</div>
+          <Chart points={volume} height={80} up={null} />
+        </div>
+      )}
 
       {status === "loading" && items.length === 0 && <p className="tn-w-empty">Loading headlines…</p>}
       {items.length > 0 && filtered.length === 0 && <p className="tn-w-empty">No headlines match.</p>}

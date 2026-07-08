@@ -1264,3 +1264,4 @@ a { color: var(--tn-accent); }
 .tn-hd-meta { font-size: 11px; color: var(--tn-text-faint); margin-top: 2px; }
 .tn-hd-src { color: var(--tn-accent); }
 .tn-hd-snippet { font-size: 13px; color: var(--tn-text-muted); margin: 4px 0 0; }
+.tn-hd-vol { background: var(--tn-surface-2); border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; }
