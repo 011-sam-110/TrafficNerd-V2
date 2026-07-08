@@ -49,10 +49,25 @@ function MarketsBody({ config }: WidgetBodyProps) {
     setTick((t) => t + 1);
   }, [data.generatedAt, allRows]);
 
+  const exportRows = useMemo(
+    () =>
+      sections.flatMap((s) =>
+        s.rows.map((r) => ({
+          section: s.label,
+          symbol: r.symbol ?? "",
+          name: r.name,
+          value: r.value,
+          num: r.num ?? "",
+          changePct: r.changePct ?? "",
+        })),
+      ),
+    [sections],
+  );
+
   const report = useWidgetReport();
   useEffect(() => {
-    report({ alerts, count: allRows.length, freshLabel: "live" });
-  }, [alerts, allRows.length, report]);
+    report({ alerts, count: allRows.length, freshLabel: "live", export: { rows: exportRows, name: "markets" } });
+  }, [alerts, allRows.length, report, exportRows]);
 
   if (status === "loading" && allRows.length === 0) return <p className="tn-w-empty">Loading markets…</p>;
   if (allRows.length === 0) return <p className="tn-w-empty">Markets unavailable.</p>;

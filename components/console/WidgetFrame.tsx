@@ -7,8 +7,16 @@ import { spanFromPointer } from "@/lib/console/resize";
 import { getWidgetType } from "@/lib/console/registry";
 import { topSeverity, type Alert } from "@/lib/console/alerts";
 import { WidgetErrorBoundary } from "@/components/console/WidgetErrorBoundary";
+import { toCsv, toGeoJson, downloadText, exportFilename, type GeoPoint } from "@/lib/export";
 
-interface Report { alerts: Alert[]; count?: number; freshLabel?: string }
+interface Report {
+  alerts: Alert[];
+  count?: number;
+  freshLabel?: string;
+  /** Optional export payload — a widget hands its visible rows/points here and the
+   *  frame menu offers CSV / GeoJSON downloads. */
+  export?: { rows?: Record<string, unknown>[]; geo?: GeoPoint[]; name?: string };
+}
 const ReportCtx = createContext<(r: Report) => void>(() => {});
 export function useWidgetReport() { return useContext(ReportCtx); }
 
@@ -82,6 +90,12 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
           <button onClick={() => { shellLayoutStore.configure(instance.id, { alertStyle: alertStyle === "top" ? "feed" : "top" }); setMenuOpen(false); }}>
             ⚡ Alerts: {alertStyle === "top" ? "on top" : "in feed"}
           </button>
+          {report.export?.rows && report.export.rows.length > 0 && (
+            <button onClick={() => { const base = exportFilename(report.export!.name ?? instance.type, Date.now()); downloadText(`${base}.csv`, "text/csv", toCsv(report.export!.rows!)); setMenuOpen(false); }}>⬇ Export CSV</button>
+          )}
+          {report.export?.geo && report.export.geo.length > 0 && (
+            <button onClick={() => { const base = exportFilename(report.export!.name ?? instance.type, Date.now()); downloadText(`${base}.geojson`, "application/geo+json", toGeoJson(report.export!.geo!)); setMenuOpen(false); }}>⬇ Export GeoJSON</button>
+          )}
           <button className="tn-cw-danger" onClick={() => shellLayoutStore.remove(instance.id)}>✕ Remove</button>
         </div>
       )}

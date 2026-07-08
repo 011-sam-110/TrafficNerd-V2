@@ -8,6 +8,7 @@
 import { useEffect, useRef } from "react";
 import { overlay, useOverlay } from "@/lib/overlay";
 import { OverlayBody } from "@/lib/overlay-content";
+import { toCsv, toGeoJson, downloadText, exportFilename } from "@/lib/export";
 
 export function FeedOverlay() {
   const { object } = useOverlay();
@@ -34,6 +35,23 @@ export function FeedOverlay() {
     <aside className="tn-dossier" role="dialog" aria-label={object.label}>
       <button className="tn-dossier-close" aria-label="Close" onClick={() => overlay.close()}>
         ×
+      </button>
+      <button
+        type="button"
+        aria-label="Export this dossier"
+        title="Download this dossier (GeoJSON / CSV)"
+        onClick={() => {
+          const props = { kind: object.kind, id: object.id, label: object.label, lat: object.lat, lon: object.lon, ...(object.meta ?? {}) };
+          const base = exportFilename(`dossier-${object.kind}`, Date.now());
+          if (Number.isFinite(object.lat) && Number.isFinite(object.lon)) {
+            downloadText(`${base}.geojson`, "application/geo+json", toGeoJson([{ lat: object.lat, lon: object.lon, properties: props }]));
+          } else {
+            downloadText(`${base}.csv`, "text/csv", toCsv([props]));
+          }
+        }}
+        style={{ position: "absolute", top: 10, right: 44, font: "inherit", fontSize: 12, background: "transparent", border: "none", cursor: "pointer", color: "var(--tn-accent-strong)" }}
+      >
+        ⬇ Export
       </button>
       <div className="tn-dossier-body" ref={panelRef} tabIndex={-1}>
         <OverlayBody object={object} />
