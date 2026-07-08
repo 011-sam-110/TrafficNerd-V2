@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useCallback } from "react";
 import type { WidgetInstance } from "@/lib/console/types";
 import { shellLayoutStore } from "@/lib/console/store";
+import { spanFromPointer } from "@/lib/console/resize";
 import { getWidgetType } from "@/lib/console/registry";
 import { topSeverity, type Alert } from "@/lib/console/alerts";
 import { WidgetErrorBoundary } from "@/components/console/WidgetErrorBoundary";
@@ -30,6 +31,35 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
     e.preventDefault();
     const startY = e.clientY, startH = instance.height;
     const move = (ev: PointerEvent) => shellLayoutStore.resizeWidget(instance.id, startH + (ev.clientY - startY));
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  };
+  const measureSeg = (target: HTMLElement) => {
+    const seg = target.closest(".tn-seg") as HTMLElement | null;
+    const slot = target.closest(".tn-seg-slot") as HTMLElement | null;
+    if (!seg || !slot) return null;
+    const cs = getComputedStyle(seg);
+    const padL = parseFloat(cs.paddingLeft) || 0;
+    const padR = parseFloat(cs.paddingRight) || 0;
+    return { slotLeft: slot.getBoundingClientRect().left, segWidth: seg.getBoundingClientRect().width - padL - padR };
+  };
+  const onResizeWidthPointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const m = measureSeg(e.currentTarget as HTMLElement);
+    if (!m) return;
+    const move = (ev: PointerEvent) =>
+      shellLayoutStore.resizeWidth(instance.id, spanFromPointer({ pointerX: ev.clientX, slotLeft: m.slotLeft, segWidth: m.segWidth }));
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  };
+  const onResizeCornerPointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const m = measureSeg(e.currentTarget as HTMLElement);
+    const startY = e.clientY, startH = instance.height;
+    const move = (ev: PointerEvent) => {
+      shellLayoutStore.resizeWidget(instance.id, startH + (ev.clientY - startY));
+      if (m) shellLayoutStore.resizeWidth(instance.id, spanFromPointer({ pointerX: ev.clientX, slotLeft: m.slotLeft, segWidth: m.segWidth }));
+    };
     const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
     window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
   };
@@ -78,7 +108,9 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
               <ReportCtx.Provider value={onReport}><Body instanceId={instance.id} config={cfg} /></ReportCtx.Provider>
             </WidgetErrorBoundary>
           </div>
-          <div className="tn-cw-resize" onPointerDown={onResizePointerDown} title="Drag to resize" />
+          <div className="tn-cw-resize" onPointerDown={onResizePointerDown} title="Drag to resize height" />
+          <div className="tn-cw-resize-x" onPointerDown={onResizeWidthPointerDown} title="Drag to resize width" />
+          <div className="tn-cw-resize-xy" onPointerDown={onResizeCornerPointerDown} title="Drag to resize" />
         </>
       )}
     </div>

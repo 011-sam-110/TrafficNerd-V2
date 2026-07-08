@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { createDefaultLayout, MAX_WIDGETS } from "@/lib/console/types";
 import {
-  addWidget, removeWidget, moveWidget, setWidgetHeight, setSegmentSize,
+  addWidget, removeWidget, moveWidget, setWidgetHeight, setWidgetWidth, setSegmentSize,
   setStage, widgetsInSegment, isAtCapacity,
 } from "@/lib/console/reducers";
 import { newInstanceId } from "@/lib/console/types";
@@ -79,4 +79,19 @@ test("setWidgetHeight clamps the UPPER bound to 1200", () => {
 test("setSegmentSize clamps the UPPER bound to 900", () => {
   let l = setSegmentSize(createDefaultLayout(), "left", 9999);
   expect(l.segments.left.size).toBe(900);
+});
+
+test("addWidget sets a default full width of 12", () => {
+  const l = addWidget(createDefaultLayout(), "aviation", "a");
+  expect(l.widgets[0].width).toBe(12);
+});
+
+test("setWidgetWidth clamps the span into [3,12]", () => {
+  let l = addWidget(createDefaultLayout(), "aviation", "a");
+  l = setWidgetWidth(l, "a", 6);
+  expect(l.widgets[0].width).toBe(6);
+  l = setWidgetWidth(l, "a", 1);
+  expect(l.widgets[0].width).toBe(3);   // below min → 3
+  l = setWidgetWidth(l, "a", 99);
+  expect(l.widgets[0].width).toBe(12);  // above max → 12
 });

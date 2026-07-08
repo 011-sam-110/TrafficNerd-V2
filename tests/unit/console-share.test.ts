@@ -31,3 +31,11 @@ test("decode caps an oversized layout at 50 widgets", () => {
   const round = decodeLayout(encodeLayout(layout as unknown as ShellLayout));
   expect(round!.widgets.length).toBe(50);
 });
+
+test("encode→decode round-trips widget width", () => {
+  const l = decodeLayout(encodeLayout({
+    segments: createDefaultLayout().segments, stage: "map2d",
+    widgets: [{ id: "a", type: "clock", segment: "left", order: 0, width: 6, height: 240, collapsed: false, config: {} }],
+  } as unknown as ShellLayout));
+  expect(l!.widgets[0].width).toBe(6);
+});

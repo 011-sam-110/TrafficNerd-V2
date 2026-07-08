@@ -2,6 +2,7 @@ import {
   createDefaultLayout, MAX_WIDGETS,
   type ShellLayout, type SegmentId, type StageId, type WidgetInstance,
 } from "@/lib/console/types";
+import { clampSpan } from "@/lib/console/resize";
 
 const SEGMENTS: SegmentId[] = ["left", "right", "bottom"];
 const STAGES: StageId[] = ["map3d", "map2d", "clock"];
@@ -40,6 +41,7 @@ export function sanitizeLayout(raw: unknown): ShellLayout | null {
       type: o.type,
       segment: SEGMENTS.includes(o.segment as SegmentId) ? (o.segment as SegmentId) : "left",
       order: num(o.order, widgets.length),
+      width: clampSpan(num(o.width, 12)),
       height: clamp(num(o.height, 240), 120, 1200),
       collapsed: o.collapsed === true,
       config: o.config && typeof o.config === "object" ? (o.config as Record<string, unknown>) : {},

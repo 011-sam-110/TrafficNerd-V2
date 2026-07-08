@@ -1114,7 +1114,7 @@ a { color: var(--tn-accent); }
 /* ===========================================================================
    WidgetFrame chrome — Task 6
    =========================================================================== */
-.tn-cw{display:flex;flex-direction:column;background:#fff;border:1px solid var(--tn-border,#dbe2ea);border-radius:8px;overflow:hidden}
+.tn-cw{position:relative;display:flex;flex-direction:column;background:#fff;border:1px solid var(--tn-border,#dbe2ea);border-radius:8px;overflow:hidden}
 .tn-cw-head{display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid #f1f5f9;cursor:grab;font-size:12px}
 .tn-cw-title{font-weight:700;color:#2b3640}.tn-cw-count{font-size:11px;color:#8a97a6}.tn-cw-sp{flex:1}
 .tn-cw-badge{font-size:10px;font-weight:800;color:#fff;border-radius:8px;padding:0 5px;background:#8a97a6}
@@ -1130,6 +1130,10 @@ a { color: var(--tn-accent); }
 .tn-cw-attn-feed{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
 .tn-cw-failed{padding:12px 10px;font-size:11px;color:#a9b4bf}
 .tn-cw-resize{height:6px;cursor:row-resize;background:linear-gradient(#f1f5f9,#fff)}
+.tn-cw-resize-x{position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;z-index:2}
+.tn-cw-resize-x:hover{background:rgba(120,140,160,.18)}
+.tn-cw-resize-xy{position:absolute;right:0;bottom:0;width:12px;height:12px;cursor:nwse-resize;z-index:3}
+.tn-cw-resize-xy::after{content:"";position:absolute;right:2px;bottom:2px;width:6px;height:6px;border-right:2px solid #b3bdc8;border-bottom:2px solid #b3bdc8}
 
 /* ===========================================================================
    StageHost + WorldClock + StageSwitch — Task 8
@@ -1148,8 +1152,10 @@ a { color: var(--tn-accent); }
 .tn-cw-center{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
 .tn-cw-stage{flex:1;position:relative;min-height:0}
 .tn-cw-bottom{flex:none;overflow:hidden;display:flex}
-.tn-seg{flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:8px;padding:8px;background:#eef2f6}
-.tn-seg-slot{flex:none}.tn-seg-empty{font-size:11px;color:#9aa6b2;text-align:center;margin:auto;padding:16px}
+.tn-seg{flex:1;overflow-y:auto;overflow-x:hidden;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:row;align-items:start;align-content:start;gap:8px;padding:8px;background:#eef2f6}
+.tn-seg-slot{grid-column:span 12;min-width:0}
+.tn-seg-empty{grid-column:1 / -1;font-size:11px;color:#9aa6b2;text-align:center;margin:auto;padding:16px}
+@media (max-width: 720px){ .tn-seg-slot{ grid-column: span 12 !important; } }
 .tn-grip{width:6px;flex:none;cursor:col-resize;background:#cdd6e0}
 .tn-grip:hover{background:#aebac6}.tn-grip-h{width:auto;height:6px;cursor:row-resize}
 
