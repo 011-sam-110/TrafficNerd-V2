@@ -266,7 +266,7 @@ export default function AviationDetail(_props: WidgetDetailProps) {
       )}
 
       <footer className="tn-av-foot">
-        <span className="tn-av-attr">Aircraft: adsb.lol · enrichment: adsbdb · 3 fixed regions (London / California / S.Carolina)</span>
+        <span className="tn-av-attr">Aircraft: adsb.lol · enrichment: adsbdb · worldwide grid (cached snapshot)</span>
         <span className="tn-av-actions">
           <button
             disabled={exportRows.length === 0}

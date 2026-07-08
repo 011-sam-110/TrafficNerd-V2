@@ -28,9 +28,13 @@ describe("altitudeBand", () => {
 });
 
 describe("regionOf", () => {
-  it("maps coords to the nearest ADS-B region label", () => {
-    expect(regionOf(51.5, -0.1)).toBe("London / SE England");
-    expect(regionOf(37, -120)).toBe("California");
+  it("maps coords to a coarse continent bucket", () => {
+    expect(regionOf(51.5, -0.1)).toBe("Europe"); // London
+    expect(regionOf(37, -120)).toBe("North America"); // California
+    expect(regionOf(35.6, 139.8)).toBe("Asia"); // Tokyo
+    expect(regionOf(-33.9, 151.2)).toBe("Oceania"); // Sydney
+    expect(regionOf(25.2, 55.3)).toBe("Middle East"); // Dubai
+    expect(regionOf(-23.5, -46.6)).toBe("South America"); // São Paulo
   });
 });
 
