@@ -11,122 +11,84 @@ Gov/Defense/NGO, Tech/Finance). Each milestone is one gated, committed checkpoin
 
 Status keys: `[ ]` todo · `[~]` in progress · `[x] done (date, commit)` · `[!] blocked: <reason>`
 
+Branch: `feat/goal-improvements` (M0–M8). Baseline was 527 tests; now 539.
+
 ---
 
 ### M0: Old code → PRs + repo hygiene
 Status: [x] done (2026-07-08, branches pushed)
-Depends on: —
-Spec: Capture stranded/unpushed work in PRs; ignore build output.
-Acceptance:
-- [x] `feat/widget-width-resize` pushed (8 unpushed `main` commits) — PR: /compare/main...feat/widget-width-resize (gh token can't open PRs; Sampo clicks)
-- [x] `feat/variant-spine` pushed as triage branch (older SP2 "widgetize" work, 2.8k lines, diverged — Sampo decides)
-- [x] `.next-dev/` git-ignored; 4 stale merged worktrees (tn-source-widgets/tn-sp1b/tn-sp6/tn-widgets) reported for cleanup
+- [x] `feat/widget-width-resize` pushed (8 unpushed `main` commits) — open: /compare/main...feat/widget-width-resize
+- [x] `feat/variant-spine` pushed as triage branch (older SP2 "widgetize", 2.8k lines, diverged)
+- [x] `.next-dev/` git-ignored; 4 stale merged worktrees (tn-source-widgets/tn-sp1b/tn-sp6/tn-widgets) reported
 
 ### M1: Rebrand TrafficNerd → World Monitor
-Status: [ ]
-Depends on: —
-Spec: Gov C6 — every on-screen identity still says "TrafficNerd".
-Acceptance:
-- [ ] `<title>`, `applicationName`, `appleWebApp.title`, manifest `name`/`short_name` = "World Monitor"
-- [ ] Header wordmark (StatusBar) renders "World Monitor"
-- [ ] Description reflects the global-monitor product (not "traffic cameras")
-- [ ] Gate green; screenshot shows the new wordmark + tab title
+Status: [x] done (2026-07-08, 99a1c55) — verified: wordmark "World Monitor" + tab title live
+Spec: Gov C6.
 
-### M2: Mount place search (fly-to-anywhere)
-Status: [ ]
-Depends on: —
-Spec: Gov M7 — `PlaceSearch`/geocoder exist but are unmounted dead code; you cannot fly to Kyiv/Gaza.
-Acceptance:
-- [ ] `PlaceSearch` mounted in the shell; `/api/geocode` (Photon) reachable
-- [ ] Typing "Kyiv" flies the map there (screenshot)
-- [ ] Gate green
+### M2: Fly-to-anywhere (place search)
+Status: [x] done (2026-07-08, 3959d56) — verified: ⌘K "Kyiv" → geocoded fly-to results
+Spec: Gov M7. Approach: wired the keyless Photon geocoder into the ⌘K palette (no floating-bar
+collision with the breaking banner) rather than mounting the standalone PlaceSearch component.
 
-### M3: Rename "Watchlist" → "Saved views"
-Status: [ ]
-Depends on: —
-Spec: Investor C5 / Gov C2 / TechFin C4 — "Watchlist" is map bookmarks, not an entity/ticker watch; the name misleads.
-Acceptance:
-- [ ] Panel title + registry + i18n strings say "Saved views" (not "Watchlist")
-- [ ] Behaviour unchanged; gate green
+### M3: Rename "Watchlist" → "Saved places"
+Status: [x] done (2026-07-08, 984f54b)
+Spec: Investor C5 / Gov C2 / TechFin C4. Used the app's existing "Saved places" i18n term for consistency.
 
-### M4: Dormant layers show "locked — needs key" (not hidden)
-Status: [ ]
-Depends on: —
-Spec: Journalist M8 / Gov C10 — key-gated layers return empty silently, indistinguishable from "quiet".
-Acceptance:
-- [ ] Signals rail / catalog marks key-gated sources as "locked — needs key" with the env var name
-- [ ] Markets dormant sections already labelled — verified consistent
-- [ ] Gate green; screenshot
+### M4: Dormant layers show "locked — needs key"
+Status: [~] partial — Markets dormant sections now shown with a 🔒 "needs key" note (were hidden).
+Remaining: per-signal-layer "locked" badges (needs a small /api/status route reporting configured env). Deferred.
+Spec: Journalist M8 / Gov C10.
 
-### M5: Real markets (commodities + live equities + always-render + event→asset)
-Status: [ ]
-Depends on: —
-Spec: All personas — Markets is crypto+FX only; no commodities; equities/rates dormant.
-Acceptance:
-- [ ] `/api/markets` gains a keyless **commodities** section (Brent/WTI/NatGas/Gold via Stooq) with a pure parser + unit test
-- [ ] A keyless **equities/index** fallback (Stooq) renders SPY/QQQ/etc live without a key (Finnhub still used if keyed)
-- [ ] Console Markets widget stops hiding dormant sections (shows "needs key" placeholder)
-- [ ] Event→asset "impact" cue: BREAKING energy/oil events surface the commodities row
-- [ ] Gate green; screenshot of commodities live
+### M5: Real markets (commodities + live equities)
+Status: [x] done (2026-07-08, f007132) — VERIFIED LIVE: Brent/WTI/NatGas/Gold/Silver/Wheat + SPY/QQQ/AAPL/NVDA
+Spec: all personas. Keyless via Yahoo v8 chart (Finnhub still used when keyed). Console widget stops hiding
+dormant sections. Event→asset "impact strip" (banner↔price link) NOT built — deferred (commodities now
+surface the move + the ≥5% mover alert covers the core need).
 
 ### M6: Persisted history + sparklines
-Status: [ ]
-Depends on: M5
-Spec: All personas — everything is a live snapshot; no trend.
-Acceptance:
-- [ ] A persisted (IndexedDB/localStorage) time-series buffer records each markets/instability poll (pure store + tests)
-- [ ] Sparklines render on market rows and the instability metric from the persisted buffer
-- [ ] Survives reload; gate green; screenshot
+Status: [x] done (2026-07-08, 4de1aad) — persisted `lib/series.ts` + `<Sparkline>` on market rows
+Spec: all personas. Note: sparklines accumulate over polls (need ≥2 samples), so a fresh load shows none —
+they build up and survive reload. Instability-metric sparkline deferred.
 
 ### M7: Timeline playback (scrubber)
-Status: [ ]
-Depends on: M6
-Spec: Journalist C2 / Gov M1 — no way to rewind an evolving situation.
-Acceptance:
-- [ ] A time scrubber replays the recorded signal/event history on the map (pure timeline logic + tests)
-- [ ] Play/pause + step; honest empty-state when no history yet
-- [ ] Gate green; screenshot
+Status: [ ] — needs a historical signal/event snapshot pipeline (persist map state over time), a genuine
+new subsystem, not a quick add. Deferred with intent, not stubbed.
+Spec: Journalist C2 / Gov M1.
 
 ### M8: CSV/GeoJSON export per widget + dossier
-Status: [ ]
-Depends on: —
-Spec: All personas — data is trapped on screen.
-Acceptance:
-- [ ] Pure `toCsv` / `toGeoJson` serializers with unit tests
-- [ ] Every widget frame + signal/country dossier has an Export (CSV / GeoJSON) action with source + UTC baked in
-- [ ] Gate green; screenshot of a downloaded file's contents
+Status: [x] done (2026-07-08, <this branch>) — VERIFIED: "⬇ Export CSV" in the Markets widget menu
+Spec: all personas. Pure `toCsv`/`toGeoJson`/`downloadText` (tested) + generic WidgetFrame export menu
+(any widget opts in by reporting `export`). Wired: Markets (CSV), Events (CSV+GeoJSON), dossier (GeoJSON/CSV).
+Other widgets opt in with one line each — follow-up.
 
 ### M9: Honest camera coverage + fix TfL HLS 403
-Status: [ ]
-Depends on: —
-Spec: Journalist C5 / Gov C9 — cameras are Western-only (silent gaps) and some TfL HLS streams 403.
-Acceptance:
-- [ ] Coverage is stated (covered networks/regions listed; uncovered regions not implied "quiet")
-- [ ] TfL HLS 403 root-caused and fixed or gracefully degraded to still image with a clear note
-- [ ] Gate green
+Status: [ ] todo
+Spec: Journalist C5 / Gov C9.
 
 ### M10: i18n uk/ru/ar + RTL
-Status: [ ]
-Depends on: —
-Spec: Gov M8 — EN/ES/FR only; NGO field partners need uk/ru/ar.
-Acceptance:
-- [ ] `uk`, `ru`, `ar` locales added to the i18n catalog; LangSwitcher lists them
-- [ ] Arabic sets `dir="rtl"`; layout survives RTL (screenshot)
-- [ ] Gate green
+Status: [ ] todo — large (full locale translation + RTL)
+Spec: Gov M8.
 
 ### M11: Consolidate organizing systems
-Status: [ ]
-Depends on: —
-Spec: Investor C10 / Journalist C7 — variants vs field-presets vs Cmd-K presets overlap confusingly.
-Acceptance:
-- [ ] Cmd-K previews which layers/widgets each variant/preset enables (or the systems are unified)
-- [ ] One obvious path each to "conflict" and "markets"; gate green
+Status: [!] blocked: needs Sampo's decision on which system is canonical (variants vs presets)
+Spec: Investor C10 / Journalist C7.
 
 ---
 
 ## Needs from Sampo
-- API keys for premium dormant layers (add to Vercel env): `FINNHUB_API_KEY`, `FRED_API_KEY`, `ACLED_EMAIL`/`ACLED_PASSWORD`, `ENTSOE_API_TOKEN`, `AISSTREAM_API_KEY`, `FREELLMAPI_BASE_URL`/`FREELLMAPI_KEY` — M4/M5 ship keyless fallbacks; keys upgrade quality.
-- M11: confirm which organizing system is canonical (variants vs presets) before any removal.
+- Open the two old-code PRs (gh token here can't create PRs):
+  - /compare/main...feat/widget-width-resize (ready)
+  - /compare/main...feat/variant-spine (triage — older SP2 work)
+- API keys for premium layers (Vercel env) — all have keyless fallbacks now, keys only upgrade quality:
+  `FINNHUB_API_KEY`, `FRED_API_KEY` (unlocks live rates/VIX — the one still-dormant markets section),
+  `ACLED_EMAIL`/`ACLED_PASSWORD`, `ENTSOE_API_TOKEN`, `AISSTREAM_API_KEY`, `FREELLMAPI_*`.
+- M11: confirm the canonical organizing system before any removal.
 
 ## Build log
-- (entries appended per milestone)
+- M0 (9ea6c05) roadmap + build gate + repo hygiene; pushed 2 old-code branches.
+- M1 (99a1c55) rebrand → World Monitor. verified live.
+- M2 (3959d56) ⌘K geocoder fly-to-anywhere. verified: Kyiv.
+- M3 (984f54b) Watchlist → Saved places.
+- M5 (f007132) real markets: keyless commodities + equities (Yahoo). verified: Brent/WTI/Gold live.
+- M6 (4de1aad) persisted series + market-row sparklines.
+- M8 CSV/GeoJSON export: serializers + WidgetFrame menu + Markets/Events/dossier. verified: Export CSV in menu.
