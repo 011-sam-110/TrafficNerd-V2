@@ -17,7 +17,9 @@ const RANK: Record<AlertSeverity, number> = { info: 0, warn: 1, critical: 2 };
 function MarketsBody({ config }: WidgetBodyProps) {
   const { data, status } = useJsonPoll<MarketsPayload>("/api/markets", 120_000, EMPTY);
   const moveMin = typeof config.alertMin === "number" ? config.alertMin : 5;
-  const sections = useMemo(() => (data.sections ?? []).filter((s) => s.rows.length), [data.sections]);
+  // Keep dormant (key-gated) sections too — show them as a "needs key" note
+  // rather than hiding them, so the capability is discoverable (not invisible).
+  const sections = useMemo(() => (data.sections ?? []).filter((s) => s.rows.length || s.dormant), [data.sections]);
   const allRows = useMemo(() => sections.flatMap((s) => s.rows), [sections]);
 
   const alerts: Alert[] = useMemo(() => {
@@ -49,6 +51,9 @@ function MarketsBody({ config }: WidgetBodyProps) {
       {sections.map((sec) => (
         <div key={sec.key}>
           <div className="tn-w-muted" style={{ margin: "6px 0 2px", fontWeight: 600 }}>{sec.label}</div>
+          {sec.dormant ? (
+            <p className="tn-w-empty" style={{ margin: "2px 0 4px" }}>🔒 {sec.note ?? "Needs an API key."}</p>
+          ) : (
           <ul className="tn-w-list">
             {sec.rows.map((r) => (
               <li key={r.id}>
@@ -64,6 +69,7 @@ function MarketsBody({ config }: WidgetBodyProps) {
               </li>
             ))}
           </ul>
+          )}
         </div>
       ))}
     </div>
