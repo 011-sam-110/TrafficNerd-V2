@@ -7,15 +7,25 @@
 // fallback to the accumulated mkt:<id> series when it doesn't, and an
 // "indicative only — not financial advice" disclaimer. Pure series maths live in
 // the unit-tested lib/markets/chart.ts; this is the shell.
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import type { MarketsPayload, MarketRow, MarketSection } from "@/lib/markets";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
 import { recordSeries, seriesSamples } from "@/lib/series";
 import { Chart, type ChartPoint } from "@/components/Chart";
 import { shellLayoutStore } from "@/lib/console/store";
+import { candlesToPoints, hiLo, periodChange, RANGES, type Candle, type Range } from "@/lib/markets/chart";
 
 const EMPTY: MarketsPayload = { generatedAt: 0, sections: [] };
+const RANGE_LABEL: Record<Range, string> = { "1mo": "1M", "6mo": "6M", "1y": "1Y" };
+type TableSortKey = "name" | "changePct" | "value";
+
+/** Adaptive-precision number formatting for prices/levels (large → 2dp, tiny → 6dp). */
+function fmtNum(n: number): string {
+  const abs = Math.abs(n);
+  const d = abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
+  return n.toLocaleString("en-US", { maximumFractionDigits: d });
+}
 
 /** Signed magnitude used for movers-first ordering; nulls sort last. */
 function absMove(r: MarketRow): number {
@@ -80,6 +90,62 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
     () => allRows.filter((r) => r.changePct != null).sort((a, b) => absMove(b) - absMove(a)).slice(0, 8),
     [allRows],
   );
+
+  const selRow = useMemo(() => allRows.find((r) => r.id === selId) ?? null, [allRows, selId]);
+  const selSym = selRow ? (selRow.symbol ?? selRow.id) : null;
+
+  // Primary historical chart: keyless Yahoo v8 OHLC for the selected instrument +
+  // range. Dormant-safe — the route never 5xxes, and a <2-candle result (dormant /
+  // no history / crypto-FX symbol Yahoo doesn't chart) falls back to the live series.
+  const [range, setRange] = useState<Range>("6mo");
+  const [candles, setCandles] = useState<Candle[]>([]);
+  const [chartLoading, setChartLoading] = useState(false);
+  useEffect(() => {
+    if (!selSym) { setCandles([]); return; }
+    let alive = true;
+    setChartLoading(true);
+    fetch(`/api/markets/chart?symbol=${encodeURIComponent(selSym)}&range=${range}`)
+      .then((r) => r.json())
+      .then((d: { candles?: Candle[] }) => { if (alive) setCandles(Array.isArray(d.candles) ? d.candles : []); })
+      .catch(() => { if (alive) setCandles([]); })
+      .finally(() => { if (alive) setChartLoading(false); });
+    return () => { alive = false; };
+  }, [selSym, range]);
+
+  const hasHistory = candles.length >= 2;
+  const chg = useMemo(() => periodChange(candles), [candles]);
+  const range52 = useMemo(() => hiLo(candles), [candles]);
+  // Honest fallback: chart the accumulated live mkt:<id> series when there's no
+  // real history. Read in render (folds in the latest recorded sample via tick).
+  const livePoints: ChartPoint[] = useMemo(
+    () => (selId ? seriesSamples(`mkt:${selId}`).map((s) => ({ x: s.t, y: s.n })) : []),
+    [selId, data.generatedAt],
+  );
+  const chartPoints = hasHistory ? candlesToPoints(candles) : livePoints;
+  const chartUp = hasHistory
+    ? chg.abs >= 0
+    : selRow?.changePct == null ? null : selRow.changePct >= 0;
+
+  // Sortable instrument table across every section (with its section attribution).
+  const [sortKey, setSortKey] = useState<TableSortKey>("changePct");
+  const [sortDir, setSortDir] = useState<1 | -1>(-1);
+  const [openTid, setOpenTid] = useState<string | null>(null);
+  const tableRows = useMemo(() => {
+    const arr = railSections.flatMap((s) => s.rows.map((r) => ({ r, secLabel: s.label, secSrc: s.source })));
+    return arr.sort((a, b) => {
+      let d: number;
+      if (sortKey === "name") d = (a.r.symbol ?? a.r.name).localeCompare(b.r.symbol ?? b.r.name);
+      else if (sortKey === "changePct") d = (a.r.changePct ?? -Infinity) - (b.r.changePct ?? -Infinity);
+      else d = (a.r.num ?? -Infinity) - (b.r.num ?? -Infinity);
+      return d * sortDir;
+    });
+  }, [railSections, sortKey, sortDir]);
+  const toggleSort = (k: TableSortKey) => {
+    if (sortKey === k) setSortDir((d) => (d === 1 ? -1 : 1));
+    else { setSortKey(k); setSortDir(k === "name" ? 1 : -1); }
+  };
+  const sortMark = (k: TableSortKey) => (sortKey === k ? (sortDir === -1 ? " ↓" : " ↑") : "");
+  const onTableRow = (id: string) => { selectRow(id); setOpenTid((o) => (o === id ? null : id)); };
 
   const now = Date.now();
 
@@ -162,7 +228,93 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
           </aside>
 
           <main className="tn-mk-main">
-            <p className="tn-w-empty">Select an instrument to see its chart.</p>
+            {selRow ? (
+              <div className="tn-mk-panel">
+                <div className="tn-mk-panel-head">
+                  <div>
+                    <div className="tn-mk-panel-title">{selRow.name}{selRow.symbol ? ` · ${selRow.symbol}` : ""}</div>
+                    <div className="tn-mk-panel-sub">{selRow.value}{selRow.sub ? ` · ${selRow.sub}` : ""}</div>
+                  </div>
+                  <div className="tn-mk-tabs" role="tablist" aria-label="Chart range">
+                    {RANGES.map((rg) => (
+                      <button key={rg} role="tab" aria-selected={range === rg} className={`tn-mk-tab ${range === rg ? "active" : ""}`} onClick={() => setRange(rg)}>
+                        {RANGE_LABEL[rg]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {chartPoints.length >= 2 ? (
+                  <>
+                    <Chart points={chartPoints} height={220} zeroBaseline={false} up={chartUp} markers />
+                    {hasHistory ? (
+                      <>
+                        <div className="tn-mk-metrics">
+                          <span className={`tn-mk-metric ${chg.abs >= 0 ? "up" : "down"}`}>
+                            <span className="tn-mk-metric-label">Change ({RANGE_LABEL[range]})</span>{" "}
+                            <b>{chg.abs >= 0 ? "+" : ""}{fmtNum(chg.abs)} ({chg.pct >= 0 ? "+" : ""}{chg.pct.toFixed(2)}%)</b>
+                          </span>
+                          {range52 && (
+                            <span className="tn-mk-metric">
+                              <span className="tn-mk-metric-label">{range === "1y" ? "52-wk range" : "Range"}</span>{" "}
+                              <b>{fmtNum(range52.lo)} – {fmtNum(range52.hi)}</b>
+                            </span>
+                          )}
+                          <span className="tn-mk-metric"><span className="tn-mk-metric-label">{candles.length} bars · Yahoo v8, delayed</span></span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="tn-mk-chart-note">Live session (accumulating) — historical unavailable for this symbol.</div>
+                    )}
+                  </>
+                ) : (
+                  <div className="tn-mk-chart-empty">{chartLoading ? "Loading chart…" : "No history yet — accumulating a live session series."}</div>
+                )}
+              </div>
+            ) : (
+              <p className="tn-w-empty">Select an instrument to see its chart.</p>
+            )}
+
+            <table className="tn-mk-table">
+              <thead>
+                <tr>
+                  <th className="sortable" onClick={() => toggleSort("name")}>Instrument{sortMark("name")}</th>
+                  <th className="sortable num" onClick={() => toggleSort("changePct")}>Change{sortMark("changePct")}</th>
+                  <th className="sortable num" onClick={() => toggleSort("value")}>Value{sortMark("value")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tableRows.map(({ r, secLabel, secSrc }) => {
+                  const isOpen = openTid === r.id;
+                  return (
+                    <Fragment key={r.id}>
+                      <tr className={`tn-mk-trow ${selId === r.id ? "is-sel" : ""}`} onClick={() => onTableRow(r.id)}>
+                        <td><span className="tn-mk-row-sym">{r.symbol ?? r.name}</span> <span className="tn-mk-row-name">{r.name}</span></td>
+                        <td className="num">
+                          {r.changePct != null
+                            ? <span className={`tn-mk-chg ${r.changePct >= 0 ? "up" : "down"}`}>{r.changePct >= 0 ? "+" : ""}{r.changePct}%</span>
+                            : <span className="tn-mk-row-name">—</span>}
+                        </td>
+                        <td className="num">{r.value}</td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="tn-mk-drill">
+                          <td colSpan={3}>
+                            <dl>
+                              <dt>Value</dt><dd>{r.value}</dd>
+                              {r.changePct != null && (<><dt>Change</dt><dd className={`tn-mk-chg ${r.changePct >= 0 ? "up" : "down"}`}>{r.changePct >= 0 ? "+" : ""}{r.changePct}%</dd></>)}
+                              {r.sub && (<><dt>Detail</dt><dd>{r.sub}</dd></>)}
+                              <dt>Class</dt><dd>{secLabel}</dd>
+                              <dt>Source</dt><dd>{secSrc}</dd>
+                            </dl>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
           </main>
         </div>
       )}
