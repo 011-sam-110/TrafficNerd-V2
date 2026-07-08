@@ -4,7 +4,7 @@
 // live pipeline (useSignalFeed → projectSignal) but renders deep — masthead + count
 // sparkline, source map, honest magnitude/severity + time distributions, a sortable
 // feature table with per-row props drill-down, attribution, and export/show-on-map.
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import type { SignalSource } from "@/lib/signals/types";
 import { useSignalFeed } from "@/lib/console/signals/useSignalFeed";
@@ -103,7 +103,47 @@ export function makeSignalDetail(source: SignalSource) {
           </div>
         )}
 
-        {/* Feature table (Task 4) inserted below. */}
+        {scoped.length > 0 && (
+          <table className="tn-sd-table">
+            <thead>
+              <tr>
+                {(["magnitude", "title", "recency"] as SortKey[]).map((k) => (
+                  <th key={k} onClick={() => { if (sortKey === k) setDir((d) => (d === 1 ? -1 : 1)); else { setSortKey(k); setDir(-1); } }}>
+                    {k === "recency" ? "When" : humaniseKey(k)}{sortKey === k ? (dir === -1 ? " ↓" : " ↑") : ""}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((f) => {
+                const entries = Object.entries(f.props ?? {}).filter(([, v]) => v != null && v !== "");
+                const isOpen = open === f.id;
+                return (
+                  <Fragment key={f.id}>
+                    <tr className="tn-sd-row" onClick={() => setOpen(isOpen ? null : f.id)}>
+                      <td>{typeof f.props?.magnitude === "number" ? (f.props.magnitude as number) : "—"}</td>
+                      <td>{f.title}</td>
+                      <td>{f.ts ? new Date(f.ts).toISOString().slice(0, 16).replace("T", " ") : "—"}</td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="tn-sd-drill">
+                        <td colSpan={3}>
+                          {entries.length > 0 ? (
+                            <dl>{entries.map(([k, v]) => (<div key={k} style={{ display: "contents" }}><dt>{humaniseKey(k)}</dt><dd>{String(v)}</dd></div>))}</dl>
+                          ) : <span className="tn-w-empty">No extra properties.</span>}
+                          <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+                            <button className="tn-sd-actions" onClick={(e) => { e.stopPropagation(); openSignalFeature(f, source.label); shellLayoutStore.unfocus(); }} style={{ background: "none", border: 0, color: "var(--tn-accent)", cursor: "pointer", padding: 0 }}>Show on globe ↗</button>
+                            {f.link && <a href={f.link} target="_blank" rel="noreferrer" style={{ color: "var(--tn-accent)" }}>Source ↗</a>}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
 
         <footer className="tn-sd-foot">
           <span className="tn-sd-attr">{source.attribution}{KEYED.has(source.id) && " · needs an API key (dormant when unset)"}</span>
