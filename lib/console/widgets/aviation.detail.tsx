@@ -18,6 +18,7 @@ import { Chart, type ChartPoint } from "@/components/Chart";
 import InsetMap from "@/components/InsetMap";
 import type { InsetPoint } from "@/lib/map/inset";
 import PlaneDetail from "@/components/PlaneDetail";
+import { toCsv, toGeoJson, downloadText, exportFilename } from "@/lib/export";
 
 const MS_TO_KT = 1.94384;
 const MS_TO_KMH = 3.6;
@@ -105,6 +106,29 @@ export default function AviationDetail(_props: WidgetDetailProps) {
     else { setSortKey(k); setDir(-1); }
   };
   const sortMark = (k: FlightSortKey) => (sortKey === k ? (dir === -1 ? " ↓" : " ↑") : "");
+
+  const exportRows = useMemo(
+    () => rows.map((o) => {
+      const meta = o.meta ?? {};
+      const velocityMs = typeof meta.velocityMs === "number" ? (meta.velocityMs as number) : null;
+      return {
+        callsign: o.label,
+        type: o.typeLabel ?? "",
+        altKm: typeof o.altKm === "number" ? Number(o.altKm.toFixed(2)) : "",
+        speedKt: velocityMs != null ? Number((velocityMs * MS_TO_KT).toFixed(0)) : "",
+        headingDeg: typeof meta.headingDeg === "number" ? Math.round(meta.headingDeg as number) : "",
+        verticalRateMs: typeof meta.verticalRateMs === "number" ? (meta.verticalRateMs as number) : "",
+        registration: (meta.registration as string) || "",
+        region: regionOf(o.lat, o.lon),
+        squawk: (meta.squawk as string) || "",
+      };
+    }),
+    [rows],
+  );
+  const exportGeo = useMemo(
+    () => filtered.map((o) => ({ lat: o.lat, lon: o.lon, properties: { callsign: o.label, ...(o.meta ?? {}) } })),
+    [filtered],
+  );
 
   return (
     <div className="tn-av">
@@ -241,6 +265,16 @@ export default function AviationDetail(_props: WidgetDetailProps) {
 
       <footer className="tn-av-foot">
         <span className="tn-av-attr">Aircraft: adsb.lol · enrichment: adsbdb · 3 fixed regions (London / California / S.Carolina)</span>
+        <span className="tn-av-actions">
+          <button
+            disabled={exportRows.length === 0}
+            onClick={() => downloadText(`${exportFilename("aviation", Date.now())}.csv`, "text/csv", toCsv(exportRows))}
+          >⬇ CSV</button>
+          <button
+            disabled={exportGeo.length === 0}
+            onClick={() => downloadText(`${exportFilename("aviation", Date.now())}.geojson`, "application/geo+json", toGeoJson(exportGeo))}
+          >⬇ GeoJSON</button>
+        </span>
       </footer>
     </div>
   );
