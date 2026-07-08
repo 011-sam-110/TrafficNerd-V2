@@ -15,6 +15,8 @@ export interface NewsItem {
   source: string;
   url: string;
   ts: number; // epoch ms (0 when the feed omits a parseable date)
+  /** Cleaned RSS <description>/<summary> snippet, when the feed provides one. */
+  description?: string;
 }
 
 const ENTITIES: Record<string, string> = {
@@ -75,7 +77,9 @@ export function parseRss(xml: string | null | undefined, source: string): NewsIt
     const title = cleanText(tag(block, "title"));
     const url = extractLink(block);
     if (!title || !url || !/^https?:\/\//i.test(url)) continue;
-    out.push({ title, source, url: url.trim(), ts: parseDate(block) });
+    const descRaw = tag(block, "description") ?? tag(block, "summary");
+    const description = cleanText(descRaw) || undefined;
+    out.push({ title, source, url: url.trim(), ts: parseDate(block), description });
   }
   return out;
 }
