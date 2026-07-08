@@ -5,6 +5,7 @@ import { registerWidget, type WidgetBodyProps } from "@/lib/console/registry";
 import { useWidgetReport } from "@/components/console/WidgetFrame";
 import { runAlertRule } from "@/lib/console/alerts";
 import { aviationAlerts, type PlaneLite } from "@/lib/console/widgets/aviation.rules";
+import AviationDetail from "./aviation.detail";
 
 /**
  * Aviation widget body.
@@ -78,6 +79,7 @@ export const AVIATION_WIDGET = {
   defaultHeight: 280,
   defaultConfig: { sort: "alt" },
   component: AviationBody,
+  detail: AviationDetail,
   capabilities: { filter: true, sort: true },
 };
 registerWidget(AVIATION_WIDGET);
