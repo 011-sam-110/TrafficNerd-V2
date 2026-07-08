@@ -6,10 +6,10 @@
 // Selection persists via shellLayoutStore.configure(instanceId, { providerId }),
 // exactly like the docked NEWS_WIDGET. Keyless throughout (YouTube embeds +
 // img.youtube.com thumbnails); HLS routes through the existing inline hls.js path.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import { shellLayoutStore } from "@/lib/console/store";
-import { NEWS_PROVIDERS, resolveEmbed, type NewsProvider } from "@/lib/console/news/providers";
+import { NEWS_PROVIDERS, providerThumb, resolveEmbed, type NewsProvider } from "@/lib/console/news/providers";
 
 export default function NewsDetail({ instanceId, config }: WidgetDetailProps) {
   // Seed the active channel from persisted config (providerId + optional customProvider),
@@ -28,6 +28,25 @@ export default function NewsDetail({ instanceId, config }: WidgetDetailProps) {
   );
   // Distinct catalog categories for the filter chips (+ "All").
   const categories = useMemo(() => Array.from(new Set(NEWS_PROVIDERS.map((p) => p.category))), []);
+
+  // Channel wall: the (category-filtered) catalog, grouped by category with headers.
+  const wallGroups = useMemo(() => {
+    const shown = category == null ? NEWS_PROVIDERS : NEWS_PROVIDERS.filter((p) => p.category === category);
+    const by = new Map<string, NewsProvider[]>();
+    for (const p of shown) {
+      const g = by.get(p.category) ?? [];
+      g.push(p);
+      by.set(p.category, g);
+    }
+    return [...by.entries()];
+  }, [category]);
+
+  // Select a catalog channel: instant hero swap (local state) + persist the choice,
+  // exactly the { providerId } patch the docked NewsBody writes.
+  const selectChannel = (p: NewsProvider) => {
+    setActiveId(p.id);
+    shellLayoutStore.configure(instanceId, { providerId: p.id });
+  };
 
   const embed = active ? resolveEmbed(active) : null;
 
@@ -79,6 +98,38 @@ export default function NewsDetail({ instanceId, config }: WidgetDetailProps) {
           ? <iframe className="tn-nv-video" src={embed.src} title={active.name} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen />
           : <video ref={videoRef} className="tn-nv-video" muted autoPlay playsInline controls />}
         <span className="tn-nv-hero-label">{active.name} · LIVE</span>
+      </div>
+
+      <div className="tn-nv-sec-h">Channels</div>
+      <div className="tn-nv-wall">
+        {wallGroups.map(([cat, ps]) => (
+          <Fragment key={cat}>
+            <div className="tn-nv-cat-h">{cat}</div>
+            {ps.map((p) => {
+              const thumb = providerThumb(p);
+              const on = p.id === activeId;
+              return (
+                <button
+                  key={p.id}
+                  className={`tn-nv-tile${on ? " is-on" : ""}`}
+                  onClick={() => selectChannel(p)}
+                  aria-pressed={on}
+                >
+                  <div className="tn-nv-thumb-wrap">
+                    {thumb
+                      ? <img className="tn-nv-thumb" src={thumb} alt="" loading="lazy" />
+                      : <span className="tn-nv-thumb-fallback">{p.name}</span>}
+                    <span className="tn-nv-live"><span className="tn-nv-live-dot" />LIVE</span>
+                  </div>
+                  <span className="tn-nv-tile-cap">
+                    <span className="tn-nv-tile-name">{p.name}</span>
+                    <span className="tn-nv-tile-cat">{p.category}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </Fragment>
+        ))}
       </div>
     </div>
   );
