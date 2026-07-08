@@ -40,11 +40,20 @@ export function makeSignalDetail(source: SignalSource) {
       if (updatedAt) recordSeries(`sig:${source.id}`, scoped.length, updatedAt);
     }, [updatedAt, scoped.length]);
 
-    const spark: ChartPoint[] = useMemo(
-      () => seriesSamples(`sig:${source.id}`).map((s) => ({ x: s.t, y: s.n })),
-      [updatedAt, scoped.length],
-    );
-    const delta = useMemo(() => deltaOf(seriesSamples(`sig:${source.id}`)), [updatedAt, scoped.length]);
+    // Read the persisted series AND fold in the CURRENT poll's live count. recordSeries
+    // (above) only writes it in a post-commit effect and lib/series has no React
+    // subscription, so without folding it in here the delta/sparkline would trail the
+    // count shown beside them by one poll — and could even show a wrong-direction arrow.
+    const samples = useMemo(() => {
+      const base = seriesSamples(`sig:${source.id}`);
+      const last = base[base.length - 1];
+      if (updatedAt && (!last || last.t !== updatedAt || last.n !== scoped.length)) {
+        return [...base, { t: updatedAt, n: scoped.length }];
+      }
+      return base;
+    }, [updatedAt, scoped.length]);
+    const spark: ChartPoint[] = useMemo(() => samples.map((s) => ({ x: s.t, y: s.n })), [samples]);
+    const delta = useMemo(() => deltaOf(samples), [samples]);
 
     const rows = useMemo(() => sortFeatures(scoped, sortKey, dir), [scoped, sortKey, dir]);
     const dist = useMemo(() => distribution(scoped), [scoped]);

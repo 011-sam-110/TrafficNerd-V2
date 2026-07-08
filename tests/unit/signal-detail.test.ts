@@ -19,6 +19,14 @@ describe("distribution", () => {
   it("is 'none' when neither magnitude nor severity exists (honest hide)", () => {
     expect(distribution([f({ props: { note: "hi" } })]).kind).toBe("none");
   });
+  it("gives the top INTEGER magnitude its own bucket (off-by-one guard)", () => {
+    // [5,6] must render as two bars (5→1, 6→1), not one "5: 2" that swallows the max.
+    const d = distribution([f({ props: { magnitude: 5 } }), f({ props: { magnitude: 6 } })]);
+    expect(d.kind).toBe("magnitude");
+    expect(d.bins.find((b) => b.label === "5")?.count).toBe(1);
+    expect(d.bins.find((b) => b.label === "6")?.count).toBe(1);
+    expect(d.bins.reduce((n, b) => n + b.count, 0)).toBe(2);
+  });
 });
 
 describe("timeModel", () => {

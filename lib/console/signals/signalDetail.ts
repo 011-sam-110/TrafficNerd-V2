@@ -3,6 +3,7 @@
 // source actually carries numeric magnitudes, falls back to declared severity
 // counts, and reports "none" when neither exists (the caller then hides the panel).
 import type { SignalFeature } from "@/lib/signals/types";
+import { histogram } from "@/lib/widgets/buckets";
 
 /** Declared severity read from common alert-level props — only unambiguous words. */
 export function declaredSeverity(props?: Record<string, unknown>): "critical" | "warn" | null {
@@ -37,15 +38,20 @@ export function distribution(features: SignalFeature[]): Distribution {
   const mags = magnitudeValues(features);
   if (mags.length > 0) {
     const lo = Math.floor(Math.min(...mags));
-    const hi = Math.ceil(Math.max(...mags));
+    const maxV = Math.max(...mags);
+    // When the max is an exact integer, extend the top edge by one so it gets its
+    // OWN bucket instead of merging into the penultimate one (off-by-one guard).
+    const hi = Math.ceil(maxV) + (Number.isInteger(maxV) ? 1 : 0);
     const span = Math.max(1, hi - lo);
-    const step = Math.max(1, Math.ceil(span / 8)); // integer buckets, ≤8
-    const bins: { label: string; count: number }[] = [];
-    for (let edge = lo; edge < lo + step * Math.ceil(span / step); edge += step) {
-      const top = edge + step;
-      const count = mags.filter((m) => m >= edge && (top >= hi ? m <= top : m < top)).length;
-      bins.push({ label: step === 1 ? `${edge}` : `${edge}–${top}`, count });
-    }
+    const step = Math.max(1, Math.ceil(span / 8)); // ≤8 integer-width buckets
+    const edges: number[] = [];
+    for (let e = lo; e < hi; e += step) edges.push(e);
+    edges.push(hi);
+    // Reuse the node-tested histogram (last bin inclusive of the top edge).
+    const bins = histogram(mags, edges).map((count, i) => ({
+      label: step === 1 ? `${edges[i]}` : `${edges[i]}–${edges[i + 1]}`,
+      count,
+    }));
     return { kind: "magnitude", bins };
   }
   let critical = 0, warn = 0, other = 0;
