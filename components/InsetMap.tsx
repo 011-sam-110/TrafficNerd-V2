@@ -34,6 +34,14 @@ export default function InsetMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const selectRef = useRef(onSelect);
   selectRef.current = onSelect;
+  // Latest props for the async 'load' handler — it is registered once, so without these
+  // it would paint the INITIAL selection if props changed during the style fetch.
+  const pointsRef = useRef(points); pointsRef.current = points;
+  const trackRef = useRef(track); trackRef.current = track;
+  // Auto-fit ONLY when the set of points changes (a new selection), not on every
+  // position update — a moving caller (satellites re-propagate every 5s) would otherwise
+  // re-snap the camera each tick and discard the user's manual pan/zoom.
+  const fitKeyRef = useRef<string>("");
 
   // Create the map once.
   useEffect(() => {
@@ -47,7 +55,7 @@ export default function InsetMap({
     });
     mapRef.current = map;
     map.on("load", () => {
-      map.addSource(SRC, { type: "geojson", data: pointsToFC(points) });
+      map.addSource(SRC, { type: "geojson", data: pointsToFC(pointsRef.current) });
       map.addLayer({
         id: LAYER,
         type: "circle",
@@ -66,8 +74,9 @@ export default function InsetMap({
       });
       map.on("mouseenter", LAYER, () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", LAYER, () => { map.getCanvas().style.cursor = ""; });
-      syncTrack(map, track);
-      fit(map, points, track);
+      syncTrack(map, trackRef.current);
+      fit(map, pointsRef.current, trackRef.current);
+      fitKeyRef.current = pointsKey(pointsRef.current);
     });
     return () => { map.remove(); mapRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,10 +87,22 @@ export default function InsetMap({
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     const src = map.getSource(SRC) as GeoJSONSource | undefined;
-    if (src) { src.setData(pointsToFC(points)); syncTrack(map, track); fit(map, points, track); }
+    if (src) {
+      src.setData(pointsToFC(points));
+      syncTrack(map, track);
+      // Re-fit only when the point set changes — preserves the user's pan/zoom while a
+      // moving caller updates positions in place.
+      const key = pointsKey(points);
+      if (key !== fitKeyRef.current) { fit(map, points, track); fitKeyRef.current = key; }
+    }
   }, [points, track]);
 
   return <div ref={boxRef} className="tn-inset-map" style={{ width: "100%", height }} />;
+}
+
+/** Identity of the point SET (ids, or coords when unkeyed) — used to gate auto-fit. */
+function pointsKey(points: InsetPoint[]): string {
+  return points.map((p) => p.id ?? `${p.lat.toFixed(4)},${p.lon.toFixed(4)}`).join("|");
 }
 
 function fit(map: maplibregl.Map, points: InsetPoint[], track?: [number, number][][]) {

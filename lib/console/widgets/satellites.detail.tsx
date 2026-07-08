@@ -37,8 +37,9 @@ interface SatMeta {
 }
 const metaOf = (o: WorldObject | undefined): SatMeta => (o?.meta ?? {}) as SatMeta;
 
-// NASA's official YouTube channel — the live_stream embed form resolves to whatever
-// the channel is broadcasting (the ISS onboard/external HD cameras), keyless.
+// NASA's official (main) YouTube channel — the live_stream embed resolves to whatever
+// that channel is currently broadcasting: the ISS HD cameras when they're live, other
+// NASA programming otherwise. Keyless. The caption is honest about this (not ISS-only).
 const NASA_CHANNEL = "UCLA_DiR1FfKNvjuUpBHmylQ";
 const ISS_NORAD = "25544";
 
@@ -256,6 +257,11 @@ export default function SatellitesDetail(props: WidgetDetailProps) {
                 src={gibsUrl}
                 alt={`NASA true-color imagery of the region beneath ${sel.label}`}
                 loading="lazy"
+                // Gracefully hide a failed/unavailable NASA tile (outage/404) instead of the
+                // browser's broken-image glyph; self-heals when the sub-point crosses to a
+                // new (working) tile and the src changes.
+                onError={(e) => { e.currentTarget.style.display = "none"; }}
+                onLoad={(e) => { e.currentTarget.style.display = ""; }}
               />
               <figcaption className="tn-sat-cap">
                 NASA GIBS true-color · {gibsWhen} · region beneath the sub-point (not a live satellite photo)
@@ -270,12 +276,12 @@ export default function SatellitesDetail(props: WidgetDetailProps) {
                 <iframe
                   className="tn-sat-live-frame"
                   src={`https://www.youtube.com/embed/live_stream?channel=${NASA_CHANNEL}`}
-                  title="NASA live — ISS onboard/external cameras"
+                  title="NASA live channel"
                   allow="encrypted-media; picture-in-picture"
                   allowFullScreen
                 />
                 <p className="tn-sat-cap">
-                  NASA live stream (ISS onboard/external cameras) — a real feed from the station when NASA is broadcasting.
+                  NASA&apos;s live channel — carries the ISS HD cameras when NASA is broadcasting them (other NASA programming otherwise).
                 </p>
               </div>
             ) : (
