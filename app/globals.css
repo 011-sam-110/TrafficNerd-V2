@@ -1147,7 +1147,7 @@ a { color: var(--tn-accent); }
 /* ===========================================================================
    ConsoleWorkspace + Segment — Task 7
    =========================================================================== */
-.tn-cw-shell{position:absolute;inset:0;display:flex;min-height:0}
+.tn-cw-shell{position:absolute;inset:var(--tn-topbar-h) 0 0 0;display:flex;min-height:0}
 .tn-cw-col{flex:none;overflow:hidden;display:flex}
 .tn-cw-center{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
 .tn-cw-stage{flex:1;position:relative;min-height:0}
