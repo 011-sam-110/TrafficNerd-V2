@@ -8,9 +8,9 @@
 // export footer. All snapshots go strictly through /api/proxy?id= (still) and
 // /api/hls?id= (live) via CameraImage / CameraVideo / CameraDetail — never a raw
 // upstream URL (SSRF). Coverage + concurrency maths live in unit-tested lib/cameras/.
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
-import { useCameras } from "@/lib/cameras/useCameras";
+import { useCameras, type CameraRow } from "@/lib/cameras/useCameras";
 import { coverage } from "@/lib/cameras/coverage";
 import { recordSeries, seriesSamples } from "@/lib/series";
 import { deltaOf } from "@/lib/widgets/history";
@@ -18,8 +18,68 @@ import { Chart, type ChartPoint } from "@/components/Chart";
 import InsetMap from "@/components/InsetMap";
 import type { InsetPoint } from "@/lib/map/inset";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
+import { CameraImage } from "@/components/CameraImage";
+import { CameraVideo } from "@/components/CameraVideo";
+import { CameraDetail } from "@/components/CameraDetail";
+import { hlsSlots, useHlsActive, HLS_CAP } from "@/lib/cameras/concurrency";
+import { msUntilRefresh, formatCountdown, sampledAgeMs } from "@/lib/cameras/freshness";
+import { useNow, formatAge } from "@/lib/shell/useNow";
+import type { WorldObject } from "@/lib/world";
 
 type SortKey = "name" | "operator" | "region";
+
+// The registry merges thousands of cameras (TfL ~900, Digitraffic ~2000, …). The
+// still wall renders one refreshing <img> (a /api/proxy request) per tile, so it is
+// bounded — a wall of thousands would storm the proxy and the browser. Live players
+// are capped separately (HLS_CAP). The table caps its DOM rows for the same reason;
+// both show an honest "showing N of M — refine with filters" note.
+const WALL_CAP = 18;
+const TABLE_CAP = 300;
+
+function toWorldObject(c: CameraRow): WorldObject {
+  return { kind: "camera", id: c.id, label: c.name, lat: c.lat, lon: c.lon, meta: { available: c.available } };
+}
+
+// One tile in the still/live wall. Defaults to a still <img> (CameraImage → the
+// SSRF-safe /api/proxy?id=); a live camera gets a "▶ Live" button that activates an
+// HLS slot (capped, oldest-evicted in concurrency.ts) and swaps to CameraVideo
+// (/api/hls?id=). Offline feeds show an honest placeholder — never a raw upstream URL.
+function CameraTile({ camera, now }: { camera: CameraRow; now: number }) {
+  const active = useHlsActive(camera.id);
+  const isLive = camera.live && camera.available;
+  const isStill = camera.available && !camera.live;
+  const mountedAt = useRef(Date.now()).current;
+  const nextFrame = isStill ? formatCountdown(msUntilRefresh(mountedAt, camera.refreshSeconds, now)) : null;
+  const age = sampledAgeMs(camera.lastSampledAt, now);
+
+  return (
+    <div className="tn-cm-tile">
+      <div className="tn-cm-shot">
+        {!camera.available ? (
+          <div className="tn-cm-offline">Feed offline</div>
+        ) : isLive && active ? (
+          <>
+            <button className="tn-cm-live-btn" onClick={() => hlsSlots.deactivate(camera.id)}>◼ Stop</button>
+            <CameraVideo id={camera.id} alt={camera.name} attribution={camera.attribution} license={camera.license} refreshSeconds={camera.refreshSeconds} />
+          </>
+        ) : (
+          <>
+            {isLive && <button className="tn-cm-live-btn" onClick={() => hlsSlots.activate(camera.id)}>▶ Live</button>}
+            <CameraImage id={camera.id} alt={camera.name} attribution={camera.attribution} license={camera.license} refreshSeconds={camera.refreshSeconds} />
+          </>
+        )}
+      </div>
+      <div className="tn-cm-cap">
+        <span className="tn-cm-cap-name">{camera.name}</span>
+        <span className="tn-cm-cap-sub">
+          {camera.source}
+          {isLive ? " · ▶ live" : isStill ? ` · still · next ${nextFrame}` : " · offline"}
+          {age != null && ` · sampled ${formatAge(age)} ago`}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function CamerasDetail(_props: WidgetDetailProps) {
   const { cameras, status, updatedAt } = useCameras();
@@ -46,6 +106,35 @@ export default function CamerasDetail(_props: WidgetDetailProps) {
     () => filtered.map((c) => ({ lat: c.lat, lon: c.lon, id: c.id, props: { name: c.name } })),
     [filtered],
   );
+
+  // 1s tick drives the per-tile still-refresh countdowns + sampled ages.
+  const now = useNow(1000);
+  // Live-player count for the "N/6 live" honesty counter (shared HLS slot store).
+  const liveActive = useSyncExternalStore(hlsSlots.subscribe, hlsSlots.get, hlsSlots.get);
+
+  // Wall = a bounded, most-interesting-first slice (live, then available, then name).
+  const wall = useMemo(
+    () =>
+      [...filtered]
+        .sort((a, b) =>
+          Number(b.live) - Number(a.live) ||
+          Number(b.available) - Number(a.available) ||
+          a.name.localeCompare(b.name),
+        )
+        .slice(0, WALL_CAP),
+    [filtered],
+  );
+
+  // Sortable table (name / operator / region), capped for DOM sanity.
+  const rows = useMemo(() => {
+    const val = (c: CameraRow) => (sortKey === "name" ? c.name : sortKey === "operator" ? c.source : c.region ?? "");
+    return [...filtered].sort((a, b) => val(a).localeCompare(val(b)) * dir).slice(0, TABLE_CAP);
+  }, [filtered, sortKey, dir]);
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setDir((d) => (d === 1 ? -1 : 1));
+    else { setSortKey(k); setDir(1); }
+  };
+  const sortMark = (k: SortKey) => (sortKey === k ? (dir === 1 ? " ↑" : " ↓") : "");
 
   // Count sparkline: only stamp the series ONCE REAL DATA HAS ARRIVED (the W4 review
   // fix). The initial feed is empty and its updatedAt is null; even after a poll,
@@ -142,6 +231,57 @@ export default function CamerasDetail(_props: WidgetDetailProps) {
               : <p className="tn-w-empty">No cameras match this filter.</p>}
           </div>
         </div>
+      )}
+
+      {filtered.length > 0 && (
+        <div className="tn-cm-panel">
+          <h3>
+            Camera wall
+            <span className="tn-cm-count">
+              {liveActive.length}/{HLS_CAP} live · showing {wall.length} of {filtered.length}
+            </span>
+          </h3>
+          <div className="tn-cm-wall">
+            {wall.map((c) => <CameraTile key={c.id} camera={c} now={now} />)}
+          </div>
+        </div>
+      )}
+
+      {filtered.length > 0 && (
+        <table className="tn-cm-table">
+          <thead>
+            <tr>
+              <th className="sortable" onClick={() => toggleSort("name")}>Name{sortMark("name")}</th>
+              <th className="sortable" onClick={() => toggleSort("operator")}>Operator{sortMark("operator")}</th>
+              <th className="sortable" onClick={() => toggleSort("region")}>Region{sortMark("region")}</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => {
+              const isOpen = openId === c.id;
+              return (
+                <Fragment key={c.id}>
+                  <tr className="tn-cm-row" onClick={() => setOpenId(isOpen ? null : c.id)}>
+                    <td className="tn-w-strong">{c.name}</td>
+                    <td className="tn-w-muted">{c.source}</td>
+                    <td>{c.region ?? "—"}</td>
+                    <td>{!c.available ? "Offline" : c.live ? "▶ Live" : "Still"}</td>
+                  </tr>
+                  {isOpen && (
+                    <tr className="tn-cm-drill">
+                      <td colSpan={4}><CameraDetail object={toWorldObject(c)} /></td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+
+      {filtered.length > TABLE_CAP && (
+        <p className="tn-w-empty">Showing the first {TABLE_CAP} of {filtered.length} — refine with the filters above.</p>
       )}
 
       <footer className="tn-cm-foot">
