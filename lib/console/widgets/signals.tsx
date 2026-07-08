@@ -17,6 +17,7 @@ import { useWidgetReport } from "@/components/console/WidgetFrame";
 import { useScope } from "@/lib/shell/scope";
 import { projectSignal } from "@/lib/console/signals/signalCard";
 import { useSignalFeed } from "@/lib/console/signals/useSignalFeed";
+import { makeSignalDetail } from "./signals.detail";
 
 const GROUP_ICON: Record<string, string> = {
   Synthesis: "🧭",
@@ -115,5 +116,6 @@ for (const source of SIGNALS) {
     defaultHeight: 240,
     defaultConfig: {},
     component: makeSignalBody(source),
+    detail: makeSignalDetail(source),
   });
 }
