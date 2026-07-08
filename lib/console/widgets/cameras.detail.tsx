@@ -15,6 +15,9 @@ import { coverage } from "@/lib/cameras/coverage";
 import { recordSeries, seriesSamples } from "@/lib/series";
 import { deltaOf } from "@/lib/widgets/history";
 import { Chart, type ChartPoint } from "@/components/Chart";
+import InsetMap from "@/components/InsetMap";
+import type { InsetPoint } from "@/lib/map/inset";
+import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 
 type SortKey = "name" | "operator" | "region";
 
@@ -29,6 +32,20 @@ export default function CamerasDetail(_props: WidgetDetailProps) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("operator");
   const [dir, setDir] = useState<1 | -1>(1);
+
+  // Operator (per-source) + live-only filtering, reusing the SAME cameraFilterStore
+  // the globe/legend drive. NOTE: `passes` lives on the STORE (not the state object
+  // useCameraFilter returns); we read the reactive state as the memo trigger and call
+  // cameraFilterStore.passes with the current live state (mirrors WorldMap.tsx).
+  const filter = useCameraFilter();
+  const filtered = useMemo(
+    () => cameras.filter((c) => cameraFilterStore.passes(c.source, c.live)),
+    [cameras, filter],
+  );
+  const mapPoints: InsetPoint[] = useMemo(
+    () => filtered.map((c) => ({ lat: c.lat, lon: c.lon, id: c.id, props: { name: c.name } })),
+    [filtered],
+  );
 
   // Count sparkline: only stamp the series ONCE REAL DATA HAS ARRIVED (the W4 review
   // fix). The initial feed is empty and its updatedAt is null; even after a poll,
@@ -72,6 +89,60 @@ export default function CamerasDetail(_props: WidgetDetailProps) {
       {status === "loading" && cameras.length === 0 && <p className="tn-w-empty">Loading cameras…</p>}
       {status === "error" && cameras.length === 0 && <p className="tn-w-empty">Could not load cameras.</p>}
       {status === "idle" && cameras.length === 0 && <p className="tn-w-empty">No cameras loaded.</p>}
+
+      {cameras.length > 0 && (
+        <div className="tn-cm-cov">
+          {cov.byOperator.map((o) => (
+            <span
+              key={o.source}
+              className="tn-cm-cov-chip"
+              title={`${o.source}: ${o.live} live · ${o.still} still · ${o.offline} offline`}
+            >
+              <b>{o.source}</b> · {o.live}▶ / {o.still}▦ / {o.offline}✕
+            </span>
+          ))}
+        </div>
+      )}
+
+      {cameras.length > 0 && (
+        <div className="tn-cm-filters">
+          <div className="tn-cm-filter-row">
+            <span className="tn-cm-filter-label">Operators</span>
+            {cov.byOperator.map((o) => {
+              const on = filter.regions[o.source] ?? true;
+              return (
+                <button
+                  key={o.source}
+                  className={`tn-cm-fchip ${on ? "active" : "off"}`}
+                  onClick={() => cameraFilterStore.toggleRegion(o.source)}
+                >
+                  {o.source} · {o.total}
+                </button>
+              );
+            })}
+          </div>
+          <div className="tn-cm-filter-row">
+            <span className="tn-cm-filter-label">Live</span>
+            <button
+              className={`tn-cm-fchip ${filter.liveOnly ? "active" : ""}`}
+              onClick={() => cameraFilterStore.setLiveOnly(!filter.liveOnly)}
+            >
+              Live streams only
+            </button>
+          </div>
+        </div>
+      )}
+
+      {cameras.length > 0 && (
+        <div className="tn-cm-panels">
+          <div className="tn-cm-panel">
+            <h3>Locations <span className="tn-cm-count">{filtered.length} shown</span></h3>
+            {mapPoints.length > 0
+              ? <InsetMap points={mapPoints} height={240} onSelect={(id) => setOpenId(id)} />
+              : <p className="tn-w-empty">No cameras match this filter.</p>}
+          </div>
+        </div>
+      )}
 
       <footer className="tn-cm-foot">
         <span className="tn-cm-attr">Traffic cameras · see each camera for its licence.</span>
