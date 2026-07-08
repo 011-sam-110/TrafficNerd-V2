@@ -15,6 +15,8 @@ export interface NewsItem {
   source: string;
   url: string;
   ts: number; // epoch ms (0 when the feed omits a parseable date)
+  /** Cleaned RSS <description>/<summary> snippet, when the feed provides one. */
+  description?: string;
 }
 
 const ENTITIES: Record<string, string> = {
@@ -35,8 +37,10 @@ function decodeEntities(s: string): string {
 function cleanText(raw: string | undefined): string {
   if (!raw) return "";
   let s = raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1");
-  s = s.replace(/<[^>]+>/g, " "); // drop any stray inline markup
-  return decodeEntities(s).replace(/\s+/g, " ").trim();
+  s = s.replace(/<[^>]+>/g, " "); // drop literal inline markup (CDATA HTML)
+  s = decodeEntities(s); // entity-encoded markup (e.g. Guardian's &lt;p&gt;) becomes real tags…
+  s = s.replace(/<[^>]+>/g, " "); // …strip those too, else raw <p>/<a href> leak into the snippet
+  return s.replace(/\s+/g, " ").trim();
 }
 
 /** First inner value of <tag>…</tag> within `block`, or undefined. */
@@ -75,7 +79,9 @@ export function parseRss(xml: string | null | undefined, source: string): NewsIt
     const title = cleanText(tag(block, "title"));
     const url = extractLink(block);
     if (!title || !url || !/^https?:\/\//i.test(url)) continue;
-    out.push({ title, source, url: url.trim(), ts: parseDate(block) });
+    const descRaw = tag(block, "description") ?? tag(block, "summary");
+    const description = cleanText(descRaw) || undefined;
+    out.push({ title, source, url: url.trim(), ts: parseDate(block), description });
   }
   return out;
 }

@@ -20,6 +20,7 @@ import { registerWidget, type WidgetBodyProps } from "@/lib/console/registry";
 import { useWidgetReport } from "@/components/console/WidgetFrame";
 import { runAlertRule } from "@/lib/console/alerts";
 import { cameraAlerts, type CameraLite } from "@/lib/console/widgets/cameras.rules";
+import CamerasDetail from "./cameras.detail";
 
 function CamerasBody({ config }: WidgetBodyProps) {
   // Reactive: rerenders whenever WorldMap calls loadedCamerasStore.set().
@@ -68,5 +69,7 @@ export const CAMERAS_WIDGET = {
   defaultHeight: 260,
   defaultConfig: {},
   component: CamerasBody,
+  detail: CamerasDetail,
+  capabilities: { filter: true, sort: true },
 };
 registerWidget(CAMERAS_WIDGET);

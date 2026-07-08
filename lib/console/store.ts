@@ -35,6 +35,8 @@ export const shellLayoutStore = {
   setSegment(seg: SegmentId, size: number) { state = R.setSegmentSize(state, seg, size); emit(); },
   collapseSegment(seg: SegmentId, c: boolean) { state = R.setSegmentCollapsed(state, seg, c); emit(); },
   stage(s: StageId) { state = R.setStage(state, s); emit(); },
+  focus(id: string) { state = R.setFocus(state, id); emit(); },
+  unfocus() { state = R.setFocus(state, null); emit(); },
 };
 
 export function useShellLayout(): ShellLayout {

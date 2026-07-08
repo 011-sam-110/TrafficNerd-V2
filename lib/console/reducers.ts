@@ -43,7 +43,11 @@ export function removeWidget(l: ShellLayout, id: string): ShellLayout {
   const kept = l.widgets.filter((w) => w.id !== id);
   const segSorted = kept.filter((w) => w.segment === removed.segment).sort((a, b) => a.order - b.order);
   const orderMap = new Map(segSorted.map((w, i) => [w.id, i] as const));
-  return { ...l, widgets: kept.map((w) => (orderMap.has(w.id) ? { ...w, order: orderMap.get(w.id)! } : w)) };
+  return {
+    ...l,
+    focusedWidgetId: l.focusedWidgetId === id ? null : l.focusedWidgetId,
+    widgets: kept.map((w) => (orderMap.has(w.id) ? { ...w, order: orderMap.get(w.id)! } : w)),
+  };
 }
 
 export function moveWidget(l: ShellLayout, id: string, toSegment: SegmentId, toIndex: number): ShellLayout {
@@ -81,4 +85,7 @@ export function setSegmentCollapsed(l: ShellLayout, seg: SegmentId, collapsed: b
 }
 export function setStage(l: ShellLayout, stage: StageId): ShellLayout {
   return { ...l, stage };
+}
+export function setFocus(l: ShellLayout, id: string | null): ShellLayout {
+  return { ...l, focusedWidgetId: id };
 }

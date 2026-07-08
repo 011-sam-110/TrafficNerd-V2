@@ -11,6 +11,11 @@ export async function GET() {
   const cameras = cams.map((c) => ({
     id: c.id, name: c.name, lat: c.lat, lon: c.lon, available: c.available,
     source: c.source, country: c.country, live: isLiveStreamUrl(c.streamUrl),
+    // Enriched for the focus view (Camera fields the docked widget doesn't need).
+    // NOTE: deliberately NO imageUrl/streamUrl — snapshots go through /api/proxy?id=
+    // and /api/hls?id= (SSRF allowlist by id), never a raw upstream URL.
+    region: c.region, road: c.road, refreshSeconds: c.refreshSeconds,
+    attribution: c.attribution, license: c.license, lastSampledAt: c.lastSampledAt,
   }));
   return Response.json({ count: cameras.length, cameras });
 }

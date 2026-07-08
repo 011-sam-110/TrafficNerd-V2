@@ -81,6 +81,7 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
         <span className="tn-cw-sp" />
         {report.alerts.length > 0 && <span className={`tn-cw-badge tn-sev-${sev}`}>{report.alerts.length}</span>}
         {report.freshLabel && <span className="tn-cw-fresh">{report.freshLabel}</span>}
+        <button className="tn-cw-expand" aria-label="Expand widget" title="Expand to main window" onClick={() => shellLayoutStore.focus(instance.id)}>⤢</button>
         <button className="tn-cw-menu" aria-label="Widget menu" onClick={() => setMenuOpen((o) => !o)}>⋯</button>
       </header>
 

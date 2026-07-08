@@ -1,0 +1,149 @@
+// lib/console/widgets/headlines.detail.tsx
+"use client";
+// Headlines focus view — a newsroom board. Reuses the SAME /api/news poll as the
+// docked widget, rendering deep: source filter + search, a recency-grouped feed with
+// snippets, an hourly volume strip (Task 6), on-demand AI summaries (Task 7), and a
+// sources footer + export (Task 8).
+import { useMemo, useState } from "react";
+import type { WidgetDetailProps } from "@/lib/console/registry";
+import type { NewsItem } from "@/lib/news";
+import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
+import { countBy, timeBins } from "@/lib/widgets/buckets";
+import { Chart, type ChartPoint } from "@/components/Chart";
+import { toCsv, downloadText, exportFilename } from "@/lib/export";
+
+interface NewsPayload { generatedAt: number; items: NewsItem[] }
+const EMPTY: NewsPayload = { generatedAt: 0, items: [] };
+const SOURCES = ["BBC", "Al Jazeera", "NPR", "The Guardian"];
+
+function rel(ts: number, now: number): string {
+  if (!ts) return "";
+  const m = Math.max(0, Math.round((now - ts) / 60000));
+  if (m < 60) return `${m}m`;
+  const h = Math.round(m / 60);
+  return h < 48 ? `${h}h` : `${Math.round(h / 24)}d`;
+}
+function bucketOf(ts: number, now: number): "Last hour" | "Today" | "Earlier" {
+  const h = (now - ts) / 3_600_000;
+  if (ts && h < 1) return "Last hour";
+  if (ts && h < 24) return "Today";
+  return "Earlier";
+}
+const BUCKET_ORDER = ["Last hour", "Today", "Earlier"] as const;
+
+export default function HeadlinesDetail({ }: WidgetDetailProps) {
+  const { data, status } = useJsonPoll<NewsPayload>("/api/news", 120_000, EMPTY);
+  const items = useMemo(() => data.items ?? [], [data.items]);
+  const [srcFilter, setSrcFilter] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const now = Date.now();
+
+  const counts = useMemo(() => countBy(items, (it) => it.source), [items]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter(
+      (it) =>
+        (srcFilter == null || it.source === srcFilter) &&
+        (!q || it.title.toLowerCase().includes(q) || (it.description ?? "").toLowerCase().includes(q)),
+    );
+  }, [items, srcFilter, query]);
+
+  const groups = useMemo(() => {
+    const by = new Map<string, NewsItem[]>();
+    for (const it of filtered) {
+      const b = bucketOf(it.ts, now);
+      const g = by.get(b) ?? [];
+      g.push(it);
+      by.set(b, g);
+    }
+    return BUCKET_ORDER.filter((b) => by.has(b)).map((b) => [b, by.get(b)!] as const);
+  }, [filtered, now]);
+
+  const volume: ChartPoint[] = useMemo(() => {
+    const ts = filtered.map((it) => it.ts).filter((n) => n > 0);
+    return timeBins(ts, 60 * 60_000, now, 24 * 60 * 60_000).map((b) => ({ x: b.start, y: b.count }));
+  }, [filtered, now]);
+
+  type SumState = { loading?: boolean; text?: string; note?: string };
+  const [summaries, setSummaries] = useState<Record<string, SumState>>({});
+  const summarize = (it: NewsItem) => {
+    if (summaries[it.url]?.loading || summaries[it.url]?.text) return;
+    setSummaries((s) => ({ ...s, [it.url]: { loading: true } }));
+    fetch("/api/news/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: it.url, title: it.title, source: it.source }),
+    })
+      .then((r) => r.json())
+      .then((d: { summary: string | null; dormant: boolean; source: string | null }) => {
+        const note = d.dormant
+          ? "AI summary needs the FREELLMAPI gateway — showing the snippet."
+          : d.summary
+            ? undefined
+            : "Couldn’t read this article — showing the snippet.";
+        setSummaries((s) => ({ ...s, [it.url]: { text: d.summary ?? it.description ?? "No preview available.", note } }));
+      })
+      .catch(() => setSummaries((s) => ({ ...s, [it.url]: { text: it.description ?? "No preview available.", note: "Summary unavailable." } })));
+  };
+
+  const exportRows = useMemo(
+    () => filtered.map((it) => ({ source: it.source, title: it.title, url: it.url, ts: it.ts, description: it.description ?? "" })),
+    [filtered],
+  );
+
+  return (
+    <div className="tn-hd">
+      <div className="tn-hd-bar">
+        <div className="tn-hd-chips">
+          <button className={srcFilter == null ? "is-on" : ""} onClick={() => setSrcFilter(null)}>All {items.length}</button>
+          {SOURCES.map((s) => (
+            <button key={s} className={srcFilter === s ? "is-on" : ""} onClick={() => setSrcFilter(s)}>{s} {counts[s] ?? 0}</button>
+          ))}
+        </div>
+        <input className="tn-hd-search" placeholder="Search headlines…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      </div>
+
+      {volume.some((p) => p.y > 0) && (
+        <div className="tn-hd-vol">
+          <div className="tn-hd-group-h">Headlines per hour · last 24h</div>
+          <Chart points={volume} height={80} up={null} />
+        </div>
+      )}
+
+      {status === "loading" && items.length === 0 && <p className="tn-w-empty">Loading headlines…</p>}
+      {items.length > 0 && filtered.length === 0 && <p className="tn-w-empty">No headlines match.</p>}
+
+      {groups.map(([bucket, rows]) => (
+        <section key={bucket} className="tn-hd-group">
+          <h3 className="tn-hd-group-h">{bucket} · {rows.length}</h3>
+          <ul className="tn-hd-list">
+            {rows.map((it, i) => (
+              <li key={it.url || i} className="tn-hd-item">
+                <a className="tn-hd-title" href={it.url} target="_blank" rel="noreferrer">{it.title}</a>
+                <div className="tn-hd-meta"><span className="tn-hd-src">{it.source}</span>{it.ts ? ` · ${rel(it.ts, now)}` : ""}</div>
+                {it.description && <p className="tn-hd-snippet">{it.description}</p>}
+                <button className="tn-hd-sum-btn" onClick={() => summarize(it)} disabled={!!summaries[it.url]?.loading}>
+                  {summaries[it.url]?.loading ? "Summarising…" : "✨ AI summary"}
+                </button>
+                {summaries[it.url]?.text && (
+                  <div className="tn-hd-sum">
+                    <p>{summaries[it.url]!.text}</p>
+                    {summaries[it.url]!.note && <span className="tn-hd-sum-note">{summaries[it.url]!.note}</span>}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+
+      <footer className="tn-hd-foot">
+        <span className="tn-hd-foot-src">BBC World · Al Jazeera · NPR · The Guardian — keyless RSS</span>
+        <button className="tn-hd-export" disabled={exportRows.length === 0}
+          onClick={() => downloadText(`${exportFilename("headlines", Date.now())}.csv`, "text/csv", toCsv(exportRows))}>
+          ⬇ Export CSV
+        </button>
+      </footer>
+    </div>
+  );
+}

@@ -17,6 +17,11 @@ test("parseAdsb skips rows without a position and converts units", () => {
   expect(ac[2].onGround).toBe(true); // alt_baro "ground"
 });
 
+test("captures squawk (activates emergency-squawk alerts)", () => {
+  const [a] = parseAdsb([{ hex: "abc", flight: "TEST123", lat: 51, lon: 0, alt_baro: 30000, squawk: "7700" }] as never);
+  expect(a.squawk).toBe("7700");
+});
+
 test("aircraftToWorldObject classifies from the ADS-B category", () => {
   const [heavy, heli, ground] = parseAdsb(rows as never).map(aircraftToWorldObject);
   expect(heavy.icon).toBe("plane-airliner"); // A5 heavy
@@ -24,4 +29,11 @@ test("aircraftToWorldObject classifies from the ADS-B category", () => {
   expect(ground.icon).toBe("plane-ground"); // on ground overrides
   expect(heavy.meta?.categorySource).toBe("adsb");
   expect(heavy.meta?.typeCode).toBe("B77W");
+});
+
+test("categorySource is honest — an emitter code classifyPlane doesn't trust reads as 'estimate'", () => {
+  // A6 (high-performance) is a real ADS-B code but NOT in ADSB_CATEGORY, so the type is
+  // an estimate from the flight profile — the provenance flag must say so, not "adsb".
+  const [a] = parseAdsb([{ hex: "a6", flight: "FAST1", lat: 51, lon: 0, alt_baro: 35000, gs: 500, track: 90, category: "A6" }] as never).map(aircraftToWorldObject);
+  expect(a.meta?.categorySource).toBe("estimate");
 });

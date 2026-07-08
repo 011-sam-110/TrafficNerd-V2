@@ -47,5 +47,8 @@ export function sanitizeLayout(raw: unknown): ShellLayout | null {
       config: o.config && typeof o.config === "object" ? (o.config as Record<string, unknown>) : {},
     });
   }
-  return { segments, stage: r.stage as StageId, widgets };
+  const ids = new Set(widgets.map((w) => w.id));
+  const focusedWidgetId =
+    typeof r.focusedWidgetId === "string" && ids.has(r.focusedWidgetId) ? r.focusedWidgetId : null;
+  return { segments, stage: r.stage as StageId, widgets, focusedWidgetId };
 }
