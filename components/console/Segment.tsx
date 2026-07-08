@@ -13,7 +13,8 @@ export default function Segment({ id }: { id: SegmentId }) {
     const wid = e.dataTransfer.getData("text/tn-widget");
     if (!wid) return;
     e.preventDefault();
-    const cards = [...e.currentTarget.querySelectorAll("[data-widget-id]")] as HTMLElement[];
+    const cards = ([...e.currentTarget.querySelectorAll("[data-widget-id]")] as HTMLElement[])
+      .filter((c) => c.dataset.widgetId !== wid);
     const rects = cards.map((c) => c.getBoundingClientRect());
     const idx = dropIndex({ x: e.clientX, y: e.clientY }, rects);
     shellLayoutStore.move(wid, id, idx);
