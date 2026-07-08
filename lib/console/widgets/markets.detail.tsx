@@ -15,6 +15,7 @@ import { recordSeries, seriesSamples } from "@/lib/series";
 import { Chart, type ChartPoint } from "@/components/Chart";
 import { shellLayoutStore } from "@/lib/console/store";
 import { candlesToPoints, hiLo, periodChange, RANGES, type Candle, type Range } from "@/lib/markets/chart";
+import { toCsv, downloadText, exportFilename } from "@/lib/export";
 
 const EMPTY: MarketsPayload = { generatedAt: 0, sections: [] };
 const RANGE_LABEL: Record<Range, string> = { "1mo": "1M", "6mo": "6M", "1y": "1Y" };
@@ -146,6 +147,21 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
   };
   const sortMark = (k: TableSortKey) => (sortKey === k ? (sortDir === -1 ? " ↓" : " ↑") : "");
   const onTableRow = (id: string) => { selectRow(id); setOpenTid((o) => (o === id ? null : id)); };
+
+  // Exports: a full quotes CSV (every instrument) + a per-selected-instrument OHLC
+  // CSV built from the real candles (only when history is present — no fabrication).
+  const exportRows = useMemo(
+    () => railSections.flatMap((s) => s.rows.map((r) => ({
+      section: s.label, name: r.name, symbol: r.symbol ?? "", value: r.value, num: r.num ?? "", changePct: r.changePct ?? "",
+    }))),
+    [railSections],
+  );
+  const sources = useMemo(() => Array.from(new Set(sections.map((s) => s.source))), [sections]);
+  const exportOhlc = () => {
+    if (!hasHistory || !selRow) return;
+    const rows = candles.map((k) => ({ t: new Date(k.t).toISOString(), o: k.o, h: k.h, l: k.l, c: k.c, v: k.v }));
+    downloadText(`${exportFilename(`markets-${selSym}-${range}`, Date.now())}.csv`, "text/csv", toCsv(rows));
+  };
 
   const now = Date.now();
 
@@ -317,6 +333,26 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
             </table>
           </main>
         </div>
+      )}
+
+      {sections.length > 0 && (
+        <footer className="tn-mk-foot">
+          <span className="tn-mk-attr">
+            {sources.map((src) => <span key={src}>{src}</span>)}
+            <span>Indicative only — not financial advice.</span>
+          </span>
+          <span className="tn-mk-actions">
+            <button
+              disabled={exportRows.length === 0}
+              onClick={() => downloadText(`${exportFilename("markets", Date.now())}.csv`, "text/csv", toCsv(exportRows))}
+            >⬇ CSV (quotes)</button>
+            <button
+              disabled={!hasHistory}
+              onClick={exportOhlc}
+              title={hasHistory ? `Export OHLC for ${selSym}` : "No history to export"}
+            >⬇ OHLC{selSym ? ` (${selSym})` : ""}</button>
+          </span>
+        </footer>
       )}
     </div>
   );
