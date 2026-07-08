@@ -20,6 +20,7 @@ import { timeBins } from "@/lib/widgets/buckets";
 import { Chart, type ChartPoint } from "@/components/Chart";
 import InsetMap from "@/components/InsetMap";
 import type { InsetPoint } from "@/lib/map/inset";
+import { toCsv, toGeoJson, downloadText, exportFilename } from "@/lib/export";
 
 const TIERS: SeverityTier[] = ["S4", "S3", "S2", "S1", "S0"];
 const TYPE_LABEL: Partial<Record<EventType, string>> = { quake: "Quakes", disaster: "Disasters", cyclone: "Cyclones" };
@@ -67,6 +68,24 @@ export default function EventsDetail({ config }: WidgetDetailProps) {
       lat: e.geo.lat, lon: e.geo.lon, id: e.id, color: e.color,
       props: { title: e.title, tier: e.severity.tier },
     })),
+    [projected.rows],
+  );
+
+  const perSource = useMemo(() => {
+    const counts = countBy(projected.rows, (e) => e.source.id);
+    return EVENT_SOURCES.map((s) => ({ id: s.id, label: s.label, attribution: s.attribution, count: counts[s.id] ?? 0 }));
+  }, [projected.rows]);
+
+  const exportRows = useMemo(
+    () => projected.rows.map((e) => ({
+      tier: e.severity.tier, type: e.type, title: e.title, place: e.place.name,
+      metric: eventMetricLine(e.type, featureById.get(e.id)?.props),
+      lat: e.geo.lat, lon: e.geo.lon, occurredAt: e.occurredAt ?? "",
+    })),
+    [projected.rows, featureById],
+  );
+  const exportGeo = useMemo(
+    () => projected.rows.map((e) => ({ lat: e.geo.lat, lon: e.geo.lon, properties: { tier: e.severity.tier, type: e.type, title: e.title } })),
     [projected.rows],
   );
 
@@ -122,6 +141,24 @@ export default function EventsDetail({ config }: WidgetDetailProps) {
           </ul>
         </section>
       ))}
+
+      <footer className="tn-evd-foot">
+        <div className="tn-evd-sources">
+          {perSource.map((s) => (
+            <span key={s.id} className="tn-evd-source">{s.label} · {s.count} <i>({s.attribution})</i></span>
+          ))}
+        </div>
+        <div className="tn-evd-export">
+          <button
+            disabled={exportRows.length === 0}
+            onClick={() => downloadText(`${exportFilename("events", Date.now())}.csv`, "text/csv", toCsv(exportRows))}
+          >⬇ CSV</button>
+          <button
+            disabled={exportGeo.length === 0}
+            onClick={() => downloadText(`${exportFilename("events", Date.now())}.geojson`, "application/geo+json", toGeoJson(exportGeo))}
+          >⬇ GeoJSON</button>
+        </div>
+      </footer>
     </div>
   );
 }
