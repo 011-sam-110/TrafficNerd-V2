@@ -4,12 +4,14 @@
 // dormant) and lists each section's rows, flagging big movers as alerts. Reuses
 // the shared .tn-w-* row classes; the +/- colour is the only inline styling.
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { registerWidget, type WidgetBodyProps } from "@/lib/console/registry";
 import { useWidgetReport } from "@/components/console/WidgetFrame";
 import type { Alert, AlertSeverity } from "@/lib/console/alerts";
 import type { MarketsPayload } from "@/lib/markets";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
+import { recordSeries, seriesTrend } from "@/lib/series";
+import { Sparkline } from "@/components/Sparkline";
 
 const EMPTY: MarketsPayload = { generatedAt: 0, sections: [] };
 const RANK: Record<AlertSeverity, number> = { info: 0, warn: 1, critical: 2 };
@@ -37,6 +39,15 @@ function MarketsBody({ config }: WidgetBodyProps) {
     }
     return out.sort((a, b) => RANK[b.severity] - RANK[a.severity]).slice(0, 4);
   }, [allRows, moveMin]);
+
+  // Record each row's raw value into the PERSISTED series so the sparklines
+  // accumulate across polls and reloads; bump a tick so the fresh sample shows.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!data.generatedAt) return;
+    for (const r of allRows) if (typeof r.num === "number") recordSeries(`mkt:${r.id}`, r.num, data.generatedAt);
+    setTick((t) => t + 1);
+  }, [data.generatedAt, allRows]);
 
   const report = useWidgetReport();
   useEffect(() => {
@@ -66,6 +77,12 @@ function MarketsBody({ config }: WidgetBodyProps) {
                     {r.changePct}%
                   </span>
                 )}
+                <span style={{ float: "right", verticalAlign: "middle" }}>
+                  <Sparkline
+                    values={seriesTrend(`mkt:${r.id}`, 24)}
+                    up={r.changePct == null ? null : r.changePct >= 0}
+                  />
+                </span>
               </li>
             ))}
           </ul>
