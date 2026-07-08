@@ -29,6 +29,7 @@ function intervalFor(range: Range): string {
   return range === "1y" ? "1wk" : "1d";
 }
 
+const CACHE_MAX = 200; // bound the cache so a flood of distinct attacker-supplied symbols can't grow it unbounded
 const cache = new Map<string, { at: number; candles: Candle[] }>();
 
 export async function GET(req: Request): Promise<Response> {
@@ -42,7 +43,8 @@ export async function GET(req: Request): Promise<Response> {
   }
   const range = rangeParam as Range;
 
-  const key = `${symbol}:${range}`;
+  // Yahoo tickers are case-insensitive; normalise so "aapl"/"AAPL" share one cache slot.
+  const key = `${symbol.toUpperCase()}:${range}`;
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
     return Response.json({ candles: hit.candles });
@@ -55,6 +57,13 @@ export async function GET(req: Request): Promise<Response> {
   const candles = parseYahooSeries(json);
   // Only cache a non-empty result so a transient upstream blip doesn't pin an empty
   // series for 5 minutes; empties simply retry next request.
-  if (candles.length > 0) cache.set(key, { at: Date.now(), candles });
+  if (candles.length > 0) {
+    cache.set(key, { at: Date.now(), candles });
+    // Evict the oldest entry (Map preserves insertion order) once over the cap.
+    if (cache.size > CACHE_MAX) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+  }
   return Response.json({ candles });
 }

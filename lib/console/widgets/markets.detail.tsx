@@ -103,6 +103,10 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
   const [chartLoading, setChartLoading] = useState(false);
   useEffect(() => {
     if (!selSym) { setCandles([]); return; }
+    // Clear the previous instrument's candles immediately so a symbol/range switch never
+    // renders — or exports — stale OHLC under the new header while the new fetch is in
+    // flight (hasHistory drops to false → loading/live-series fallback + export disabled).
+    setCandles([]);
     let alive = true;
     setChartLoading(true);
     fetch(`/api/markets/chart?symbol=${encodeURIComponent(selSym)}&range=${range}`)
