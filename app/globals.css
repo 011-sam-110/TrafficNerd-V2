@@ -1236,3 +1236,7 @@ a { color: var(--tn-accent); }
 .tn-evd-list li { padding: 6px 8px; border-radius: 6px; background: var(--tn-surface-2, #111a2e); }
 .tn-evd-metric { color: var(--tn-text-faint, #94a3b8); }
 .tn-evd-src { color: var(--tn-accent, #38bdf8); text-decoration: none; font-size: 12px; }
+
+.tn-evd-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.tn-evd-panel { background: var(--tn-surface-2, #111a2e); border-radius: 8px; padding: 10px; }
+@media (max-width: 760px) { .tn-evd-panels { grid-template-columns: 1fr; } }

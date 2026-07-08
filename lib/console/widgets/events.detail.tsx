@@ -16,6 +16,10 @@ import { SEVERITY_COLOR, type SeverityTier, type EventType } from "@/lib/events/
 import type { SignalFeature } from "@/lib/signals/types";
 import { countBy } from "@/lib/widgets/buckets";
 import { eventMetricLine } from "@/lib/widgets/eventMetrics";
+import { timeBins } from "@/lib/widgets/buckets";
+import { Chart, type ChartPoint } from "@/components/Chart";
+import InsetMap from "@/components/InsetMap";
+import type { InsetPoint } from "@/lib/map/inset";
 
 const TIERS: SeverityTier[] = ["S4", "S3", "S2", "S1", "S0"];
 const TYPE_LABEL: Partial<Record<EventType, string>> = { quake: "Quakes", disaster: "Disasters", cyclone: "Cyclones" };
@@ -51,6 +55,21 @@ export default function EventsDetail({ config }: WidgetDetailProps) {
     return [...by.entries()];
   }, [projected.rows]);
 
+  const recency: ChartPoint[] = useMemo(() => {
+    const ts = projected.rows
+      .map((e) => (e.occurredAt ? Date.parse(e.occurredAt) : NaN))
+      .filter((n) => Number.isFinite(n));
+    return timeBins(ts, 60 * 60_000, now, 24 * 60 * 60_000).map((b) => ({ x: b.start, y: b.count }));
+  }, [projected.rows, now]);
+
+  const mapPoints: InsetPoint[] = useMemo(
+    () => projected.rows.map((e) => ({
+      lat: e.geo.lat, lon: e.geo.lon, id: e.id, color: e.color,
+      props: { title: e.title, tier: e.severity.tier },
+    })),
+    [projected.rows],
+  );
+
   return (
     <div className="tn-evd">
       <div className="tn-evd-head">
@@ -62,6 +81,21 @@ export default function EventsDetail({ config }: WidgetDetailProps) {
               <i style={{ background: SEVERITY_COLOR[t] }} /> {t} {tierCounts[t] ?? 0}
             </span>
           ))}
+        </div>
+      </div>
+
+      <div className="tn-evd-panels">
+        <div className="tn-evd-panel">
+          <h3 className="tn-evd-group-h">Events over the last 24h</h3>
+          {recency.some((p) => p.y > 0)
+            ? <Chart points={recency} height={140} up={null} />
+            : <p className="tn-w-empty">No timestamped events in the window.</p>}
+        </div>
+        <div className="tn-evd-panel">
+          <h3 className="tn-evd-group-h">Locations</h3>
+          {mapPoints.length > 0
+            ? <InsetMap points={mapPoints} height={220} />
+            : <p className="tn-w-empty">No mappable events right now.</p>}
         </div>
       </div>
 
