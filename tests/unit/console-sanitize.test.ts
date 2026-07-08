@@ -52,3 +52,20 @@ test("sanitizeLayout clamps widget height into [120,1200] and caps count", () =>
   });
   expect(many!.widgets.length).toBe(MAX_WIDGETS);
 });
+
+test("sanitizeLayout backfills width=12 for legacy widgets and clamps out-of-range", () => {
+  const out = sanitizeLayout({
+    segments: {}, stage: "map2d",
+    widgets: [
+      { id: "a", type: "clock" },              // legacy, no width
+      { id: "b", type: "clock", width: 1 },    // below min
+      { id: "c", type: "clock", width: 99 },   // above max
+      { id: "d", type: "clock", width: 6 },    // valid
+    ],
+  });
+  const byId = Object.fromEntries(out!.widgets.map((w) => [w.id, w.width]));
+  expect(byId.a).toBe(12);
+  expect(byId.b).toBe(3);
+  expect(byId.c).toBe(12);
+  expect(byId.d).toBe(6);
+});

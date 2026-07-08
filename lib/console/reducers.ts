@@ -1,5 +1,6 @@
 import type { ShellLayout, WidgetInstance, SegmentId, StageId } from "@/lib/console/types";
 import { MAX_WIDGETS } from "@/lib/console/types";
+import { clampSpan } from "@/lib/console/resize";
 
 const SEGMENTS: SegmentId[] = ["left", "right", "bottom"];
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
@@ -23,13 +24,14 @@ function emptiestSegment(l: ShellLayout): SegmentId {
 
 export function addWidget(
   l: ShellLayout, type: string, instanceId: string,
-  opts: { segment?: SegmentId; config?: Record<string, unknown>; height?: number } = {},
+  opts: { segment?: SegmentId; config?: Record<string, unknown>; height?: number; width?: number } = {},
 ): ShellLayout {
   if (isAtCapacity(l)) return l;
   const segment = opts.segment ?? emptiestSegment(l);
   const order = l.widgets.filter((w) => w.segment === segment).length;
   const inst: WidgetInstance = {
     id: instanceId, type, segment, order,
+    width: opts.width ?? 12,
     height: opts.height ?? 260, collapsed: false, config: opts.config ?? {},
   };
   return { ...l, widgets: [...l.widgets, inst] };
@@ -61,6 +63,9 @@ export function moveWidget(l: ShellLayout, id: string, toSegment: SegmentId, toI
 
 export function setWidgetHeight(l: ShellLayout, id: string, height: number): ShellLayout {
   return { ...l, widgets: l.widgets.map((w) => w.id === id ? { ...w, height: clamp(height, 120, 1200) } : w) };
+}
+export function setWidgetWidth(l: ShellLayout, id: string, width: number): ShellLayout {
+  return { ...l, widgets: l.widgets.map((w) => w.id === id ? { ...w, width: clampSpan(width) } : w) };
 }
 export function setWidgetCollapsed(l: ShellLayout, id: string, collapsed: boolean): ShellLayout {
   return { ...l, widgets: l.widgets.map((w) => w.id === id ? { ...w, collapsed } : w) };

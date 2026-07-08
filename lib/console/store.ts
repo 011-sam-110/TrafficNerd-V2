@@ -20,7 +20,7 @@ export const shellLayoutStore = {
   replace(l: ShellLayout) { const clean = sanitizeLayout(l); if (clean) { state = clean; emit(); } },
   subscribe(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn); }; },
   hydrate() { const s = loadPersisted<ShellLayout>(KEY, VERSION); const clean = s ? sanitizeLayout(s) : null; if (clean) { state = clean; emit(); } },
-  add(type: string, opts: { segment?: SegmentId; config?: Record<string, unknown>; height?: number } = {}) {
+  add(type: string, opts: { segment?: SegmentId; config?: Record<string, unknown>; height?: number; width?: number } = {}) {
     if (R.isAtCapacity(state)) return { ok: false as const };
     const id = nextId();
     state = R.addWidget(state, type, id, opts); emit();
@@ -29,6 +29,7 @@ export const shellLayoutStore = {
   remove(id: string) { state = R.removeWidget(state, id); emit(); },
   move(id: string, seg: SegmentId, idx: number) { state = R.moveWidget(state, id, seg, idx); emit(); },
   resizeWidget(id: string, h: number) { state = R.setWidgetHeight(state, id, h); emit(); },
+  resizeWidth(id: string, span: number) { state = R.setWidgetWidth(state, id, span); emit(); },
   collapseWidget(id: string, c: boolean) { state = R.setWidgetCollapsed(state, id, c); emit(); },
   configure(id: string, patch: Record<string, unknown>) { state = R.setWidgetConfig(state, id, patch); emit(); },
   setSegment(seg: SegmentId, size: number) { state = R.setSegmentSize(state, seg, size); emit(); },

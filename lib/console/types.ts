@@ -7,6 +7,7 @@ export interface WidgetInstance {
   type: WidgetTypeId;
   segment: SegmentId;
   order: number;
+  width: number;        // column span 1..12 of the 12-col segment grid; user-resizable
   height: number;       // px; user-resizable
   collapsed: boolean;   // header-only
   config: Record<string, unknown>;
