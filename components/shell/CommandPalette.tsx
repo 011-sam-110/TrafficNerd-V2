@@ -17,12 +17,25 @@ import { shellLayoutStore } from "@/lib/console/store";
 import type { StageId } from "@/lib/console/types";
 import { listPresets, applyPreset, saveCustomPreset } from "@/lib/console/presets";
 import { encodeLayout } from "@/lib/console/share";
+import type { GeocodeResult } from "@/lib/geo/geocode";
 
 interface Command {
   id: string;
   label: string;
   hint: string;
   run: () => void;
+}
+
+// Pick a fly-to zoom from a geocode result's extent (wider areas frame out).
+function zoomForResult(r: GeocodeResult): number {
+  if (!r.bbox) return 11;
+  const [w, s, e, n] = r.bbox;
+  const span = Math.max(Math.abs(e - w), Math.abs(n - s));
+  if (span > 4) return 5;
+  if (span > 1) return 7;
+  if (span > 0.2) return 9;
+  if (span > 0.04) return 11;
+  return 13;
 }
 
 const LAYER_NAMES: Record<LayerKey, string> = {
@@ -140,11 +153,35 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const inputRef = useRef<HTMLInputElement>(null);
 
   const commands = useMemo(() => buildCommands(onClose), [onClose]);
+
+  // Live place search: any query ≥2 chars also geocodes (keyless Photon via
+  // /api/geocode) so you can fly to ANY place (Kyiv, Gaza…), not just the
+  // hardcoded camera regions. Debounced; latest query wins; failures are silent.
+  const [geo, setGeo] = useState<GeocodeResult[]>([]);
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) { setGeo([]); return; }
+    let alive = true;
+    const t = setTimeout(() => {
+      fetch(`/api/geocode?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((d) => { if (alive) setGeo(((d.results as GeocodeResult[]) ?? []).slice(0, 5)); })
+        .catch(() => { if (alive) setGeo([]); });
+    }, 300);
+    return () => { alive = false; clearTimeout(t); };
+  }, [query]);
+
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return commands;
-    return commands.filter((c) => c.label.toLowerCase().includes(q) || c.hint.includes(q));
-  }, [commands, query]);
+    const base = q ? commands.filter((c) => c.label.toLowerCase().includes(q) || c.hint.includes(q)) : commands;
+    const geoCmds: Command[] = geo.map((r) => ({
+      id: `geo-${r.lat},${r.lon}`,
+      label: `Fly to ${r.name}`,
+      hint: r.type || "place",
+      run: () => { mapViewStore.flyToPoint({ lat: r.lat, lon: r.lon, zoom: zoomForResult(r) }); onClose(); },
+    }));
+    return [...base, ...geoCmds];
+  }, [commands, query, geo, onClose]);
 
   useEffect(() => {
     if (open) {
@@ -185,7 +222,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
         <input
           ref={inputRef}
           className="tn-palette-input"
-          placeholder="Search layers, presets, basemaps, regions…"
+          placeholder="Search layers, presets, basemaps — or fly to any place…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Command search"

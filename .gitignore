@@ -9,3 +9,6 @@ test-results/
 next-env.d.ts
 .vercel
 .superpowers/
+
+# local dev build
+.next-dev/

@@ -43,6 +43,8 @@ export interface MarketRow {
   symbol?: string;
   /** Pre-formatted display value (price / rate / level). */
   value: string;
+  /** Raw numeric value behind `value` — recorded into the sparkline time-series. */
+  num?: number;
   /** Signed % change where the upstream provides it; null/undefined = not shown. */
   changePct?: number | null;
   /** Optional secondary line (market cap, unit, as-of date). */
@@ -73,6 +75,7 @@ export function cryptoRows(assets: MarketAsset[]): MarketRow[] {
     name: a.name,
     symbol: a.symbol,
     value: formatPrice(a.price),
+    num: a.price,
     changePct: a.changePct24h,
     image: a.image,
     sub: a.marketCap != null ? `mkt cap ${formatCompactUsd(a.marketCap)}` : undefined,
@@ -97,6 +100,7 @@ export function parseFx(json: { base?: string; date?: string; rates?: Record<str
       name: FX_NAMES[code] ?? code,
       symbol: `USD/${code}`,
       value: rate.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 }),
+      num: rate,
       sub: json?.date ? `per 1 USD · ${json.date}` : "per 1 USD",
     });
   }
@@ -114,7 +118,7 @@ export function parseEquities(
     const price = q.c == null ? Number.NaN : Number(q.c);
     if (!sym || !Number.isFinite(price) || price <= 0) continue;
     const dp = typeof q.dp === "number" && Number.isFinite(q.dp) ? Number(q.dp.toFixed(2)) : null;
-    out.push({ id: `eq:${sym}`, name: q.name?.trim() || sym, symbol: sym, value: formatPrice(price), changePct: dp });
+    out.push({ id: `eq:${sym}`, name: q.name?.trim() || sym, symbol: sym, value: formatPrice(price), num: price, changePct: dp });
   }
   return out;
 }
@@ -133,10 +137,43 @@ export function parseMacro(
       id: `macro:${id}`,
       name: s.label?.trim() || id,
       value: `${v.toLocaleString("en-US", { maximumFractionDigits: 2 })}${s.unit ?? ""}`,
+      num: v,
       sub: s.date ? `as of ${s.date}` : undefined,
     });
   }
   return out;
+}
+
+// --- Yahoo v8 chart (keyless commodities + equities fallback) ---------------
+// The keyless Yahoo chart endpoint returns, per symbol, meta.regularMarketPrice
+// and chartPreviousClose. We show the price as the value and the day-over-day
+// move (price vs previous close) as the % change. Pure + isomorphic.
+
+export interface QuoteSpec {
+  /** Display ticker, e.g. "WTI", "SPY". */
+  symbol: string;
+  /** Display name. */
+  name: string;
+}
+
+export interface YahooChart {
+  chart?: {
+    result?: Array<{
+      meta?: { regularMarketPrice?: number | null; chartPreviousClose?: number | null; previousClose?: number | null };
+    }> | null;
+  } | null;
+}
+
+/** Pure: one symbol's Yahoo chart JSON + its display spec → a MarketRow (or null). */
+export function parseYahooChart(json: YahooChart | null | undefined, spec: QuoteSpec): MarketRow | null {
+  const meta = json?.chart?.result?.[0]?.meta;
+  if (!meta) return null;
+  const price = meta.regularMarketPrice == null ? Number.NaN : Number(meta.regularMarketPrice);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  const prevRaw = meta.chartPreviousClose ?? meta.previousClose;
+  const prev = prevRaw == null ? Number.NaN : Number(prevRaw);
+  const changePct = Number.isFinite(prev) && prev > 0 ? Number((((price - prev) / prev) * 100).toFixed(2)) : null;
+  return { id: `q:${spec.symbol}`, name: spec.name, symbol: spec.symbol, value: formatPrice(price), num: price, changePct };
 }
 
 /** Compact USD, e.g. "$1.2T", "$845B", "$12.3M". */

@@ -4,9 +4,11 @@ import {
   parseFx,
   parseEquities,
   parseMacro,
+  parseYahooChart,
   type CoinGeckoMarket,
   type MarketsPayload,
   type MarketSection,
+  type YahooChart,
 } from "@/lib/markets";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +43,27 @@ const FRED_SERIES = [
   { id: "VIXCLS", label: "VIX (volatility)", unit: "" },
 ];
 
+// Keyless Yahoo v8 chart instruments. Commodities are always live; equities use
+// Yahoo only when Finnhub isn't keyed (so the hosted site still shows stocks).
+const COMMODITIES: { y: string; symbol: string; name: string }[] = [
+  { y: "BZ=F", symbol: "Brent", name: "Brent Crude" },
+  { y: "CL=F", symbol: "WTI", name: "Crude Oil (WTI)" },
+  { y: "NG=F", symbol: "NatGas", name: "Natural Gas" },
+  { y: "GC=F", symbol: "Gold", name: "Gold" },
+  { y: "SI=F", symbol: "Silver", name: "Silver" },
+  { y: "ZW=F", symbol: "Wheat", name: "Wheat" },
+];
+const YAHOO_EQUITIES: { y: string; symbol: string; name: string }[] = [
+  { y: "SPY", symbol: "SPY", name: "S&P 500 (SPY)" },
+  { y: "QQQ", symbol: "QQQ", name: "Nasdaq 100 (QQQ)" },
+  { y: "DIA", symbol: "DIA", name: "Dow 30 (DIA)" },
+  { y: "AAPL", symbol: "AAPL", name: "Apple" },
+  { y: "MSFT", symbol: "MSFT", name: "Microsoft" },
+  { y: "NVDA", symbol: "NVDA", name: "Nvidia" },
+];
+const yahooUrl = (sym: string) =>
+  `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`;
+
 let cache: MarketsPayload | null = null;
 
 async function getJson<T>(url: string, ms = 12_000): Promise<T | null> {
@@ -51,6 +74,16 @@ async function getJson<T>(url: string, ms = 12_000): Promise<T | null> {
   } catch {
     return null;
   }
+}
+
+/** Fetch each Yahoo symbol in parallel and keep the rows that resolve. */
+async function yahooRows(specs: { y: string; symbol: string; name: string }[]): Promise<MarketSection["rows"]> {
+  const rows = await Promise.all(specs.map(async (spec) => parseYahooChart(await getJson<YahooChart>(yahooUrl(spec.y)), spec)));
+  return rows.filter((r): r is NonNullable<typeof r> => r != null);
+}
+
+async function commoditiesSection(): Promise<MarketSection> {
+  return { key: "commodities", label: "Commodities", source: "Yahoo Finance · delayed, keyless", rows: await yahooRows(COMMODITIES) };
 }
 
 async function cryptoSection(): Promise<MarketSection> {
@@ -66,7 +99,9 @@ async function fxSection(): Promise<MarketSection> {
 async function equitiesSection(): Promise<MarketSection> {
   const key = (process.env.FINNHUB_API_KEY ?? "").trim();
   if (!key) {
-    return { key: "equities", label: "Equities", source: "Finnhub", dormant: true, note: "Set FINNHUB_API_KEY to enable.", rows: [] };
+    // Keyless fallback: Yahoo delayed quotes so the hosted site still shows
+    // equities without a Finnhub key. Finnhub (real-time) is used when keyed.
+    return { key: "equities", label: "Equities", source: "Yahoo Finance · delayed, keyless", rows: await yahooRows(YAHOO_EQUITIES) };
   }
   const quotes = await Promise.all(
     EQUITIES.map(async (e) => {
@@ -100,7 +135,7 @@ export async function GET() {
     return Response.json(cache);
   }
   try {
-    const sections = await Promise.all([cryptoSection(), fxSection(), equitiesSection(), macroSection()]);
+    const sections = await Promise.all([cryptoSection(), commoditiesSection(), fxSection(), equitiesSection(), macroSection()]);
     cache = { generatedAt: Date.now(), sections };
   } catch {
     cache = cache ?? { generatedAt: Date.now(), sections: [] };

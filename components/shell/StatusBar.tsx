@@ -126,7 +126,7 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
       {/* ── Brand + variant ─────────────────────────────────────────────── */}
       <div className="tn-topbar-left">
         <span className="tn-wordmark">
-          Traffic<span className="tn-wordmark-accent">Nerd</span>
+          World <span className="tn-wordmark-accent">Monitor</span>
         </span>
         <VariantSwitcher />
       </div>

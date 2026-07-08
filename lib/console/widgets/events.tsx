@@ -64,14 +64,39 @@ function EventsBody({ config }: WidgetBodyProps) {
     [projected.rows],
   );
 
+  const exportRows = useMemo(
+    () =>
+      projected.rows.map((r) => ({
+        tier: r.severity.tier,
+        type: r.type,
+        title: r.title,
+        place: r.place.name,
+        magnitude: r.magnitude?.value ?? "",
+        unit: r.magnitude?.unit ?? "",
+        lat: r.geo.lat,
+        lon: r.geo.lon,
+      })),
+    [projected.rows],
+  );
+  const exportGeo = useMemo(
+    () =>
+      projected.rows.map((r) => ({
+        lat: r.geo.lat,
+        lon: r.geo.lon,
+        properties: { tier: r.severity.tier, type: r.type, title: r.title, place: r.place.name, magnitude: r.magnitude?.value },
+      })),
+    [projected.rows],
+  );
+
   const report = useWidgetReport();
   useEffect(() => {
     report({
       alerts: runAlertRule(eventAlerts, lite, config),
       count: projected.shown,
       freshLabel: "5m",
+      export: { rows: exportRows, geo: exportGeo, name: "events" },
     });
-  }, [lite, projected.shown, report, config]);
+  }, [lite, projected.shown, report, config, exportRows, exportGeo]);
 
   if (status === "loading" && projected.shown === 0) {
     return <p className="tn-w-empty">Loading events…</p>;

@@ -4,12 +4,14 @@
 // dormant) and lists each section's rows, flagging big movers as alerts. Reuses
 // the shared .tn-w-* row classes; the +/- colour is the only inline styling.
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { registerWidget, type WidgetBodyProps } from "@/lib/console/registry";
 import { useWidgetReport } from "@/components/console/WidgetFrame";
 import type { Alert, AlertSeverity } from "@/lib/console/alerts";
 import type { MarketsPayload } from "@/lib/markets";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
+import { recordSeries, seriesTrend } from "@/lib/series";
+import { Sparkline } from "@/components/Sparkline";
 
 const EMPTY: MarketsPayload = { generatedAt: 0, sections: [] };
 const RANK: Record<AlertSeverity, number> = { info: 0, warn: 1, critical: 2 };
@@ -17,7 +19,9 @@ const RANK: Record<AlertSeverity, number> = { info: 0, warn: 1, critical: 2 };
 function MarketsBody({ config }: WidgetBodyProps) {
   const { data, status } = useJsonPoll<MarketsPayload>("/api/markets", 120_000, EMPTY);
   const moveMin = typeof config.alertMin === "number" ? config.alertMin : 5;
-  const sections = useMemo(() => (data.sections ?? []).filter((s) => s.rows.length), [data.sections]);
+  // Keep dormant (key-gated) sections too — show them as a "needs key" note
+  // rather than hiding them, so the capability is discoverable (not invisible).
+  const sections = useMemo(() => (data.sections ?? []).filter((s) => s.rows.length || s.dormant), [data.sections]);
   const allRows = useMemo(() => sections.flatMap((s) => s.rows), [sections]);
 
   const alerts: Alert[] = useMemo(() => {
@@ -36,10 +40,34 @@ function MarketsBody({ config }: WidgetBodyProps) {
     return out.sort((a, b) => RANK[b.severity] - RANK[a.severity]).slice(0, 4);
   }, [allRows, moveMin]);
 
+  // Record each row's raw value into the PERSISTED series so the sparklines
+  // accumulate across polls and reloads; bump a tick so the fresh sample shows.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!data.generatedAt) return;
+    for (const r of allRows) if (typeof r.num === "number") recordSeries(`mkt:${r.id}`, r.num, data.generatedAt);
+    setTick((t) => t + 1);
+  }, [data.generatedAt, allRows]);
+
+  const exportRows = useMemo(
+    () =>
+      sections.flatMap((s) =>
+        s.rows.map((r) => ({
+          section: s.label,
+          symbol: r.symbol ?? "",
+          name: r.name,
+          value: r.value,
+          num: r.num ?? "",
+          changePct: r.changePct ?? "",
+        })),
+      ),
+    [sections],
+  );
+
   const report = useWidgetReport();
   useEffect(() => {
-    report({ alerts, count: allRows.length, freshLabel: "live" });
-  }, [alerts, allRows.length, report]);
+    report({ alerts, count: allRows.length, freshLabel: "live", export: { rows: exportRows, name: "markets" } });
+  }, [alerts, allRows.length, report, exportRows]);
 
   if (status === "loading" && allRows.length === 0) return <p className="tn-w-empty">Loading markets…</p>;
   if (allRows.length === 0) return <p className="tn-w-empty">Markets unavailable.</p>;
@@ -49,6 +77,9 @@ function MarketsBody({ config }: WidgetBodyProps) {
       {sections.map((sec) => (
         <div key={sec.key}>
           <div className="tn-w-muted" style={{ margin: "6px 0 2px", fontWeight: 600 }}>{sec.label}</div>
+          {sec.dormant ? (
+            <p className="tn-w-empty" style={{ margin: "2px 0 4px" }}>🔒 {sec.note ?? "Needs an API key."}</p>
+          ) : (
           <ul className="tn-w-list">
             {sec.rows.map((r) => (
               <li key={r.id}>
@@ -61,9 +92,16 @@ function MarketsBody({ config }: WidgetBodyProps) {
                     {r.changePct}%
                   </span>
                 )}
+                <span style={{ float: "right", verticalAlign: "middle" }}>
+                  <Sparkline
+                    values={seriesTrend(`mkt:${r.id}`, 24)}
+                    up={r.changePct == null ? null : r.changePct >= 0}
+                  />
+                </span>
               </li>
             ))}
           </ul>
+          )}
         </div>
       ))}
     </div>

@@ -23,7 +23,7 @@ export const PANEL_REGISTRY: Record<PanelKey, {
   news:       { component: NewsTicker,      title: "News",      category: "intelligence", defaultGrid: { x: 0, y: 7, w: 12, h: 1 } },
   markets:    { component: MarketsPanel,    title: "Markets",   category: "markets",      defaultGrid: { x: 9, y: 0, w: 3, h: 6 } },
   brief:      { component: DailyBrief,      title: "Brief",     category: "intelligence", defaultGrid: { x: 9, y: 0, w: 3, h: 6 } },
-  watchlist:  { component: WatchlistPanel,  title: "Watchlist", category: "core",         defaultGrid: { x: 9, y: 6, w: 3, h: 4 } },
+  watchlist:  { component: WatchlistPanel,  title: "Saved places", category: "core",       defaultGrid: { x: 9, y: 6, w: 3, h: 4 } },
   coverage:   { component: CoveragePanel,   title: "Coverage",  category: "core",         defaultGrid: { x: 9, y: 0, w: 3, h: 6 } },
   instability:{ component: InstabilityPanel, title: "Country Instability", category: "intelligence", defaultGrid: { x: 0, y: 0,  w: 12, h: 6 } },
   conflict:   { component: ConflictPanel,    title: "Armed Conflict",      category: "intelligence", defaultGrid: { x: 0, y: 6,  w: 12, h: 6 } },
