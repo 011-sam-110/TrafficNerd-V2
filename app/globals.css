@@ -1449,3 +1449,71 @@ a { color: var(--tn-accent); }
 .tn-cm-actions { display: flex; gap: 8px; }
 .tn-cm-actions button { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--tn-text); cursor: pointer; }
 .tn-cm-actions button:disabled { opacity: .4; cursor: default; }
+
+/* ── Markets focus view (W7) — "for markets, it shows actual graphs" ── */
+.tn-mk { display: flex; flex-direction: column; gap: 14px; height: 100%; overflow: auto; padding: 4px 2px; color: var(--tn-text); }
+.tn-mk-head { display: flex; flex-direction: column; gap: 4px; }
+.tn-mk-title { font-size: 18px; font-weight: 700; }
+.tn-mk-stat { font-size: 12px; color: var(--tn-text-muted); }
+.tn-mk-disc { font-size: 11px; color: var(--tn-text-faint); }
+/* movers heat-strip */
+.tn-mk-heat { display: flex; flex-wrap: wrap; gap: 6px; }
+.tn-mk-heat-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; font: inherit; text-align: left; border: 1px solid var(--tn-border); border-radius: 8px; padding: 4px 9px; color: var(--tn-text); cursor: pointer; }
+.tn-mk-heat-chip.is-sel { outline: 2px solid var(--tn-accent); outline-offset: -2px; }
+.tn-mk-heat-sym { font-size: 11px; font-weight: 700; }
+.tn-mk-heat-pct { font-size: 10px; color: var(--tn-text-muted); }
+/* body: instrument rail + primary panel */
+.tn-mk-body { display: grid; grid-template-columns: minmax(260px, 320px) 1fr; gap: 16px; align-items: start; }
+@media (max-width: 820px) { .tn-mk-body { grid-template-columns: 1fr; } }
+.tn-mk-rail { display: flex; flex-direction: column; gap: 12px; }
+.tn-mk-sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.tn-mk-sec-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--tn-text-faint); }
+.tn-mk-sec-src { font-size: 10px; color: var(--tn-text-faint); }
+.tn-mk-sec-note { font-size: 12px; color: var(--tn-text-faint); margin: 2px 0 4px; }
+.tn-mk-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.tn-mk-row { display: grid; grid-template-columns: 1fr auto 64px; align-items: center; gap: 8px; width: 100%; font: inherit; text-align: left; background: var(--tn-surface-2); border: 1px solid transparent; border-radius: 8px; padding: 5px 8px; color: var(--tn-text); cursor: pointer; }
+.tn-mk-row:hover { border-color: var(--tn-border); }
+.tn-mk-row.is-sel { border-color: var(--tn-accent); background: var(--tn-accent-soft); }
+.tn-mk-row-main { display: flex; flex-direction: column; min-width: 0; }
+.tn-mk-row-sym { font-size: 12px; font-weight: 700; }
+.tn-mk-row-name { font-size: 10px; color: var(--tn-text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn-mk-row-val { display: flex; flex-direction: column; align-items: flex-end; }
+.tn-mk-row-price { font-size: 12px; font-variant-numeric: tabular-nums; }
+.tn-mk-chg { font-size: 10px; font-variant-numeric: tabular-nums; }
+.tn-mk-chg.up { color: #16a34a; } .tn-mk-chg.down { color: #dc2626; }
+.tn-mk-row-spark { display: block; height: 28px; }
+/* primary panel */
+.tn-mk-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.tn-mk-panel { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 10px; padding: 12px; }
+.tn-mk-panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 12px; margin-bottom: 8px; }
+.tn-mk-panel-title { font-size: 15px; font-weight: 700; }
+.tn-mk-panel-sub { font-size: 11px; color: var(--tn-text-faint); }
+.tn-mk-tabs { display: flex; gap: 4px; }
+.tn-mk-tab { font: inherit; font-size: 11px; padding: 3px 10px; border: 1px solid var(--tn-border); border-radius: 999px; background: transparent; color: var(--tn-text-muted); cursor: pointer; }
+.tn-mk-tab.active { background: var(--tn-accent); border-color: var(--tn-accent); color: #fff; }
+.tn-mk-metrics { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; font-size: 12px; }
+.tn-mk-metric b { font-variant-numeric: tabular-nums; }
+.tn-mk-metric.up { color: #16a34a; } .tn-mk-metric.down { color: #dc2626; }
+.tn-mk-metric-label { color: var(--tn-text-faint); }
+.tn-mk-chart-note { font-size: 11px; color: var(--tn-text-faint); margin-top: 6px; }
+.tn-mk-chart-empty { display: grid; place-items: center; height: 220px; color: var(--tn-text-faint); font-size: 13px; }
+/* instrument table */
+.tn-mk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tn-mk-table th { text-align: left; color: var(--tn-text-faint); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 4px 8px; border-bottom: 1px solid var(--tn-border); }
+.tn-mk-table th.sortable { cursor: pointer; }
+.tn-mk-table td { padding: 5px 8px; border-bottom: 1px solid var(--tn-border); }
+.tn-mk-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tn-mk-trow { cursor: pointer; }
+.tn-mk-trow:hover { background: var(--tn-surface-2); }
+.tn-mk-trow.is-sel { background: var(--tn-accent-soft); }
+.tn-mk-drill { background: var(--tn-surface-2); }
+.tn-mk-drill td { padding: 10px 14px; }
+.tn-mk-drill dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; }
+.tn-mk-drill dt { color: var(--tn-accent); text-transform: uppercase; font-size: 10px; letter-spacing: .06em; font-weight: 600; }
+.tn-mk-drill dd { margin: 0; font-size: 12px; }
+/* footer */
+.tn-mk-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--tn-border); padding-top: 8px; margin-top: auto; }
+.tn-mk-attr { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: var(--tn-text-faint); }
+.tn-mk-actions { display: flex; gap: 8px; }
+.tn-mk-actions button { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--tn-text); cursor: pointer; }
+.tn-mk-actions button:disabled { opacity: .4; cursor: default; }
