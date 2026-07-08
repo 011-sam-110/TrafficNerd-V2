@@ -11,7 +11,8 @@ import type { WidgetDetailProps } from "@/lib/console/registry";
 import type { NewsItem } from "@/lib/news";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
 import { shellLayoutStore } from "@/lib/console/store";
-import { NEWS_PROVIDERS, providerThumb, resolveEmbed, type NewsProvider } from "@/lib/console/news/providers";
+import { NEWS_PROVIDERS, parseCustomStream, providerThumb, resolveEmbed, type NewsProvider } from "@/lib/console/news/providers";
+import { toCsv, downloadText, exportFilename } from "@/lib/export";
 
 /** Compact relative age (mirrors headlines.detail). */
 function rel(ts: number, now: number): string {
@@ -34,6 +35,9 @@ export default function NewsDetail({ instanceId, config }: WidgetDetailProps) {
   const [category, setCategory] = useState<string | null>(null);
   // Optional muted 2×2 mosaic (default off — one hero is bandwidth-honest).
   const [mosaic, setMosaic] = useState(false);
+  // Add-custom-stream input (Task 5).
+  const [customUrl, setCustomUrl] = useState("");
+  const [customErr, setCustomErr] = useState(false);
 
   const active = useMemo<NewsProvider | undefined>(
     () => (custom?.id === activeId ? custom : NEWS_PROVIDERS.find((p) => p.id === activeId) ?? NEWS_PROVIDERS[0]),
@@ -60,6 +64,22 @@ export default function NewsDetail({ instanceId, config }: WidgetDetailProps) {
     setActiveId(p.id);
     shellLayoutStore.configure(instanceId, { providerId: p.id });
   };
+
+  // Add a custom stream: parse (YouTube URL / .m3u8), then activate + persist the full
+  // provider as customProvider (exactly what the docked NewsBody stores). Honest inline
+  // error when the URL is neither a YouTube link nor an .m3u8.
+  const addCustom = () => {
+    const p = parseCustomStream(customUrl);
+    if (!p) { setCustomErr(true); return; }
+    setCustomErr(false);
+    setCustom(p);
+    setActiveId(p.id);
+    setCustomUrl("");
+    shellLayoutStore.configure(instanceId, { providerId: p.id, customProvider: p });
+  };
+
+  // Export the static channel directory (id, name, category, kind) as CSV.
+  const exportRows = NEWS_PROVIDERS.map((p) => ({ id: p.id, name: p.name, category: p.category, kind: p.kind }));
 
   // First 4 (category-filtered) YouTube channels for the muted 2×2 mosaic.
   const mosaicCells = useMemo(
@@ -195,6 +215,29 @@ export default function NewsDetail({ instanceId, config }: WidgetDetailProps) {
           ))
         )}
       </div>
+
+      <footer className="tn-nv-foot">
+        <span className="tn-nv-foot-note">
+          Channels are the broadcasters&apos; official keyless live streams (YouTube/HLS).
+        </span>
+        <span className="tn-nv-add">
+          <input
+            className="tn-nv-custom"
+            placeholder="Add stream URL (YouTube / .m3u8)…"
+            value={customUrl}
+            onChange={(e) => { setCustomUrl(e.target.value); if (customErr) setCustomErr(false); }}
+            onKeyDown={(e) => { if (e.key === "Enter") addCustom(); }}
+          />
+          <button onClick={addCustom} disabled={!customUrl.trim()}>＋ Add</button>
+          {customErr && <span className="tn-nv-err">Not a YouTube or .m3u8 URL.</span>}
+        </span>
+        <span className="tn-nv-actions">
+          <button
+            disabled={exportRows.length === 0}
+            onClick={() => downloadText(`${exportFilename("news-channels", Date.now())}.csv`, "text/csv", toCsv(exportRows))}
+          >⬇ Channels CSV</button>
+        </span>
+      </footer>
     </div>
   );
 }
