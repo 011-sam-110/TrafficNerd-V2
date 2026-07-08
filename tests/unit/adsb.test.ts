@@ -17,6 +17,11 @@ test("parseAdsb skips rows without a position and converts units", () => {
   expect(ac[2].onGround).toBe(true); // alt_baro "ground"
 });
 
+test("captures squawk (activates emergency-squawk alerts)", () => {
+  const [a] = parseAdsb([{ hex: "abc", flight: "TEST123", lat: 51, lon: 0, alt_baro: 30000, squawk: "7700" }] as never);
+  expect(a.squawk).toBe("7700");
+});
+
 test("aircraftToWorldObject classifies from the ADS-B category", () => {
   const [heavy, heli, ground] = parseAdsb(rows as never).map(aircraftToWorldObject);
   expect(heavy.icon).toBe("plane-airliner"); // A5 heavy

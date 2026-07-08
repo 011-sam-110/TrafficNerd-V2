@@ -37,6 +37,7 @@ export interface Aircraft {
   category: string;
   typeCode: string;
   registration: string;
+  squawk: string;
 }
 
 const KT_TO_MS = 0.514444;
@@ -57,6 +58,7 @@ interface RawAircraft {
   baro_rate?: number;
   geom_rate?: number;
   category?: string;
+  squawk?: string;
 }
 
 function num(v: unknown): number | null {
@@ -89,6 +91,7 @@ export function parseAdsb(rows: RawAircraft[]): Aircraft[] {
       category: (a.category ?? "").trim(),
       typeCode: (a.t ?? "").trim(),
       registration: (a.r ?? "").trim(),
+      squawk: (a.squawk ?? "").trim(),
     });
   }
   return out;
@@ -128,6 +131,7 @@ export function aircraftToWorldObject(a: Aircraft): WorldObject {
       typeLabel: meta.label,
       // Whether the type came from a real ADS-B category vs the profile guess.
       categorySource: a.category && a.category !== "A0" ? "adsb" : "estimate",
+      squawk: a.squawk,
     },
   };
 }
