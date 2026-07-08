@@ -1270,3 +1270,7 @@ a { color: var(--tn-accent); }
 .tn-hd-sum { margin-top: 6px; padding: 8px 10px; border-left: 2px solid var(--tn-accent); background: var(--tn-surface); border-radius: 4px; }
 .tn-hd-sum p { margin: 0; font-size: 13px; color: var(--tn-text); }
 .tn-hd-sum-note { display: block; margin-top: 4px; font-size: 11px; color: var(--tn-text-faint); }
+.tn-hd-foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--tn-border); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.tn-hd-foot-src { font-size: 12px; color: var(--tn-text-faint); }
+.tn-hd-export { margin-left: auto; font: inherit; font-size: 12px; padding: 4px 10px; border: 1px solid var(--tn-border); border-radius: 6px; background: transparent; color: var(--tn-accent); cursor: pointer; }
+.tn-hd-export:disabled { opacity: .4; cursor: default; }

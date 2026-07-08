@@ -10,6 +10,7 @@ import type { NewsItem } from "@/lib/news";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
 import { countBy, timeBins } from "@/lib/widgets/buckets";
 import { Chart, type ChartPoint } from "@/components/Chart";
+import { toCsv, downloadText, exportFilename } from "@/lib/export";
 
 interface NewsPayload { generatedAt: number; items: NewsItem[] }
 const EMPTY: NewsPayload = { generatedAt: 0, items: [] };
@@ -85,6 +86,11 @@ export default function HeadlinesDetail({ }: WidgetDetailProps) {
       .catch(() => setSummaries((s) => ({ ...s, [it.url]: { text: it.description ?? "No preview available.", note: "Summary unavailable." } })));
   };
 
+  const exportRows = useMemo(
+    () => filtered.map((it) => ({ source: it.source, title: it.title, url: it.url, ts: it.ts, description: it.description ?? "" })),
+    [filtered],
+  );
+
   return (
     <div className="tn-hd">
       <div className="tn-hd-bar">
@@ -130,6 +136,14 @@ export default function HeadlinesDetail({ }: WidgetDetailProps) {
           </ul>
         </section>
       ))}
+
+      <footer className="tn-hd-foot">
+        <span className="tn-hd-foot-src">BBC World · Al Jazeera · NPR · The Guardian — keyless RSS</span>
+        <button className="tn-hd-export" disabled={exportRows.length === 0}
+          onClick={() => downloadText(`${exportFilename("headlines", Date.now())}.csv`, "text/csv", toCsv(exportRows))}>
+          ⬇ Export CSV
+        </button>
+      </footer>
     </div>
   );
 }
