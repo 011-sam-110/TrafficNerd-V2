@@ -1207,6 +1207,65 @@ a { color: var(--tn-accent); }
 .tn-newsw-cat{color:#9aa6b2;font-size:9px;float:right}.tn-newsw-custom{margin:6px 9px;padding:4px;font-size:11px;border:1px solid #e1e8ef;border-radius:5px}
 
 /* ===========================================================================
+   News-video FOCUS view (W6) — prefix `tn-nv`. Theme-token chrome (dark-capable,
+   unlike the light-hardcoded `.tn-newsw-*` docked widget). Media letterboxes use a
+   dark literal (video looks correct in both themes, mirroring the docked screen).
+   =========================================================================== */
+.tn-nv{display:flex;flex-direction:column;gap:12px}
+.tn-nv-head{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.tn-nv-title{font-weight:600;font-size:15px;color:var(--tn-text)}
+.tn-nv-now{font-size:12px;color:var(--tn-text-muted)}
+.tn-nv-sec-h{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--tn-text-faint);margin:2px 0}
+
+/* Category filter chips + mosaic toggle */
+.tn-nv-chips{display:flex;flex-wrap:wrap;gap:6px}
+.tn-nv-chips button,.tn-nv-mtoggle{font:inherit;font-size:11px;border:1px solid var(--tn-border);border-radius:999px;padding:3px 11px;background:var(--tn-surface-2);color:var(--tn-text-muted);cursor:pointer}
+.tn-nv-chips button.is-on,.tn-nv-mtoggle.is-on{background:var(--tn-accent);border-color:var(--tn-accent);color:#fff}
+.tn-nv-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:space-between}
+
+/* Hero player (16:9) + mosaic (2×2) */
+.tn-nv-hero{position:relative;aspect-ratio:16/9;background:#111820;border-radius:8px;overflow:hidden}
+.tn-nv-video{position:absolute;inset:0;width:100%;height:100%;border:0}
+.tn-nv-hero-label{position:absolute;left:8px;bottom:8px;color:#fff;font-size:11px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+.tn-nv-mosaic{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.tn-nv-cell{position:relative;aspect-ratio:16/9;background:#111820;border-radius:6px;overflow:hidden}
+.tn-nv-cell iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.tn-nv-cell.is-on{outline:2px solid var(--tn-accent);outline-offset:-2px}
+.tn-nv-cell-label{position:absolute;left:5px;bottom:4px;color:#fff;font-size:9px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.7)}
+
+/* Channel wall — keyless thumbnail tiles */
+.tn-nv-wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.tn-nv-cat-h{grid-column:1/-1;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--tn-text-faint);margin-top:4px}
+.tn-nv-tile{position:relative;display:flex;flex-direction:column;padding:0;text-align:left;font:inherit;color:inherit;background:var(--tn-surface-2);border:1px solid var(--tn-border);border-radius:8px;overflow:hidden;cursor:pointer}
+.tn-nv-tile:hover{border-color:var(--tn-accent)}
+.tn-nv-tile.is-on{outline:2px solid var(--tn-accent);outline-offset:-2px;border-color:var(--tn-accent)}
+.tn-nv-thumb-wrap{position:relative;aspect-ratio:16/9;background:#111820}
+.tn-nv-thumb{width:100%;height:100%;object-fit:cover;display:block}
+.tn-nv-thumb-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--tn-text-faint)}
+.tn-nv-live{position:absolute;top:5px;left:5px;display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:1px 6px;border-radius:4px}
+.tn-nv-live-dot{width:6px;height:6px;border-radius:50%;background:#e5484d;animation:tn-nv-pulse 1.6s ease-in-out infinite}
+@keyframes tn-nv-pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.tn-nv-tile-cap{padding:5px 7px;display:flex;flex-direction:column;gap:1px;min-width:0}
+.tn-nv-tile-name{font-size:11px;color:var(--tn-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tn-nv-tile-cat{font-size:9px;color:var(--tn-text-faint)}
+
+/* Live headline rail */
+.tn-nv-rail{display:flex;flex-direction:column;border-top:1px solid var(--tn-border)}
+.tn-nv-rail-item{display:block;padding:6px 2px;border-bottom:1px solid var(--tn-border);font-size:12px;text-decoration:none}
+.tn-nv-rail-title{color:var(--tn-text)}
+.tn-nv-rail-item:hover .tn-nv-rail-title{color:var(--tn-accent);text-decoration:underline}
+.tn-nv-rail-meta{font-size:10px;color:var(--tn-text-faint);margin-top:1px}
+
+/* Footer — add-custom-stream + export */
+.tn-nv-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--tn-border);padding-top:10px;margin-top:2px}
+.tn-nv-foot-note{font-size:10px;color:var(--tn-text-faint);flex:1 1 220px}
+.tn-nv-add{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tn-nv-custom{font:inherit;font-size:11px;padding:4px 8px;border:1px solid var(--tn-border);border-radius:6px;background:var(--tn-surface-2);color:var(--tn-text);min-width:190px}
+.tn-nv-add button,.tn-nv-actions button{font:inherit;font-size:11px;padding:4px 10px;border:1px solid var(--tn-border);border-radius:6px;background:var(--tn-surface-2);color:var(--tn-text-muted);cursor:pointer}
+.tn-nv-add button:disabled,.tn-nv-actions button:disabled{opacity:.5;cursor:default}
+.tn-nv-err{font-size:10px;color:#e5484d}
+
+/* ===========================================================================
    Global capacity toast (Task 15) — calm bottom-centre pill, auto-dismisses
    =========================================================================== */
 .tn-toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:1200;max-width:90vw;background:#2b3640;color:#fff;font:13px/1.4 -apple-system,"Segoe UI",Roboto,sans-serif;padding:9px 16px;border-radius:999px;box-shadow:0 6px 24px rgba(20,28,38,.28);animation:tn-toast-in .18s ease-out}
