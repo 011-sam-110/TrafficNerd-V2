@@ -62,7 +62,7 @@ function AviationBody({ config }: WidgetBodyProps) {
             <td className="tn-w-strong">{p.label}</td>
             <td className="tn-w-muted">{p.typeLabel ?? ""}</td>
             <td className="tn-w-num">
-              {p.altKm != null ? `${p.altKm.toFixed(1)}k` : ""}
+              {p.altKm != null ? `${p.altKm.toFixed(1)} km` : ""}
             </td>
           </tr>
         ))}

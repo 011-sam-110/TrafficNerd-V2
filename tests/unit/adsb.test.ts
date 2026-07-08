@@ -30,3 +30,10 @@ test("aircraftToWorldObject classifies from the ADS-B category", () => {
   expect(heavy.meta?.categorySource).toBe("adsb");
   expect(heavy.meta?.typeCode).toBe("B77W");
 });
+
+test("categorySource is honest — an emitter code classifyPlane doesn't trust reads as 'estimate'", () => {
+  // A6 (high-performance) is a real ADS-B code but NOT in ADSB_CATEGORY, so the type is
+  // an estimate from the flight profile — the provenance flag must say so, not "adsb".
+  const [a] = parseAdsb([{ hex: "a6", flight: "FAST1", lat: 51, lon: 0, alt_baro: 35000, gs: 500, track: 90, category: "A6" }] as never).map(aircraftToWorldObject);
+  expect(a.meta?.categorySource).toBe("estimate");
+});

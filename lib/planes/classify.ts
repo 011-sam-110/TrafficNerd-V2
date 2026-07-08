@@ -18,8 +18,9 @@ export interface PlaneProfile {
   category?: string;
 }
 
-// ADS-B emitter category → our coarse type (the reliable path).
-const ADSB_CATEGORY: Record<string, PlaneCategory> = {
+// ADS-B emitter category → our coarse type (the reliable path). Exported so callers
+// can tell whether a category was actually trusted (vs. fell through to the estimate).
+export const ADSB_CATEGORY: Record<string, PlaneCategory> = {
   A1: "light", // light (<15500 lbs)
   A2: "regional", // small
   A3: "airliner", // large

@@ -48,9 +48,11 @@ export default function AviationDetail(_props: WidgetDetailProps) {
 
   // usePlanes hands back a fresh objects array every poll (even when unchanged), so
   // its reference change is our per-poll clock — the stable timestamp the count
-  // sparkline needs (usePlanes exposes no updatedAt of its own).
+  // sparkline needs (usePlanes exposes no updatedAt of its own). Only stamp once REAL
+  // data has arrived: the initial mount array is empty, and stamping then would defeat
+  // the `if (updatedAt)` guard below and persist a spurious count=0 into the series.
   const [updatedAt, setUpdatedAt] = useState(0);
-  useEffect(() => { setUpdatedAt(Date.now()); }, [objects]);
+  useEffect(() => { if (objects.length > 0) setUpdatedAt(Date.now()); }, [objects]);
 
   useEffect(() => {
     if (updatedAt) recordSeries("av:count", total, updatedAt);
