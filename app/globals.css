@@ -306,6 +306,11 @@ a { color: var(--tn-accent); }
 }
 .tn-palette-input::placeholder { color: var(--tn-text-faint); }
 .tn-palette-list { list-style: none; margin: 0; padding: 6px; max-height: 46vh; overflow: auto; }
+.tn-palette-group {
+  padding: 10px 11px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.09em; color: var(--tn-text-muted); pointer-events: none;
+}
+.tn-palette-group:first-child { padding-top: 4px; }
 .tn-palette-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; border-radius: 9px; cursor: pointer; font-size: 13.5px; color: var(--tn-text); }
 .tn-palette-item.is-active { background: var(--tn-accent-soft); color: var(--tn-accent-strong); }
 .tn-palette-hint { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--tn-text-faint); }
