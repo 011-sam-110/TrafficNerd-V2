@@ -63,6 +63,28 @@ export default function HeadlinesDetail({ }: WidgetDetailProps) {
     return timeBins(ts, 60 * 60_000, now, 24 * 60 * 60_000).map((b) => ({ x: b.start, y: b.count }));
   }, [filtered, now]);
 
+  type SumState = { loading?: boolean; text?: string; note?: string };
+  const [summaries, setSummaries] = useState<Record<string, SumState>>({});
+  const summarize = (it: NewsItem) => {
+    if (summaries[it.url]?.loading || summaries[it.url]?.text) return;
+    setSummaries((s) => ({ ...s, [it.url]: { loading: true } }));
+    fetch("/api/news/summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: it.url, title: it.title, source: it.source }),
+    })
+      .then((r) => r.json())
+      .then((d: { summary: string | null; dormant: boolean; source: string | null }) => {
+        const note = d.dormant
+          ? "AI summary needs the FREELLMAPI gateway — showing the snippet."
+          : d.summary
+            ? undefined
+            : "Couldn’t read this article — showing the snippet.";
+        setSummaries((s) => ({ ...s, [it.url]: { text: d.summary ?? it.description ?? "No preview available.", note } }));
+      })
+      .catch(() => setSummaries((s) => ({ ...s, [it.url]: { text: it.description ?? "No preview available.", note: "Summary unavailable." } })));
+  };
+
   return (
     <div className="tn-hd">
       <div className="tn-hd-bar">
@@ -94,6 +116,15 @@ export default function HeadlinesDetail({ }: WidgetDetailProps) {
                 <a className="tn-hd-title" href={it.url} target="_blank" rel="noreferrer">{it.title}</a>
                 <div className="tn-hd-meta"><span className="tn-hd-src">{it.source}</span>{it.ts ? ` · ${rel(it.ts, now)}` : ""}</div>
                 {it.description && <p className="tn-hd-snippet">{it.description}</p>}
+                <button className="tn-hd-sum-btn" onClick={() => summarize(it)} disabled={!!summaries[it.url]?.loading}>
+                  {summaries[it.url]?.loading ? "Summarising…" : "✨ AI summary"}
+                </button>
+                {summaries[it.url]?.text && (
+                  <div className="tn-hd-sum">
+                    <p>{summaries[it.url]!.text}</p>
+                    {summaries[it.url]!.note && <span className="tn-hd-sum-note">{summaries[it.url]!.note}</span>}
+                  </div>
+                )}
               </li>
             ))}
           </ul>

@@ -1265,3 +1265,8 @@ a { color: var(--tn-accent); }
 .tn-hd-src { color: var(--tn-accent); }
 .tn-hd-snippet { font-size: 13px; color: var(--tn-text-muted); margin: 4px 0 0; }
 .tn-hd-vol { background: var(--tn-surface-2); border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; }
+.tn-hd-sum-btn { margin-top: 6px; font: inherit; font-size: 11px; padding: 2px 8px; border: 1px solid var(--tn-border); border-radius: 6px; background: transparent; color: var(--tn-accent); cursor: pointer; }
+.tn-hd-sum-btn:disabled { opacity: .6; cursor: default; }
+.tn-hd-sum { margin-top: 6px; padding: 8px 10px; border-left: 2px solid var(--tn-accent); background: var(--tn-surface); border-radius: 4px; }
+.tn-hd-sum p { margin: 0; font-size: 13px; color: var(--tn-text); }
+.tn-hd-sum-note { display: block; margin-top: 4px; font-size: 11px; color: var(--tn-text-faint); }
