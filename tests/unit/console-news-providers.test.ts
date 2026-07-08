@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { NEWS_PROVIDERS, parseCustomStream, resolveEmbed } from "@/lib/console/news/providers";
+import { NEWS_PROVIDERS, parseCustomStream, resolveEmbed, providerThumb } from "@/lib/console/news/providers";
 
 test("seeds at least 10 free providers with valid kinds", () => {
   expect(NEWS_PROVIDERS.length).toBeGreaterThanOrEqual(10);
@@ -30,4 +30,10 @@ test("resolveEmbed rejects a non-http(s) hls ref", () => {
   const e = resolveEmbed({ id: "x", name: "X", category: "Custom", kind: "hls", ref: "javascript:alert(1)" });
   expect(e.kind).toBe("hls");
   expect(e.src).toBeFalsy();
+});
+
+test("providerThumb returns a keyless YouTube thumb for youtube, null for hls", () => {
+  expect(providerThumb({ id: "x", name: "X", category: "World", kind: "youtube", ref: "abc12345678" }))
+    .toBe("https://img.youtube.com/vi/abc12345678/hqdefault.jpg");
+  expect(providerThumb({ id: "y", name: "Y", category: "World", kind: "hls", ref: "https://h/s.m3u8" })).toBeNull();
 });

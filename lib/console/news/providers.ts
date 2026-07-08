@@ -40,3 +40,8 @@ export function resolveEmbed(p: NewsProvider): { kind: "youtube" | "hls"; src: s
   if (p.kind === "youtube") return { kind: "youtube", src: `https://www.youtube.com/embed/${p.ref}?autoplay=1&mute=1&playsinline=1` };
   return { kind: "hls", src: /^https?:\/\//i.test(p.ref) ? p.ref : "" };
 }
+
+/** Keyless YouTube thumbnail for a provider, or null for HLS (no free thumbnail). */
+export function providerThumb(p: NewsProvider): string | null {
+  return p.kind === "youtube" ? `https://img.youtube.com/vi/${p.ref}/hqdefault.jpg` : null;
+}
