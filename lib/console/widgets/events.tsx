@@ -24,6 +24,7 @@ import { useWidgetReport } from "@/components/console/WidgetFrame";
 import { runAlertRule } from "@/lib/console/alerts";
 import { eventAlerts, type EventLite } from "@/lib/console/widgets/events.rules";
 import type { SeverityTier } from "@/lib/events/model";
+import EventsDetail from "@/lib/console/widgets/events.detail";
 
 function EventsBody({ config }: WidgetBodyProps) {
   const scope = useScope();
@@ -137,6 +138,7 @@ export const EVENTS_WIDGET = {
   defaultHeight: 320,
   defaultConfig: { minTier: "S1", sort: "severity" },
   component: EventsBody,
+  detail: EventsDetail,
   capabilities: { filter: true, sort: true },
 };
 registerWidget(EVENTS_WIDGET);
