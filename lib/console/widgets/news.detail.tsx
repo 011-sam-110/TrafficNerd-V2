@@ -39,6 +39,14 @@ export default function NewsDetail({ instanceId, config }: WidgetDetailProps) {
   const [customUrl, setCustomUrl] = useState("");
   const [customErr, setCustomErr] = useState(false);
 
+  // Config is the source of truth. Re-sync the local channel when it changes externally
+  // (e.g. the user switches channels on the still-visible docked copy) so the focused
+  // detail never diverges from the dock. Keyed on primitives to avoid ref-churn re-fires.
+  useEffect(() => {
+    if (typeof config.providerId === "string") setActiveId(config.providerId);
+    setCustom(config.customProvider as NewsProvider | undefined);
+  }, [config.providerId, (config.customProvider as NewsProvider | undefined)?.id]);
+
   const active = useMemo<NewsProvider | undefined>(
     () => (custom?.id === activeId ? custom : NEWS_PROVIDERS.find((p) => p.id === activeId) ?? NEWS_PROVIDERS[0]),
     [activeId, custom],
@@ -115,7 +123,9 @@ export default function NewsDetail({ instanceId, config }: WidgetDetailProps) {
       h.attachMedia(v);
     })();
     return () => { cancelled = true; hls?.destroy(); };
-  }, [embed?.kind, embed?.src]);
+    // `mosaic` is a dep: toggling it unmounts/remounts the hero <video>, so the effect
+    // must re-run to destroy the old hls.js instance and re-attach to the new element.
+  }, [embed?.kind, embed?.src, mosaic]);
 
   if (!active || !embed) {
     return (
