@@ -12,6 +12,7 @@ import type { MarketsPayload } from "@/lib/markets";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
 import { recordSeries, seriesTrend } from "@/lib/series";
 import { Sparkline } from "@/components/Sparkline";
+import MarketsDetail from "./markets.detail";
 
 const EMPTY: MarketsPayload = { generatedAt: 0, sections: [] };
 const RANK: Record<AlertSeverity, number> = { info: 0, warn: 1, critical: 2 };
@@ -116,5 +117,6 @@ export const MARKETS_WIDGET = {
   defaultHeight: 300,
   defaultConfig: {},
   component: MarketsBody,
+  detail: MarketsDetail,
 };
 registerWidget(MARKETS_WIDGET);

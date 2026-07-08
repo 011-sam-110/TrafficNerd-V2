@@ -8,6 +8,7 @@ import { useEffect, useMemo } from "react";
 import { useSatellites } from "@/lib/satellites/useSatellites";
 import { registerWidget, type WidgetBodyProps } from "@/lib/console/registry";
 import { useWidgetReport } from "@/components/console/WidgetFrame";
+import SatellitesDetail from "./satellites.detail";
 
 function SatellitesBody({ config }: WidgetBodyProps) {
   const group = (config.group as string) ?? "visual";
@@ -48,5 +49,7 @@ export const SATELLITES_WIDGET = {
   defaultHeight: 280,
   defaultConfig: { group: "visual" },
   component: SatellitesBody,
+  detail: SatellitesDetail,
+  capabilities: { filter: true, sort: true },
 };
 registerWidget(SATELLITES_WIDGET);

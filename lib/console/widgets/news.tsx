@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { registerWidget, type WidgetBodyProps } from "@/lib/console/registry";
 import { useWidgetReport } from "@/components/console/WidgetFrame";
 import { NEWS_PROVIDERS, parseCustomStream, resolveEmbed, type NewsProvider } from "@/lib/console/news/providers";
+import NewsDetail from "./news.detail";
 
 function NewsBody({ instanceId, config }: WidgetBodyProps) {
   const report = useWidgetReport();
@@ -57,6 +58,6 @@ function NewsBody({ instanceId, config }: WidgetBodyProps) {
 
 export const NEWS_WIDGET = {
   id: "news", title: "Live News", icon: "📺", category: "News",
-  defaultHeight: 240, defaultConfig: { providerId: "aljazeera" }, component: NewsBody,
+  defaultHeight: 240, defaultConfig: { providerId: "aljazeera" }, component: NewsBody, detail: NewsDetail,
 };
 registerWidget(NEWS_WIDGET);
