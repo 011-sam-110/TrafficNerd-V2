@@ -24,6 +24,7 @@ import { CameraDetail } from "@/components/CameraDetail";
 import { hlsSlots, useHlsActive, HLS_CAP } from "@/lib/cameras/concurrency";
 import { msUntilRefresh, formatCountdown, sampledAgeMs } from "@/lib/cameras/freshness";
 import { useNow, formatAge } from "@/lib/shell/useNow";
+import { toCsv, toGeoJson, downloadText, exportFilename } from "@/lib/export";
 import type { WorldObject } from "@/lib/world";
 
 type SortKey = "name" | "operator" | "region";
@@ -135,6 +136,25 @@ export default function CamerasDetail(_props: WidgetDetailProps) {
     else { setSortKey(k); setDir(1); }
   };
   const sortMark = (k: SortKey) => (sortKey === k ? (dir === 1 ? " ↑" : " ↓") : "");
+
+  // Export the FILTERED set (what's on screen). Per-operator licences ride on each
+  // Camera.attribution/license, so the footer just names the distinct operators and
+  // points to the per-camera licence (surfaced in the dossier's AttributionBadge).
+  const operators = useMemo(() => cov.byOperator.map((o) => o.source).join(", "), [cov]);
+  const exportRows = useMemo(
+    () => filtered.map((c) => ({
+      id: c.id, name: c.name, source: c.source, region: c.region ?? "",
+      lat: c.lat, lon: c.lon, live: c.live, available: c.available,
+    })),
+    [filtered],
+  );
+  const exportGeo = useMemo(
+    () => filtered.map((c) => ({
+      lat: c.lat, lon: c.lon,
+      properties: { name: c.name, source: c.source, live: c.live, available: c.available },
+    })),
+    [filtered],
+  );
 
   // Count sparkline: only stamp the series ONCE REAL DATA HAS ARRIVED (the W4 review
   // fix). The initial feed is empty and its updatedAt is null; even after a poll,
@@ -285,7 +305,21 @@ export default function CamerasDetail(_props: WidgetDetailProps) {
       )}
 
       <footer className="tn-cm-foot">
-        <span className="tn-cm-attr">Traffic cameras · see each camera for its licence.</span>
+        <span className="tn-cm-attr">
+          {operators
+            ? `Operators: ${operators} · see each camera for its licence.`
+            : "Traffic cameras · see each camera for its licence."}
+        </span>
+        <span className="tn-cm-actions">
+          <button
+            disabled={exportRows.length === 0}
+            onClick={() => downloadText(`${exportFilename("cameras", Date.now())}.csv`, "text/csv", toCsv(exportRows))}
+          >⬇ CSV</button>
+          <button
+            disabled={exportGeo.length === 0}
+            onClick={() => downloadText(`${exportFilename("cameras", Date.now())}.geojson`, "application/geo+json", toGeoJson(exportGeo))}
+          >⬇ GeoJSON</button>
+        </span>
       </footer>
     </div>
   );
