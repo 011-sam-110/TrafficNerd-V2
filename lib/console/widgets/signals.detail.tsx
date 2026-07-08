@@ -74,7 +74,36 @@ export function makeSignalDetail(source: SignalSource) {
         {status === "loading" && scoped.length === 0 && <p className="tn-w-empty">Loading {source.label}…</p>}
         {status !== "loading" && scoped.length === 0 && <p className="tn-w-empty">Nothing in {scope.label}.</p>}
 
-        {/* Panels (Task 3), table (Task 4), footer (Task 5) inserted below. */}
+        {scoped.length > 0 && (
+          <div className="tn-sd-panels">
+            <div className="tn-sd-panel">
+              <h3>Locations</h3>
+              {mapPoints.length > 0 ? <InsetMap points={mapPoints} height={200} onSelect={(id) => setOpen(id)} />
+                : <p className="tn-w-empty">No mappable features.</p>}
+            </div>
+            <div className="tn-sd-panel">
+              <h3>{dist.kind === "magnitude" ? "Magnitude distribution" : dist.kind === "severity" ? "Severity" : "Distribution"}</h3>
+              {dist.kind !== "none" ? (
+                <>
+                  <div className="tn-sd-bars">
+                    {dist.bins.map((b, i) => {
+                      const max = Math.max(1, ...dist.bins.map((x) => x.count));
+                      return <div key={i} className="tn-sd-bar" style={{ height: `${(b.count / max) * 100}%` }} title={`${b.label}: ${b.count}`} />;
+                    })}
+                  </div>
+                  <div style={{ display: "flex", gap: 4 }}>{dist.bins.map((b, i) => <span key={i} className="tn-sd-bar-label" style={{ flex: 1 }}>{b.label}</span>)}</div>
+                </>
+              ) : <p className="tn-w-empty">This source declares no magnitude or severity.</p>}
+            </div>
+            <div className="tn-sd-panel">
+              <h3>Over the last 24h {tm.undated > 0 && <span className="tn-sd-bar-label">· {tm.undated} undated</span>}</h3>
+              {timePoints.some((p) => p.y > 0) ? <Chart points={timePoints} height={120} up={null} />
+                : <p className="tn-w-empty">No timestamped features in the window.</p>}
+            </div>
+          </div>
+        )}
+
+        {/* Feature table (Task 4) inserted below. */}
 
         <footer className="tn-sd-foot">
           <span className="tn-sd-attr">{source.attribution}{KEYED.has(source.id) && " · needs an API key (dormant when unset)"}</span>
