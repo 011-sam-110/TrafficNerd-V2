@@ -6,13 +6,7 @@
 // live globe by <FeedOverlay>.
 
 import type { WorldObject } from "@/lib/world";
-
-// Humanise a camelCase props key for the definition-list term, e.g.
-// "forecastFor" → "Forecast for".
-function humanise(key: string): string {
-  const spaced = key.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
-}
+import { humaniseKey } from "@/lib/text/humanise";
 
 export default function SignalDetail({ object }: { object: WorldObject }) {
   const meta = object.meta ?? {};
@@ -65,7 +59,7 @@ export default function SignalDetail({ object }: { object: WorldObject }) {
                   alignSelf: "center",
                 }}
               >
-                {humanise(k)}
+                {humaniseKey(k)}
               </dt>
               <dd style={{ margin: 0, color: "var(--tn-text)", fontWeight: 600 }}>{String(v)}</dd>
             </div>
