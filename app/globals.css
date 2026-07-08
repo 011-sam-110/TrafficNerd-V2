@@ -1114,7 +1114,7 @@ a { color: var(--tn-accent); }
 /* ===========================================================================
    WidgetFrame chrome — Task 6
    =========================================================================== */
-.tn-cw{display:flex;flex-direction:column;background:#fff;border:1px solid var(--tn-border,#dbe2ea);border-radius:8px;overflow:hidden}
+.tn-cw{position:relative;display:flex;flex-direction:column;background:#fff;border:1px solid var(--tn-border,#dbe2ea);border-radius:8px;overflow:hidden}
 .tn-cw-head{display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid #f1f5f9;cursor:grab;font-size:12px}
 .tn-cw-title{font-weight:700;color:#2b3640}.tn-cw-count{font-size:11px;color:#8a97a6}.tn-cw-sp{flex:1}
 .tn-cw-badge{font-size:10px;font-weight:800;color:#fff;border-radius:8px;padding:0 5px;background:#8a97a6}
@@ -1130,6 +1130,10 @@ a { color: var(--tn-accent); }
 .tn-cw-attn-feed{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
 .tn-cw-failed{padding:12px 10px;font-size:11px;color:#a9b4bf}
 .tn-cw-resize{height:6px;cursor:row-resize;background:linear-gradient(#f1f5f9,#fff)}
+.tn-cw-resize-x{position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;z-index:2}
+.tn-cw-resize-x:hover{background:rgba(120,140,160,.18)}
+.tn-cw-resize-xy{position:absolute;right:0;bottom:0;width:12px;height:12px;cursor:nwse-resize;z-index:3}
+.tn-cw-resize-xy::after{content:"";position:absolute;right:2px;bottom:2px;width:6px;height:6px;border-right:2px solid #b3bdc8;border-bottom:2px solid #b3bdc8}
 
 /* ===========================================================================
    StageHost + WorldClock + StageSwitch — Task 8
