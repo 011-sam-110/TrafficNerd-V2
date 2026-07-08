@@ -11,16 +11,24 @@ import { pointsToFC, boundsOf, type InsetPoint } from "@/lib/map/inset";
 
 const SRC = "inset-points";
 const LAYER = "inset-point-circles";
+const TRACK_SRC = "inset-track";
+const TRACK_LAYER = "inset-track-line";
+// Literal accent (the satellite layer's violet). Map layers use literal colours,
+// consistent with the circle layer's literal "#0b1220" stroke below.
+const TRACK_COLOR = "#7c3aed";
 const POSITRON = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 
 export default function InsetMap({
   points,
   height = 320,
   onSelect,
+  track,
 }: {
   points: InsetPoint[];
   height?: number;
   onSelect?: (id: string) => void;
+  /** Optional ground-track polyline: [lon,lat] segments (already antimeridian-split). */
+  track?: [number, number][][];
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -58,7 +66,8 @@ export default function InsetMap({
       });
       map.on("mouseenter", LAYER, () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", LAYER, () => { map.getCanvas().style.cursor = ""; });
-      fit(map, points);
+      syncTrack(map, track);
+      fit(map, points, track);
     });
     return () => { map.remove(); mapRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -69,13 +78,46 @@ export default function InsetMap({
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     const src = map.getSource(SRC) as GeoJSONSource | undefined;
-    if (src) { src.setData(pointsToFC(points)); fit(map, points); }
-  }, [points]);
+    if (src) { src.setData(pointsToFC(points)); syncTrack(map, track); fit(map, points, track); }
+  }, [points, track]);
 
   return <div ref={boxRef} className="tn-inset-map" style={{ width: "100%", height }} />;
 }
 
-function fit(map: maplibregl.Map, points: InsetPoint[]) {
-  const b = boundsOf(points);
+function fit(map: maplibregl.Map, points: InsetPoint[], track?: [number, number][][]) {
+  const extra: InsetPoint[] = track ? track.flat().map(([lon, lat]) => ({ lat, lon })) : [];
+  const b = boundsOf([...points, ...extra]);
   if (b) map.fitBounds(b, { padding: 40, maxZoom: 6, duration: 0 });
+}
+
+// The optional ground-track polyline. Added LAZILY the first time a non-empty
+// track arrives, so a caller that never passes `track` gets a byte-identical
+// single-layer map (no extra source/layer registered at all).
+function trackToFC(segs: [number, number][][]): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: [{ type: "Feature", geometry: { type: "MultiLineString", coordinates: segs }, properties: {} }],
+  };
+}
+
+function syncTrack(map: maplibregl.Map, track?: [number, number][][]) {
+  const segs = (track ?? []).filter((s) => s.length >= 2);
+  const existing = map.getSource(TRACK_SRC) as GeoJSONSource | undefined;
+  if (segs.length === 0) {
+    if (existing) existing.setData({ type: "FeatureCollection", features: [] });
+    return;
+  }
+  if (existing) { existing.setData(trackToFC(segs)); return; }
+  map.addSource(TRACK_SRC, { type: "geojson", data: trackToFC(segs) });
+  // Insert BENEATH the point circles so the sub-point marker stays clickable on top.
+  map.addLayer(
+    {
+      id: TRACK_LAYER,
+      type: "line",
+      source: TRACK_SRC,
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": TRACK_COLOR, "line-width": 2, "line-opacity": 0.85 },
+    },
+    LAYER,
+  );
 }
