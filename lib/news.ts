@@ -37,8 +37,10 @@ function decodeEntities(s: string): string {
 function cleanText(raw: string | undefined): string {
   if (!raw) return "";
   let s = raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1");
-  s = s.replace(/<[^>]+>/g, " "); // drop any stray inline markup
-  return decodeEntities(s).replace(/\s+/g, " ").trim();
+  s = s.replace(/<[^>]+>/g, " "); // drop literal inline markup (CDATA HTML)
+  s = decodeEntities(s); // entity-encoded markup (e.g. Guardian's &lt;p&gt;) becomes real tags…
+  s = s.replace(/<[^>]+>/g, " "); // …strip those too, else raw <p>/<a href> leak into the snippet
+  return s.replace(/\s+/g, " ").trim();
 }
 
 /** First inner value of <tag>…</tag> within `block`, or undefined. */
