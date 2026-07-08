@@ -1450,6 +1450,46 @@ a { color: var(--tn-accent); }
 .tn-cm-actions button { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--tn-text); cursor: pointer; }
 .tn-cm-actions button:disabled { opacity: .4; cursor: default; }
 
+/* ── Satellites focus view (W8) — orbital command, mirrors the .tn-av / .tn-cm language ── */
+.tn-sat { display: flex; flex-direction: column; gap: 14px; height: 100%; overflow: auto; padding: 4px 2px; color: var(--tn-text); }
+.tn-sat-head { display: flex; flex-direction: column; gap: 6px; }
+.tn-sat-title { font-size: 18px; font-weight: 700; }
+.tn-sat-stat { font-size: 12px; color: var(--tn-text-muted); }
+.tn-sat-delta.up { color: #16a34a; } .tn-sat-delta.down { color: #dc2626; }
+.tn-sat-spark { max-width: 320px; }
+.tn-sat-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tn-sat-chip { font-size: 11px; padding: 3px 10px; border-radius: 999px; background: var(--tn-surface-2); border: 1px solid var(--tn-border); color: var(--tn-text-muted); cursor: pointer; }
+.tn-sat-chip.active { background: var(--tn-accent); border-color: var(--tn-accent); color: var(--tn-surface-solid); }
+.tn-sat-search { align-self: flex-start; min-width: 240px; max-width: 360px; width: 100%; font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--tn-border); background: var(--tn-surface-2); color: var(--tn-text); }
+.tn-sat-search::placeholder { color: var(--tn-text-faint); }
+.tn-sat-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 720px) { .tn-sat-panels { grid-template-columns: 1fr; } }
+.tn-sat-panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--tn-text-faint); margin: 0 0 6px; }
+.tn-sat-vitals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 16px; margin: 0; }
+.tn-sat-vitals > div { display: flex; flex-direction: column; gap: 2px; }
+.tn-sat-vitals dt { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--tn-text-faint); }
+.tn-sat-vitals dd { margin: 0; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--tn-text); }
+.tn-sat-img-fig { margin: 0; position: relative; border-radius: 10px; overflow: hidden; background: var(--tn-surface-2); aspect-ratio: 1 / 1; }
+.tn-sat-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tn-sat-cap { position: absolute; left: 8px; bottom: 8px; right: 8px; font-size: 11px; padding: 3px 8px; border-radius: 8px; background: var(--tn-surface); border: 1px solid var(--tn-border); color: var(--tn-text-muted); line-height: 1.4; }
+.tn-sat-live { display: flex; flex-direction: column; gap: 6px; }
+.tn-sat-live-frame { width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 10px; background: #000; }
+.tn-sat-live .tn-sat-cap { position: static; background: transparent; border: 0; padding: 0; }
+.tn-sat-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tn-sat-table th { text-align: left; color: var(--tn-text-faint); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 4px 8px; border-bottom: 1px solid var(--tn-border); }
+.tn-sat-table th.sortable { cursor: pointer; }
+.tn-sat-table td { padding: 5px 8px; border-bottom: 1px solid var(--tn-border); white-space: nowrap; }
+.tn-sat-row { cursor: pointer; }
+.tn-sat-row:hover { background: var(--tn-surface-2); }
+.tn-sat-row.sel { background: var(--tn-accent-soft); }
+.tn-sat-drill { background: var(--tn-surface-2); }
+.tn-sat-drill td { padding: 12px 14px; }
+.tn-sat-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--tn-border); padding-top: 8px; margin-top: auto; }
+.tn-sat-attr { font-size: 11px; color: var(--tn-text-faint); }
+.tn-sat-actions { display: flex; gap: 8px; }
+.tn-sat-actions button { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--tn-text); cursor: pointer; }
+.tn-sat-actions button:disabled { opacity: .4; cursor: default; }
+
 /* ── Markets focus view (W7) — "for markets, it shows actual graphs" ── */
 .tn-mk { display: flex; flex-direction: column; gap: 14px; height: 100%; overflow: auto; padding: 4px 2px; color: var(--tn-text); }
 .tn-mk-head { display: flex; flex-direction: column; gap: 4px; }
