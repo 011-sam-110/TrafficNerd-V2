@@ -2,6 +2,8 @@ import type { ComponentType } from "react";
 
 export interface WidgetBodyProps { instanceId: string; config: Record<string, unknown> }
 
+export interface WidgetDetailProps { instanceId: string; config: Record<string, unknown> }
+
 export interface WidgetType {
   id: string;
   title: string;
@@ -10,6 +12,8 @@ export interface WidgetType {
   defaultHeight: number;
   defaultConfig: Record<string, unknown>;
   component: ComponentType<WidgetBodyProps>;
+  /** Optional rich "focus" view shown when the widget is expanded onto the center stage. */
+  detail?: ComponentType<WidgetDetailProps>;
   capabilities?: { filter?: boolean; sort?: boolean };
 }
 
