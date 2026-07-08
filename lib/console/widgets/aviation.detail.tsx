@@ -5,11 +5,11 @@
 // filters, a region map and altitude histogram, a sortable uncapped flight table
 // with a per-flight PlaneDetail dossier, and an attribution footer with export.
 // All aviation maths lives in the unit-tested lib/planes/ops.ts; this is a shell.
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import { usePlanes } from "@/lib/planes/usePlanes";
 import {
-  opsSummary, altitudeBand, regionOf, ALT_BANDS, REGION_LABELS,
+  opsSummary, altitudeBand, regionOf, sortFlights, ALT_BANDS, REGION_LABELS,
   type AltBand, type FlightSortKey,
 } from "@/lib/planes/ops";
 import { recordSeries, seriesSamples } from "@/lib/series";
@@ -17,9 +17,18 @@ import { deltaOf } from "@/lib/widgets/history";
 import { Chart, type ChartPoint } from "@/components/Chart";
 import InsetMap from "@/components/InsetMap";
 import type { InsetPoint } from "@/lib/map/inset";
+import PlaneDetail from "@/components/PlaneDetail";
 
 const MS_TO_KT = 1.94384;
+const MS_TO_KMH = 3.6;
+const FT_TO_KM = 0.0003048;
 const EMERGENCY_REASON: Record<string, string> = { "7500": "hijack", "7600": "radio failure", "7700": "emergency" };
+
+// The 16-point compass copy — PlaneDetail's is private, so aviation.detail keeps its own.
+function headingToCompass(deg: number): string {
+  const dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+  return dirs[Math.round(deg / 22.5) % 16];
+}
 
 export default function AviationDetail(_props: WidgetDetailProps) {
   const layer = usePlanes();
@@ -88,6 +97,14 @@ export default function AviationDetail(_props: WidgetDetailProps) {
     return ALT_BANDS.map((b) => ({ band: b, count: counts.get(b) ?? 0 }));
   }, [filtered]);
   const altMax = Math.max(1, ...altHistogram.map((h) => h.count));
+
+  // Uncapped, sorted flight list (region/altitude filters already applied).
+  const rows = useMemo(() => sortFlights(filtered, sortKey, dir), [filtered, sortKey, dir]);
+  const toggleSort = (k: FlightSortKey) => {
+    if (sortKey === k) setDir((d) => (d === 1 ? -1 : 1));
+    else { setSortKey(k); setDir(-1); }
+  };
+  const sortMark = (k: FlightSortKey) => (sortKey === k ? (dir === -1 ? " ↓" : " ↑") : "");
 
   return (
     <div className="tn-av">
@@ -168,6 +185,58 @@ export default function AviationDetail(_props: WidgetDetailProps) {
             ) : <p className="tn-w-empty">No aircraft match this filter.</p>}
           </div>
         </div>
+      )}
+
+      {filtered.length > 0 && (
+        <table className="tn-av-table">
+          <thead>
+            <tr>
+              <th className="sortable" onClick={() => toggleSort("callsign")}>Callsign{sortMark("callsign")}</th>
+              <th>Type</th>
+              <th className="sortable" onClick={() => toggleSort("altitude")}>Alt{sortMark("altitude")}</th>
+              <th className="sortable" onClick={() => toggleSort("speed")}>Speed{sortMark("speed")}</th>
+              <th>Heading</th>
+              <th>V/S</th>
+              <th>Reg</th>
+              <th className="sortable" onClick={() => toggleSort("region")}>Region{sortMark("region")}</th>
+              <th>Squawk</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((o) => {
+              const meta = o.meta ?? {};
+              const typeCode = (meta.typeCode as string) || "";
+              const altKm = typeof o.altKm === "number" ? o.altKm : null;
+              const velocityMs = typeof meta.velocityMs === "number" ? (meta.velocityMs as number) : null;
+              const headingDeg = typeof meta.headingDeg === "number" ? (meta.headingDeg as number) : (o.heading ?? 0);
+              const vs = typeof meta.verticalRateMs === "number" ? (meta.verticalRateMs as number) : null;
+              const reg = (meta.registration as string) || "";
+              const squawk = (meta.squawk as string) || "";
+              const isEmergency = squawk in EMERGENCY_REASON;
+              const isOpen = openId === o.id;
+              return (
+                <Fragment key={o.id}>
+                  <tr className="tn-av-row" onClick={() => setOpenId(isOpen ? null : o.id)}>
+                    <td className="tn-w-strong">{o.label}</td>
+                    <td className="tn-w-muted">{o.typeLabel ?? "—"}{typeCode ? ` · ${typeCode}` : ""}</td>
+                    <td>{altKm != null ? `${altKm.toFixed(1)} km / ${(altKm / FT_TO_KM).toFixed(0)} ft` : "—"}</td>
+                    <td>{velocityMs != null ? `${(velocityMs * MS_TO_KT).toFixed(0)} kt / ${(velocityMs * MS_TO_KMH).toFixed(0)} km/h` : "—"}</td>
+                    <td>{Math.round(headingDeg)}° {headingToCompass(headingDeg)}</td>
+                    <td>{vs != null ? `${vs.toFixed(1)} m/s` : "—"}</td>
+                    <td>{reg || "—"}</td>
+                    <td>{regionOf(o.lat, o.lon)}</td>
+                    <td className={isEmergency ? "tn-av-sq-emg" : ""}>{squawk || "—"}</td>
+                  </tr>
+                  {isOpen && (
+                    <tr className="tn-av-drill">
+                      <td colSpan={9}><PlaneDetail object={o} /></td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
       )}
 
       <footer className="tn-av-foot">
