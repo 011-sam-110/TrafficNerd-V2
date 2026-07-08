@@ -8,10 +8,15 @@
 import { useEffect, useMemo, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import { usePlanes } from "@/lib/planes/usePlanes";
-import { opsSummary, type AltBand, type FlightSortKey } from "@/lib/planes/ops";
+import {
+  opsSummary, altitudeBand, regionOf, ALT_BANDS, REGION_LABELS,
+  type AltBand, type FlightSortKey,
+} from "@/lib/planes/ops";
 import { recordSeries, seriesSamples } from "@/lib/series";
 import { deltaOf } from "@/lib/widgets/history";
 import { Chart, type ChartPoint } from "@/components/Chart";
+import InsetMap from "@/components/InsetMap";
+import type { InsetPoint } from "@/lib/map/inset";
 
 const MS_TO_KT = 1.94384;
 const EMERGENCY_REASON: Record<string, string> = { "7500": "hijack", "7600": "radio failure", "7700": "emergency" };
@@ -64,6 +69,26 @@ export default function AviationDetail(_props: WidgetDetailProps) {
     [objects],
   );
 
+  // Region + altitude filters. Every downstream panel/table reads `filtered`.
+  const filtered = useMemo(
+    () => objects.filter((o) =>
+      (!region || regionOf(o.lat, o.lon) === region) &&
+      (!band || altitudeBand(o) === band)),
+    [objects, region, band],
+  );
+
+  const mapPoints: InsetPoint[] = useMemo(
+    () => filtered.map((o) => ({ lat: o.lat, lon: o.lon, id: o.id, color: o.color, props: { callsign: o.label } })),
+    [filtered],
+  );
+
+  const altHistogram = useMemo(() => {
+    const counts = new Map<AltBand, number>();
+    for (const o of filtered) { const b = altitudeBand(o); counts.set(b, (counts.get(b) ?? 0) + 1); }
+    return ALT_BANDS.map((b) => ({ band: b, count: counts.get(b) ?? 0 }));
+  }, [filtered]);
+  const altMax = Math.max(1, ...altHistogram.map((h) => h.count));
+
   return (
     <div className="tn-av">
       <header className="tn-av-head">
@@ -99,6 +124,51 @@ export default function AviationDetail(_props: WidgetDetailProps) {
       )}
 
       {objects.length === 0 && <p className="tn-w-empty">No aircraft in range right now.</p>}
+
+      {objects.length > 0 && (
+        <div className="tn-av-filters">
+          <div className="tn-av-filter-row">
+            <span className="tn-av-filter-label">Region</span>
+            <button className={`tn-av-fchip ${region === null ? "active" : ""}`} onClick={() => setRegion(null)}>All</button>
+            {REGION_LABELS.map((r) => (
+              <button key={r} className={`tn-av-fchip ${region === r ? "active" : ""}`} onClick={() => setRegion(region === r ? null : r)}>{r}</button>
+            ))}
+          </div>
+          <div className="tn-av-filter-row">
+            <span className="tn-av-filter-label">Altitude</span>
+            <button className={`tn-av-fchip ${band === null ? "active" : ""}`} onClick={() => setBand(null)}>All</button>
+            {ALT_BANDS.map((b) => (
+              <button key={b} className={`tn-av-fchip ${band === b ? "active" : ""}`} onClick={() => setBand(band === b ? null : b)}>{b}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {objects.length > 0 && (
+        <div className="tn-av-panels">
+          <div className="tn-av-panel">
+            <h3>Locations · {filtered.length}</h3>
+            {mapPoints.length > 0
+              ? <InsetMap points={mapPoints} height={220} onSelect={(id) => setOpenId(id)} />
+              : <p className="tn-w-empty">No aircraft match this filter.</p>}
+          </div>
+          <div className="tn-av-panel">
+            <h3>Altitude bands</h3>
+            {filtered.length > 0 ? (
+              <>
+                <div className="tn-av-bars">
+                  {altHistogram.map((h) => (
+                    <div key={h.band} className="tn-av-bar" style={{ height: `${(h.count / altMax) * 100}%` }} title={`${h.band}: ${h.count}`} />
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {altHistogram.map((h) => <span key={h.band} className="tn-av-bar-label" style={{ flex: 1 }}>{h.band}</span>)}
+                </div>
+              </>
+            ) : <p className="tn-w-empty">No aircraft match this filter.</p>}
+          </div>
+        </div>
+      )}
 
       <footer className="tn-av-foot">
         <span className="tn-av-attr">Aircraft: adsb.lol · enrichment: adsbdb · 3 fixed regions (London / California / S.Carolina)</span>
