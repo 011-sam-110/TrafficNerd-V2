@@ -8,6 +8,7 @@ import { registerWidget } from "@/lib/console/registry";
 import { useWidgetReport } from "@/components/console/WidgetFrame";
 import type { NewsItem } from "@/lib/news";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
+import HeadlinesDetail from "@/lib/console/widgets/headlines.detail";
 
 interface NewsPayload {
   generatedAt: number;
@@ -73,5 +74,6 @@ export const HEADLINES_WIDGET = {
   defaultHeight: 300,
   defaultConfig: {},
   component: HeadlinesBody,
+  detail: HeadlinesDetail,
 };
 registerWidget(HEADLINES_WIDGET);
