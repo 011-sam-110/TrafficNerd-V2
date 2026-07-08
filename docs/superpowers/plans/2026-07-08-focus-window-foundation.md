@@ -436,9 +436,12 @@ In `components/console/WidgetFrame.tsx`, add an expand button in the header, imm
 
 Append to `app/globals.css`:
 
+Also extend the existing borderless-button rule so the new expand button matches the `⋯` menu — change `.tn-cw-menu{…}` to `.tn-cw-menu,.tn-cw-expand{…}`.
+
 ```css
 /* Focus window — a widget expanded onto the center stage */
-.tn-detail { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--tn-surface-1, #0b1220); color: var(--tn-text-1, #e2e8f0); overflow: hidden; }
+/* Use the real theme tokens (--tn-surface-solid / --tn-text) so this is light-default correct. */
+.tn-detail { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--tn-surface-solid); color: var(--tn-text); overflow: hidden; }
 .tn-detail-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--tn-border, #1e293b); flex: 0 0 auto; }
 .tn-detail-back { font: inherit; font-size: 13px; background: transparent; border: 1px solid var(--tn-border, #1e293b); border-radius: 6px; padding: 4px 10px; color: var(--tn-accent, #38bdf8); cursor: pointer; }
 .tn-detail-back:hover { background: var(--tn-surface-2, #111a2e); }
