@@ -19,6 +19,8 @@ export interface ShellLayout {
   segments: Record<SegmentId, SegmentState>;
   stage: StageId;
   widgets: WidgetInstance[];
+  /** The widget expanded onto the center stage, or null when the map is shown. */
+  focusedWidgetId: string | null;
 }
 
 export const MAX_WIDGETS = 50;
@@ -32,6 +34,7 @@ export function createDefaultLayout(): ShellLayout {
     },
     stage: "map2d",
     widgets: [],
+    focusedWidgetId: null,
   };
 }
 
