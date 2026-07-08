@@ -27,3 +27,17 @@ export function coverage(cams: CameraLite[]): Coverage {
   const byOperator = [...ops.values()].sort((a, b) => b.total - a.total);
   return { total: cams.length, live, still, offline, byOperator };
 }
+
+/**
+ * Wall ordering comparator: working-live first, then working-still, then offline last
+ * (name-tiebroken). "live" is gated on availability — an offline feed can still carry an
+ * allowlisted stream URL (live=true, available=false), and ranking those ahead of working
+ * stills would fill a bounded wall with "Feed offline" tiles while hiding usable feeds.
+ */
+export function byWallPriority(a: CameraLite, b: CameraLite): number {
+  return (
+    Number(b.live && b.available) - Number(a.live && a.available) ||
+    Number(b.available) - Number(a.available) ||
+    a.name.localeCompare(b.name)
+  );
+}

@@ -11,7 +11,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import { useCameras, type CameraRow } from "@/lib/cameras/useCameras";
-import { coverage } from "@/lib/cameras/coverage";
+import { coverage, byWallPriority } from "@/lib/cameras/coverage";
 import { recordSeries, seriesSamples } from "@/lib/series";
 import { deltaOf } from "@/lib/widgets/history";
 import { Chart, type ChartPoint } from "@/components/Chart";
@@ -52,6 +52,12 @@ function CameraTile({ camera, now }: { camera: CameraRow; now: number }) {
   const mountedAt = useRef(Date.now()).current;
   const nextFrame = isStill ? formatCountdown(msUntilRefresh(mountedAt, camera.refreshSeconds, now)) : null;
   const age = sampledAgeMs(camera.lastSampledAt, now);
+
+  // Free this camera's shared HLS slot when the tile leaves the wall (filtered out /
+  // unmounted). CameraVideo already tears down its own hls.js instance on unmount, but
+  // without this the id lingers in hlsSlots.active and the "N/6 live" honesty counter
+  // over-reports players that are no longer on screen.
+  useEffect(() => () => { hlsSlots.deactivate(camera.id); }, [camera.id]);
 
   return (
     <div className="tn-cm-tile">
@@ -113,16 +119,12 @@ export default function CamerasDetail(_props: WidgetDetailProps) {
   // Live-player count for the "N/6 live" honesty counter (shared HLS slot store).
   const liveActive = useSyncExternalStore(hlsSlots.subscribe, hlsSlots.get, hlsSlots.get);
 
-  // Wall = a bounded, most-interesting-first slice (live, then available, then name).
+  // Wall = a bounded, most-interesting-first slice: working-live, then working-still,
+  // then offline last. Gate "live" on availability — an offline feed can still carry an
+  // allowlisted stream URL (live=true, available=false), and ranking those ahead of
+  // working stills would fill the bounded wall with "Feed offline" tiles.
   const wall = useMemo(
-    () =>
-      [...filtered]
-        .sort((a, b) =>
-          Number(b.live) - Number(a.live) ||
-          Number(b.available) - Number(a.available) ||
-          a.name.localeCompare(b.name),
-        )
-        .slice(0, WALL_CAP),
+    () => [...filtered].sort(byWallPriority).slice(0, WALL_CAP),
     [filtered],
   );
 
