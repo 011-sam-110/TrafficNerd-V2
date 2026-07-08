@@ -21,6 +21,7 @@ import { Chart, type ChartPoint } from "@/components/Chart";
 import InsetMap from "@/components/InsetMap";
 import type { InsetPoint } from "@/lib/map/inset";
 import SatelliteDetail from "@/components/SatelliteDetail";
+import { toCsv, toGeoJson, downloadText, exportFilename } from "@/lib/export";
 
 // The satellite meta the propagation hook attaches (see lib/satellites/useSatellites).
 // meta is Record<string, unknown> on WorldObject, so we narrow it here.
@@ -155,6 +156,28 @@ export default function SatellitesDetail(props: WidgetDetailProps) {
   const sortMark = (k: SatSortKey) => (sortKey === k ? (dir === 1 ? " ↑" : " ↓") : "");
 
   const liveAlt = selMeta.altKm ?? sel?.altKm ?? 0;
+
+  // Export the FILTERED roster (what's on screen) as CSV, and the current sub-points
+  // of the filtered set as GeoJSON.
+  const exportRows = useMemo(
+    () => filtered.map((o) => {
+      const m = metaOf(o);
+      return {
+        name: o.label,
+        norad: m.noradId ?? "",
+        category: o.typeLabel ?? "",
+        altKm: typeof o.altKm === "number" ? Number(o.altKm.toFixed(1)) : "",
+        periodMin: m.periodMin && Number.isFinite(m.periodMin) ? Number(m.periodMin.toFixed(1)) : "",
+        lat: Number(o.lat.toFixed(4)),
+        lon: Number(o.lon.toFixed(4)),
+      };
+    }),
+    [filtered],
+  );
+  const exportGeo = useMemo(
+    () => filtered.map((o) => ({ lat: o.lat, lon: o.lon, properties: { name: o.label, norad: metaOf(o).noradId } })),
+    [filtered],
+  );
 
   return (
     <div className="tn-sat">
@@ -305,6 +328,22 @@ export default function SatellitesDetail(props: WidgetDetailProps) {
       {filtered.length > TABLE_CAP && (
         <p className="tn-w-empty">Showing the first {TABLE_CAP} of {filtered.length} — refine with the search or category chips above.</p>
       )}
+
+      <footer className="tn-sat-foot">
+        <span className="tn-sat-attr">
+          TLEs: CelesTrak · propagation: SGP4 (satellite.js) · imagery: NASA GIBS + Esri World Imagery
+        </span>
+        <span className="tn-sat-actions">
+          <button
+            disabled={exportRows.length === 0}
+            onClick={() => downloadText(`${exportFilename("satellites", Date.now())}.csv`, "text/csv", toCsv(exportRows))}
+          >⬇ CSV</button>
+          <button
+            disabled={exportGeo.length === 0}
+            onClick={() => downloadText(`${exportFilename("satellites", Date.now())}.geojson`, "application/geo+json", toGeoJson(exportGeo))}
+          >⬇ GeoJSON</button>
+        </span>
+      </footer>
     </div>
   );
 }
