@@ -22,6 +22,7 @@ import { CinematicDive } from "@/components/CinematicDive";
 import { scopeStore } from "@/lib/shell/scope";
 import { viewModeStore } from "@/lib/shell/viewMode";
 import { assetsStore } from "@/lib/events/assets";
+import { alertingStore } from "@/lib/events/alerting";
 import ConsoleWorkspace from "@/components/console/ConsoleWorkspace";
 import { shellLayoutStore } from "@/lib/console/store";
 import { applyPreset, DEFAULT_PRESET_ID } from "@/lib/console/presets";
@@ -46,6 +47,7 @@ export default function ConsoleShell() {
     scopeStore.hydrate();
     viewModeStore.hydrate();
     assetsStore.hydrate();
+    alertingStore.hydrate();
     shellLayoutStore.hydrate();
     const c = new URLSearchParams(window.location.search).get("c");
     if (c) { const l = decodeLayout(c); if (l) shellLayoutStore.replace(l); }

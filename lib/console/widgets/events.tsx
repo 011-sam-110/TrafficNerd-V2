@@ -37,6 +37,7 @@ import { groupByRegion, groupByType, type EventGroup } from "@/lib/events/region
 import { readGroupBy, readCollapsed, isCollapsed, toggleCollapsed, type GroupBy } from "@/lib/events/opsConfig";
 import { readFilters, applyEventFilters } from "@/lib/events/filters";
 import { useAssets, assessThreats, type Threat } from "@/lib/events/assets";
+import { useAlerting, alertingStore, matchAlerts, fireBrowserNotification, postWebhook } from "@/lib/events/alerting";
 import { openEvent } from "@/lib/events/openEvent";
 import EventsDetail from "@/lib/console/widgets/events.detail";
 
@@ -119,6 +120,28 @@ function EventsBody({ instanceId, config }: WidgetBodyProps) {
   const threats = useMemo(() => assessThreats(filtered, assets), [filtered, assets]);
   const threatRows = useMemo(() => filtered.filter((e) => threats.has(e.id)), [filtered, threats]);
   const restRows = useMemo(() => filtered.filter((e) => !threats.has(e.id)), [filtered, threats]);
+
+  // Proactive alerting (feature 5): the docked widget is the always-mounted driver.
+  // On the first armed pass we take a SILENT baseline (existing events don't
+  // stampede), then only genuinely-new matching events raise a browser Notification
+  // and/or POST to the operator's webhook. All dormant-safe. Runs over the full
+  // in-scope set (not the display filters) so alerting is independent of the view.
+  const alerting = useAlerting();
+  useEffect(() => {
+    if (!alerting.rule.enabled) return;
+    const fired = new Set(alerting.fired);
+    const hits = matchAlerts(projected.rows, assets, alerting.rule, fired);
+    if (!alerting.seeded) {
+      alertingStore.markFired(hits.map((h) => h.eventId)); // silent baseline (may be empty)
+      return;
+    }
+    if (hits.length === 0) return;
+    for (const h of hits) {
+      if (alerting.notify) fireBrowserNotification(h);
+      if (alerting.webhookUrl) void postWebhook(alerting.webhookUrl, h);
+    }
+    alertingStore.markFired(hits.map((h) => h.eventId));
+  }, [projected.rows, assets, alerting]);
 
   const featureIndex = useMemo(() => {
     const m = new Map<string, { feature: SignalFeature; sourceLabel: string }>();

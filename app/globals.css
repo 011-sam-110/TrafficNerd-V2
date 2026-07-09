@@ -1418,6 +1418,20 @@ a { color: var(--tn-accent); }
 .tn-evd-threatboard { border: 1px solid rgba(185, 29, 29, 0.35); border-radius: 8px; padding: 8px 10px; margin: 12px 0; background: rgba(185, 29, 29, 0.04); }
 .tn-evd-threatboard-h { color: #b91c1c !important; margin-bottom: 8px; }
 
+/* Proactive alerting (feature 5). */
+.tn-evd-alerting { margin: 12px 0; }
+.tn-evd-armtoggle { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; text-transform: none; letter-spacing: 0; color: var(--tn-text-muted); cursor: pointer; }
+.tn-evd-webhook { flex: 1 1 260px; font: inherit; font-size: 12px; color: var(--tn-text); background: var(--tn-surface-solid); border: 1px solid var(--tn-border); border-radius: 5px; padding: 3px 8px; }
+.tn-evd-note { width: 100%; margin: 8px 0 0; font-size: 11px; line-height: 1.45; color: var(--tn-text-faint); }
+
+/* Logistics exposure (feature 6). */
+.tn-evd-exposure { border: 1px solid var(--tn-border); border-radius: 8px; padding: 8px 12px; background: var(--tn-surface-2); }
+.tn-evd-exposure-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.tn-evd-exposure-list > li { display: block; }
+.tn-evd-hubs { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 3px 0 0 22px; }
+.tn-evd-hub { font-size: 11px; color: var(--tn-text-muted); }
+.tn-evd-hub i { font-style: normal; font-size: 10px; padding: 0 5px; border-radius: 3px; background: var(--tn-border); color: var(--tn-text-faint); }
+
 /* ── Headlines focus view (W2) ─────────────────────────────────────── */
 .tn-hd { max-width: 1000px; margin: 0 auto; }
 .tn-hd-bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 12px; }

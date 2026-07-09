@@ -30,7 +30,9 @@ import { toCsv, toGeoJson, downloadText, exportFilename } from "@/lib/export";
 import { groupByRegion, groupByType, regionOf, REGION_LABEL, TYPE_LABEL, type RegionId, type EventGroup } from "@/lib/events/regions";
 import { readGroupBy, readCollapsed, isCollapsed, toggleCollapsed, type GroupBy } from "@/lib/events/opsConfig";
 import { readFilters, applyEventFilters, toggleAllowSet, isAllowed } from "@/lib/events/filters";
-import { useAssets, assessThreats, makeAsset, assetsStore, type Threat } from "@/lib/events/assets";
+import { useAssets, assessThreats, makeAsset, assetsStore, impactRadiusKm } from "@/lib/events/assets";
+import { useAlerting, alertingStore, requestNotifyPermission } from "@/lib/events/alerting";
+import { nearbyHubs, HUB_TYPE_LABEL } from "@/lib/events/hubs";
 import { openEvent } from "@/lib/events/openEvent";
 
 const TIERS: SeverityTier[] = ["S4", "S3", "S2", "S1", "S0"];
@@ -114,6 +116,19 @@ export default function EventsDetail({ instanceId, config }: WidgetDetailProps) 
     if (a) assetsStore.add(a);
   }, [name]);
 
+  // --- Proactive alerting config (feature 5) ---------------------------------
+  const alerting = useAlerting();
+  const [perm, setPerm] = useState<NotificationPermission | "unsupported">("default");
+  useEffect(() => {
+    if (typeof window === "undefined" || !("Notification" in window)) { setPerm("unsupported"); return; }
+    setPerm(Notification.permission);
+  }, []);
+  const enableNotify = async () => {
+    const ok = await requestNotifyPermission();
+    setPerm(typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported");
+    alertingStore.setNotify(ok);
+  };
+
   const onSelectId = useCallback((id: string) => {
     if (id.startsWith("asset:")) {
       const a = assets.find((x) => `asset:${x.id}` === id);
@@ -143,6 +158,15 @@ export default function EventsDetail({ instanceId, config }: WidgetDetailProps) 
     if (groupBy === "type") return groupByType(restRows);
     return [{ key: "all", label: "All events", events: restRows }];
   }, [groupBy, restRows]);
+
+  // Logistics exposure (feature 6): severe events with curated hubs in reach.
+  const exposure = useMemo(() => {
+    const severe = filtered.filter((e) => e.severity.tier === "S3" || e.severity.tier === "S4");
+    return severe
+      .map((e) => { const radiusKm = impactRadiusKm(e); return { event: e, radiusKm, hubs: nearbyHubs(e, radiusKm).slice(0, 5) }; })
+      .filter((x) => x.hubs.length > 0)
+      .slice(0, 8);
+  }, [filtered]);
 
   const recency: ChartPoint[] = useMemo(() => {
     const ts = filtered
@@ -309,6 +333,51 @@ export default function EventsDetail({ instanceId, config }: WidgetDetailProps) 
         </section>
       </div>
 
+      {/* Proactive alerting (feature 5) */}
+      <section className="tn-evd-ctl tn-evd-alerting">
+        <div className="tn-evd-ctl-h">
+          <span>Proactive alerting</span>
+          <label className="tn-evd-armtoggle">
+            <input type="checkbox" checked={alerting.rule.enabled} onChange={(e) => alertingStore.setRule({ enabled: e.target.checked })} />
+            {alerting.rule.enabled ? "armed" : "off"}
+          </label>
+        </div>
+        <div className="tn-evd-ctl-body">
+          <label className="tn-evd-field">
+            <span>Min tier</span>
+            <select value={alerting.rule.minTier} onChange={(e) => alertingStore.setRule({ minTier: e.target.value as SeverityTier })}>
+              {TIER_CHOICES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </label>
+          <label className="tn-evd-field">
+            <span>Within (km)</span>
+            <input
+              type="number" min={1} step={10} value={alerting.rule.radiusKm}
+              onChange={(e) => alertingStore.setRule({ radiusKm: Math.max(1, Number(e.target.value) || 1) })}
+            />
+          </label>
+          <button
+            className={`tn-evd-chip${alerting.notify && perm === "granted" ? " is-on" : ""}`}
+            onClick={enableNotify}
+            disabled={perm === "unsupported"}
+          >
+            {perm === "unsupported" ? "notifications n/a" : alerting.notify && perm === "granted" ? "🔔 notifications on" : "enable notifications"}
+          </button>
+          <input
+            className="tn-evd-webhook"
+            placeholder="Webhook / Slack / PagerDuty incoming-webhook URL"
+            value={alerting.webhookUrl}
+            onChange={(e) => alertingStore.setWebhook(e.target.value)}
+          />
+        </div>
+        <p className="tn-evd-note">
+          {assets.length === 0
+            ? "Add an asset above to arm proximity alerts."
+            : `Fires from this browser while the console is open — new hazards ≥ ${alerting.rule.minTier} within ${alerting.rule.radiusKm} km of an asset.`}
+          {perm === "denied" && " Browser notifications are blocked in your settings."}
+        </p>
+      </section>
+
       {status === "loading" && filtered.length === 0 && hidden === 0 && <p className="tn-w-empty">Loading events…</p>}
       {filtered.length === 0 && status !== "loading" && (
         <p className="tn-w-empty">
@@ -320,6 +389,33 @@ export default function EventsDetail({ instanceId, config }: WidgetDetailProps) 
         <section className="tn-evd-group tn-evd-threatboard">
           <h3 className="tn-evd-group-h tn-evd-threatboard-h">⚠ Direct Operational Threats · {threatRows.length}</h3>
           <ul className="tn-evd-list">{threatRows.map(renderRow)}</ul>
+        </section>
+      )}
+
+      {/* Logistics exposure (feature 6) — severe events near curated hubs */}
+      {exposure.length > 0 && (
+        <section className="tn-evd-group tn-evd-exposure">
+          <h3 className="tn-evd-group-h">Logistics exposure · severe events near curated hubs</h3>
+          <p className="tn-evd-note">
+            Great-circle proximity only — hubs within each event&apos;s modelled impact radius (potential disruption, not a confirmed
+            closure). Curated reference set of ~50 major ports, airports &amp; manufacturing clusters.
+          </p>
+          <ul className="tn-evd-exposure-list">
+            {exposure.map(({ event, radiusKm, hubs }) => (
+              <li key={event.id}>
+                <button className="tn-evd-rowbtn" onClick={() => onOpen(event)} title="Click to fly the map here">
+                  <span className="tn-w-sev" style={{ background: SEVERITY_COLOR[event.severity.tier] }}>{event.severity.tier}</span>{" "}
+                  <b>{event.title}</b>
+                  <span className="tn-evd-metric"> · {hubs.length} hub{hubs.length > 1 ? "s" : ""} within {Math.round(radiusKm)} km</span>
+                </button>
+                <div className="tn-evd-hubs">
+                  {hubs.map(({ hub, distanceKm }) => (
+                    <span key={hub.name} className="tn-evd-hub">{hub.name} <i>{HUB_TYPE_LABEL[hub.type]}</i> · {Math.round(distanceKm)} km</span>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
