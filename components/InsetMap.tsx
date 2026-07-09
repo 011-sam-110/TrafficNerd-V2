@@ -22,11 +22,14 @@ export default function InsetMap({
   points,
   height = 320,
   onSelect,
+  onMapClick,
   track,
 }: {
   points: InsetPoint[];
   height?: number;
   onSelect?: (id: string) => void;
+  /** Optional: fired on a click NOT on a point (used for click-to-add-asset). */
+  onMapClick?: (lat: number, lon: number) => void;
   /** Optional ground-track polyline: [lon,lat] segments (already antimeridian-split). */
   track?: [number, number][][];
 }) {
@@ -34,6 +37,8 @@ export default function InsetMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const selectRef = useRef(onSelect);
   selectRef.current = onSelect;
+  const mapClickRef = useRef(onMapClick);
+  mapClickRef.current = onMapClick;
   // Latest props for the async 'load' handler — it is registered once, so without these
   // it would paint the INITIAL selection if props changed during the style fetch.
   const pointsRef = useRef(points); pointsRef.current = points;
@@ -71,6 +76,12 @@ export default function InsetMap({
       map.on("click", LAYER, (e) => {
         const id = e.features?.[0]?.properties?.id;
         if (typeof id === "string" && id) selectRef.current?.(id);
+      });
+      // Generic map click (add-asset mode) — only when the click missed a point.
+      map.on("click", (e) => {
+        if (!mapClickRef.current) return;
+        const hits = map.queryRenderedFeatures(e.point, { layers: [LAYER] });
+        if (hits.length === 0) mapClickRef.current(e.lngLat.lat, e.lngLat.lng);
       });
       map.on("mouseenter", LAYER, () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", LAYER, () => { map.getCanvas().style.cursor = ""; });
