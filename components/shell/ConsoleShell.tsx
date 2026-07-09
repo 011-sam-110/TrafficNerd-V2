@@ -23,7 +23,7 @@ import { scopeStore } from "@/lib/shell/scope";
 import { viewModeStore } from "@/lib/shell/viewMode";
 import ConsoleWorkspace from "@/components/console/ConsoleWorkspace";
 import { shellLayoutStore } from "@/lib/console/store";
-import { applyPreset } from "@/lib/console/presets";
+import { applyPreset, DEFAULT_PRESET_ID } from "@/lib/console/presets";
 import { decodeLayout } from "@/lib/console/share";
 import "@/lib/console/widgets";
 
@@ -47,7 +47,7 @@ export default function ConsoleShell() {
     shellLayoutStore.hydrate();
     const c = new URLSearchParams(window.location.search).get("c");
     if (c) { const l = decodeLayout(c); if (l) shellLayoutStore.replace(l); }
-    else if (shellLayoutStore.get().widgets.length === 0) applyPreset("world"); // first-run seed
+    else if (shellLayoutStore.get().widgets.length === 0) applyPreset(DEFAULT_PRESET_ID); // first-run seed
     registerServiceWorker(); // production-only; a no-op under `next dev`
   }, []);
 
