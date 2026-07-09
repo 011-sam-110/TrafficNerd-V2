@@ -3,11 +3,12 @@
 // keyless /api/news payload (BBC / Al Jazeera / NPR / Guardian world feeds) and
 // lists the latest headlines with source + relative time, each linking out.
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { registerWidget } from "@/lib/console/registry";
 import { useWidgetReport } from "@/components/console/WidgetFrame";
 import type { NewsItem } from "@/lib/news";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
+import { clusterNews } from "@/lib/news/cluster";
 import HeadlinesDetail from "@/lib/console/widgets/headlines.detail";
 
 interface NewsPayload {
@@ -30,11 +31,14 @@ function rel(ts: number, now: number): string {
 function HeadlinesBody() {
   const { data, status } = useJsonPoll<NewsPayload>("/api/news", 120_000, EMPTY);
   const items = data.items ?? [];
+  // Collapse same-event headlines into stories so the compact list shows one row
+  // per event with a source-count when several outlets corroborate it.
+  const stories = useMemo(() => clusterNews(items), [items]);
 
   const report = useWidgetReport();
   useEffect(() => {
-    report({ alerts: [], count: items.length, freshLabel: "live" });
-  }, [items.length, report]);
+    report({ alerts: [], count: stories.length, freshLabel: "live" });
+  }, [stories.length, report]);
 
   if (status === "loading" && items.length === 0) return <p className="tn-w-empty">Loading headlines…</p>;
   if (items.length === 0) return <p className="tn-w-empty">No headlines.</p>;
@@ -42,21 +46,22 @@ function HeadlinesBody() {
   const now = Date.now();
   return (
     <ul className="tn-w-list">
-      {items.slice(0, 60).map((it, i) => {
-        const r = rel(it.ts, now);
+      {stories.slice(0, 60).map((c, i) => {
+        const r = rel(c.lead.ts, now);
         return (
-          <li key={it.url || i}>
+          <li key={c.id || i}>
             <a
-              href={it.url}
+              href={c.lead.url}
               target="_blank"
               rel="noreferrer"
               className="tn-w-place"
               style={{ color: "inherit", textDecoration: "none" }}
             >
-              {it.title}
+              {c.title}
             </a>
             <span className="tn-w-muted">
-              {" "}· {it.source}
+              {" "}· {c.lead.source}
+              {c.sourceCount > 1 ? ` +${c.sourceCount - 1}` : ""}
               {r ? ` · ${r}` : ""}
             </span>
           </li>

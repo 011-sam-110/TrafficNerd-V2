@@ -12,16 +12,22 @@ interface Feed {
   source: string;
 }
 
-// All four confirmed live 2026-06-27 (RSS 2.0). A dead one drops out silently.
+// All six confirmed live (RSS/RDF 2026-07-09). A dead one drops out silently.
+// The extra European broadcasters (DW, France 24) widen cross-source story
+// clustering and give the region/type facet matrix real diversity.
 const FEEDS: Feed[] = [
   { url: "https://feeds.bbci.co.uk/news/world/rss.xml", source: "BBC" },
   { url: "https://www.aljazeera.com/xml/rss/all.xml", source: "Al Jazeera" },
   { url: "https://feeds.npr.org/1001/rss.xml", source: "NPR" },
   { url: "https://www.theguardian.com/world/rss", source: "The Guardian" },
+  { url: "https://rss.dw.com/rdf/rss-en-world", source: "DW" },
+  { url: "https://www.france24.com/en/rss", source: "France 24" },
 ];
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
-const LIMIT = 30;
+// Higher than the docked list needs on purpose: the focus view clusters these
+// into stories, so more raw material = richer, better-corroborated mega-cards.
+const LIMIT = 60;
 
 let cache: NewsPayload | null = null;
 
