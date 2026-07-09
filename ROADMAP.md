@@ -100,52 +100,71 @@ Acceptance:
 - [ ] Applying Emergency Response turns planes/cameras OFF and hazard layers ON on the globe (screenshot before/after).
 - [ ] Gate green: `npx tsc --noEmit && npm test`.
 
-### M13: Honest empty & freshness states
+## Third review (2026-07-09) — owner directive: "not fullscreen, widgets terrible, no charts, want data depth, be as good as theirs"
+
+4-agent deep pass (immersive-layout / widget-dataviz / data-depth / competitive-benchmark). Benchmark
+identified: **ShadowBroker**-class OSINT dashboards (~40 layers/60+ sources). Competitors win on 4 axes
+in order: (a) time/playback, (b) compositing (opacity/legend/density), (c) entity depth, (d) alerting.
+World Monitor already leads on layer breadth — the gap is the interaction layer + presentation.
+M13–M14 below are re-scoped from those agent specs and jump the queue.
+
+### M13: Kill widget/bottom dead-space + density pass
+Status: [x] done (2026-07-09, <this branch>) — VERIFIED at 1920×1080: empty widgets collapse to ~90px
+(were fixed 260px); the empty bottom dock shrank from ~225px to ~95px so the map gained ~125px of
+height. Screenshots: persona-shots/m13_intelligence_default.png, persona-shots/m13_emergency_nodeadspace.png.
+Spec: 3rd-review agent A ship-order 1,2,4. `WidgetFrame` height→maxHeight + `.tn-cw-body` flex:1→1 1 auto
+(content-height frames); bottom dock only renders when it has widgets + maxHeight cap + hug-content;
+density (segment 320→300, bottom 240→220, gap/pad 8→10, radius 8→10). Preserved ⌘K, grips, share, M12.
+Acceptance: [x] no empty widget exceeds ~90px · [x] empty bottom reclaims map height · [x] gate green.
+
+### M19: Full-bleed floating-panel map (the true immersive look)
 Status: [ ] todo
-Spec: 2nd-review finding #2 (flagged 5/5) + freshness (3/5).
-Also fold in a bug M12 surfaced: the GDACS feed carries duplicate event ids → React "two children
-with the same key" warning (×many) in the Disaster-alerts list. Dedupe by id in `lib/signals/gdacs.ts`
-(or use a composite row key in `signals.tsx`).
+Spec: 3rd-review agent A ship-order 3. Make the map a `position:absolute; inset:0` base under the top
+bar and float the three segments over it as translucent glass cards (Windy/ShadowBroker feel), instead
+of the current opaque rails that box the map. Reposition the 3 resize grips as absolute handles
+(explicit `tn-grip-l/-r/-b` classes) and lift MapLibre's zoom/attribution controls off the panels.
+
+### M14: Widget data-viz — MetricBar / SeverityChip primitive
+Status: [ ] todo
+Spec: 3rd-review agent B. Root cause: `projectSignal()` (`signalCard.ts`) drops `feature.color`
+(already severity-ramped) and `feature.props`, so every row is a grey number. Build one reusable
+`<MetricBar>` (+ `variant="chip"` SeverityChip) + a declared per-source `metric` descriptor in
+`types.ts`, thread `color`+`metric` through `SignalRow`, wire into the generic `signals.tsx` row →
+lifts ~30 widgets at once. Then GDACS severity chip + Earthquakes magnitude bar+depth, then the
+Instability leaderboard hero (ranked score bars + weighted factor breakdown + coverage badge).
+One severity ramp reserved for magnitude; honest dot/chip where no scalar exists (fires/news).
+Includes the GDACS duplicate-key fix M12 surfaced (dedupe in `lib/signals/gdacs.ts`).
+
+### M15: Data depth — surface dropped upstream fields
+Status: [ ] todo
+Spec: 3rd-review agent C. Fields already fetched but discarded before the UI. Do-first five:
+GDACS `alertscore`+numeric severity; USGS PAGER `alert`+`tsunami`+`sig`/`felt`/`mmi`+`depth`;
+military ADS-B vertical-rate + squawk-decode (7500/7600/7700) + `emergency`; GDELT DOC tone+Goldstein
++GKG themes (turns "N articles" into escalation/sentiment); instability raw factor values + vintage.
+Then AIS ShipStaticData (type/dest/flag), INFORM risk index. One adapter+entry+fixture per new source.
+
+### M16: Map legend + per-layer opacity/compositing
+Status: [ ] todo
+Spec: 3rd-review agent D #2/#3. Persistent on-map legend keyed to active layers (984/161 clusters +
+yellow markers are unlabelled); a per-layer opacity slider + stacking; density/heatmap mode for
+high-count layers. Opacity is currently hardcoded in `WorldMap.tsx` paint.
+
+### M17: Global timeline scrubber / playback
+Status: [ ] todo
+Spec: 3rd-review agent D #1 (the single biggest "live map vs toy" differentiator; supersedes old M7).
+Bottom timeline with play/pause + variable speed + drag-to-time, re-feeding the map's aggregated
+source at time T. The widget-history spine (`lib/widgets/history.ts`) already persists samples.
+
+### M18: Honest empty/freshness + mobile map-first + alerting
+Status: [ ] todo
+Spec: folds the earlier 2nd-review M13/M14/M18 — three distinct empty states + real "updated Xm ago"
+freshness; ≤768px map-first bottom-sheet layout + palette FAB; user-defined geofence/threshold alert
+rules → browser/webhook notification (the feature that makes it a monitoring product, not a curiosity).
 Three distinct empty states instead of one grey "Nothing in World.": genuinely-quiet ("No active
 conflicts · checked 2m ago ✔"), feed-failed ("Feed unavailable — retrying"), dormant/keyed ("ACLED
 not connected — needs credentials"). Widget header chip shows last-successful-fetch age + a status
-dot, not the poll cadence. (ACLED provisioning itself → Needs from Sampo.)
-
-### M14: Mobile map-first layout + palette FAB
-Status: [ ] todo
-Spec: 2nd-review finding #3 (2 BLOCKERs from the mobile critic).
-At ≤768px the fixed-width `.tn-cw-*` columns crush the map to ~0px and ⌘K (only nav) is display:none
-on touch. Re-point the orphaned mobile CSS (currently targets old `.tn-rail`/`.tn-dossier`) at
-`.tn-cw-*`: full-bleed map + widgets in a swipe-up bottom sheet, plus a thumb-reachable palette FAB.
-
-### M15: Scannable list rows + severity ramp + map legend
-Status: [ ] todo
-Spec: 2nd-review finding #4 + ingestibility quick-wins (4/5).
-One row grammar across every list widget: `[severity/magnitude, colour-ramped, dominant] · [name] ·
-[age, muted, right]`. Drop the leaked "2.8" instability prefix; decode military-flight rows to
-altitude + country. One severity colour ramp (grey→amber→red) reserved for magnitude only. A
-persistent map legend keyed to the active layers (the 984/161 clusters + yellow markers are unlabelled).
-
-### M16: Country dossier "Active events" + mount daily digest
-Status: [ ] todo
-Spec: 2nd-review finding #5 + competitor #8 / mobile #3.
-Fill the dossier's "Active events" (COMING SOON) by spatially filtering loaded signal features to the
-country polygon (data is one bbox-test away). Mount the already-built-but-orphaned `DailyBrief`/
-`TopEventsPanel` as a "top 5 right now" digest strip for the 15-second glance.
-
-### M17: Close the data gaps (enrichment)
-Status: [ ] todo
-Spec: 2nd-review missing-data table.
-NASA FIRMS global wildfires + FRP (EONET fires are US-only); surface USGS PAGER alert / depth /
-tsunami (already fetched, discarded); global cyclone basins (JTWC/GDACS-TC — NHC is Atlantic-only,
-contradicts the BAVI-26 alert); real flood source (GDACS FL / Copernicus / GloFAS); add dormant
-ReliefWeb to the Emergency board. One adapter + one registry entry + one fixture test each.
-
-### M18: User-defined alerts / watchlist rules (moat)
-Status: [ ] todo
-Spec: competitor #4 (pairs with M7 replay).
-Turn "Saved places" (bookmarks) into persisted alert rules (geofence / threshold / new-event-near-X)
-that fire a browser/Push notification — the feature that separates a paid tool from a live curiosity.
+dot, not the poll cadence. Country dossier "Active events" (spatial filter, data one bbox away) +
+mount the orphaned `DailyBrief`/`TopEventsPanel` digest. (ACLED provisioning → Needs from Sampo.)
 
 ---
 
@@ -168,3 +187,5 @@ that fire a browser/Push notification — the feature that separates a paid tool
 - M8 CSV/GeoJSON export: serializers + WidgetFrame menu + Markets/Events/dossier. verified: Export CSV in menu.
 - M12 persona→map-layer sync: pure layersForLayout() + applyPreset drives layersStore/signalsStore.
   verified live: Emergency board renders hazards not planes; analyst default no longer plane-swarmed. +4 tests (631 total).
+- M13 dead-space + density: WidgetFrame maxHeight + content-height body; bottom dock collapse-when-empty/hug-content;
+  segment 300/220 + gap/pad 10. verified 1920×1080: empty widgets ~90px, map +125px. 631 tests green.
