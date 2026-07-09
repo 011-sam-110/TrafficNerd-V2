@@ -13,12 +13,37 @@ import type { MarketsPayload, MarketRow, MarketSection } from "@/lib/markets";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
 import { recordSeries, seriesSamples } from "@/lib/series";
 import { Chart, type ChartPoint } from "@/components/Chart";
+import { CandleChart, type OverlayLine, type BandOverlay } from "@/components/CandleChart";
 import { shellLayoutStore } from "@/lib/console/store";
 import { candlesToPoints, hiLo, periodChange, RANGES, RANGE_LABEL, type Candle, type Range } from "@/lib/markets/chart";
+import { sma, bollinger, rsi, volumeProfile, rescaleShape, anomalyFlags } from "@/lib/markets/indicators";
 import { toCsv, downloadText, exportFilename } from "@/lib/export";
 
 const EMPTY: MarketsPayload = { generatedAt: 0, sections: [] };
 type TableSortKey = "name" | "changePct" | "value";
+type ChartType = "candles" | "line";
+type IndKey = "ma" | "boll" | "vol" | "rsi" | "bench" | "anom";
+const IND_CHIPS: [IndKey, string][] = [["ma", "MA 50/200"], ["boll", "Bollinger"], ["vol", "Volume"], ["rsi", "RSI"], ["bench", "Benchmark"], ["anom", "Events"]];
+
+/** Compact non-currency magnitude for volume, e.g. "1.2B", "845.0M", "12.3K". */
+function fmtVol(n: number): string {
+  const a = Math.abs(n);
+  if (a >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (a >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return `${Math.round(n)}`;
+}
+
+/** Resample a series to `n` points by index (a faint benchmark shape need not be
+ *  time-exact — it maps the other asset's contour onto this instrument's window). */
+function resample(src: number[], n: number): number[] {
+  if (src.length === 0 || n <= 0) return [];
+  if (src.length === n) return src;
+  const out: number[] = [];
+  const span = src.length - 1, denom = n - 1 || 1;
+  for (let i = 0; i < n; i++) out.push(src[Math.min(span, Math.max(0, Math.round((i * span) / denom)))]);
+  return out;
+}
 
 /** Adaptive-precision number formatting for prices/levels (large → 2dp, tiny → 6dp). */
 function fmtNum(n: number): string {
@@ -92,7 +117,12 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
   );
 
   const selRow = useMemo(() => allRows.find((r) => r.id === selId) ?? null, [allRows, selId]);
-  const selSym = selRow ? (selRow.symbol ?? selRow.id) : null;
+  // Yahoo history ticker (crypto/commodity display symbols aren't Yahoo tickers).
+  const selSym = selRow ? (selRow.chartSymbol ?? selRow.symbol ?? selRow.id) : null;
+  const selSectionKey = useMemo(
+    () => railSections.find((s) => s.rows.some((r) => r.id === selId))?.key,
+    [railSections, selId],
+  );
 
   // Primary historical chart: keyless Yahoo v8 OHLC for the selected instrument +
   // range. Dormant-safe — the route never 5xxes, and a <2-candle result (dormant /
@@ -100,12 +130,18 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
   const [range, setRange] = useState<Range>("6mo");
   const [candles, setCandles] = useState<Candle[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
+  // Chart presentation: candlestick vs gradient line, technical overlays, and the
+  // candle under the cursor (drives the OHLC read-out).
+  const [chartType, setChartType] = useState<ChartType>("candles");
+  const [ind, setInd] = useState<Record<IndKey, boolean>>({ ma: false, boll: false, vol: false, rsi: false, bench: false, anom: true });
+  const toggleInd = (k: IndKey) => setInd((s) => ({ ...s, [k]: !s[k] }));
+  const [hover, setHover] = useState<Candle | null>(null);
   useEffect(() => {
-    if (!selSym) { setCandles([]); return; }
+    if (!selSym) { setCandles([]); setHover(null); return; }
     // Clear the previous instrument's candles immediately so a symbol/range switch never
     // renders — or exports — stale OHLC under the new header while the new fetch is in
     // flight (hasHistory drops to false → loading/live-series fallback + export disabled).
-    setCandles([]);
+    setCandles([]); setHover(null);
     let alive = true;
     setChartLoading(true);
     fetch(`/api/markets/chart?symbol=${encodeURIComponent(selSym)}&range=${range}`)
@@ -117,6 +153,54 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
   }, [selSym, range]);
 
   const hasHistory = candles.length >= 2;
+
+  // Benchmark correlation overlay: crypto compares against BTC (ETH if BTC is
+  // selected); everything else against SPY (QQQ if SPY is selected). Fetched only
+  // while the toggle is on; overlaid as a faint, rescaled SHAPE line (not a price).
+  const benchSym = useMemo(() => {
+    if (!ind.bench || !selSym) return null;
+    const crypto = selSectionKey === "crypto";
+    const pick = crypto ? (selSym === "BTC-USD" ? "ETH-USD" : "BTC-USD") : (selSym === "SPY" ? "QQQ" : "SPY");
+    return pick === selSym ? null : pick;
+  }, [ind.bench, selSym, selSectionKey]);
+  const [benchCandles, setBenchCandles] = useState<Candle[]>([]);
+  useEffect(() => {
+    if (!benchSym) { setBenchCandles([]); return; }
+    let alive = true;
+    fetch(`/api/markets/chart?symbol=${encodeURIComponent(benchSym)}&range=${range}`)
+      .then((r) => r.json())
+      .then((d: { candles?: Candle[] }) => { if (alive) setBenchCandles(Array.isArray(d.candles) ? d.candles : []); })
+      .catch(() => { if (alive) setBenchCandles([]); });
+    return () => { alive = false; };
+  }, [benchSym, range]);
+
+  // Technical overlays, all derived from the real candles via the unit-tested maths.
+  const closes = useMemo(() => candles.map((k) => k.c), [candles]);
+  const overlays = useMemo<OverlayLine[]>(() => {
+    const out: OverlayLine[] = [];
+    if (ind.ma) {
+      out.push({ values: sma(closes, 50), color: "#d9882f", width: 1.3 });
+      out.push({ values: sma(closes, 200), color: "#4a78c9", width: 1.3 });
+    }
+    if (ind.bench && benchCandles.length >= 2 && candles.length >= 2) {
+      let lo = Infinity, hi = -Infinity;
+      for (const k of candles) { if (k.l < lo) lo = k.l; if (k.h > hi) hi = k.h; }
+      const shaped = rescaleShape(resample(benchCandles.map((k) => k.c), candles.length), lo, hi);
+      out.push({ values: shaped, color: "#7c5cbf", width: 1.2, dash: true });
+    }
+    return out;
+  }, [ind.ma, ind.bench, closes, benchCandles, candles]);
+  const band = useMemo<BandOverlay | null>(() => {
+    if (!ind.boll) return null;
+    const b = bollinger(closes, 20, 2);
+    return { upper: b.map((x) => x.upper), lower: b.map((x) => x.lower), color: "#4a78c9" };
+  }, [ind.boll, closes]);
+  const volProfile = useMemo(() => (ind.vol ? volumeProfile(candles, 24) : null), [ind.vol, candles]);
+  const anomalies = useMemo(() => (ind.anom ? anomalyFlags(candles, 2.5) : []), [ind.anom, candles]);
+  const rsiPoints = useMemo<ChartPoint[]>(() => {
+    if (!ind.rsi) return [];
+    return rsi(closes, 14).map((v, i) => (v == null ? null : { x: candles[i].t, y: v })).filter((p): p is ChartPoint => p != null);
+  }, [ind.rsi, closes, candles]);
   const chg = useMemo(() => periodChange(candles), [candles]);
   const range52 = useMemo(() => hiLo(candles), [candles]);
   // Honest fallback: chart the accumulated live mkt:<id> series when there's no
@@ -263,32 +347,63 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
                   </div>
                 </div>
 
-                {chartPoints.length >= 2 ? (
-                  <>
-                    <Chart points={chartPoints} height={220} zeroBaseline={false} up={chartUp} markers />
-                    {hasHistory ? (
-                      <>
-                        <div className="tn-mk-metrics">
-                          <span className={`tn-mk-metric ${chg.abs >= 0 ? "up" : "down"}`}>
-                            <span className="tn-mk-metric-label">Change ({RANGE_LABEL[range]})</span>{" "}
-                            <b>{chg.abs >= 0 ? "+" : ""}{fmtNum(chg.abs)} ({chg.pct >= 0 ? "+" : ""}{chg.pct.toFixed(2)}%)</b>
-                          </span>
-                          {range52 && (
-                            <span className="tn-mk-metric">
-                              <span className="tn-mk-metric-label">{range === "1y" ? "52-wk range" : "Range"}</span>{" "}
-                              <b>{fmtNum(range52.lo)} – {fmtNum(range52.hi)}</b>
-                            </span>
-                          )}
-                          <span className="tn-mk-metric"><span className="tn-mk-metric-label">{candles.length} bars · Yahoo v8, delayed</span></span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="tn-mk-chart-note">Live session (accumulating) — historical unavailable for this symbol.</div>
+                <div className="tn-mk-chart-ctrls">
+                  <div className="tn-mk-seg" role="tablist" aria-label="Chart type">
+                    <button role="tab" aria-selected={chartType === "candles"} className={chartType === "candles" ? "active" : ""} onClick={() => setChartType("candles")}>Candles</button>
+                    <button role="tab" aria-selected={chartType === "line"} className={chartType === "line" ? "active" : ""} onClick={() => setChartType("line")}>Line</button>
+                  </div>
+                  {hasHistory && chartType === "candles" && (
+                    <div className="tn-mk-inds" role="group" aria-label="Technical overlays">
+                      {IND_CHIPS.map(([k, label]) => (
+                        <button key={k} className={`tn-mk-ind ${ind[k] ? "on" : ""}`} aria-pressed={ind[k]} onClick={() => toggleInd(k)}>{label}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {hasHistory && chartType === "candles" ? (
+                  <div className="tn-mk-canvas">
+                    {hover && (
+                      <div className="tn-mk-ohlc" aria-hidden>
+                        <span>O <b>{fmtNum(hover.o)}</b></span>
+                        <span>H <b className="up">{fmtNum(hover.h)}</b></span>
+                        <span>L <b className="down">{fmtNum(hover.l)}</b></span>
+                        <span>C <b>{fmtNum(hover.c)}</b></span>
+                        {hover.v > 0 && <span>V <b>{fmtVol(hover.v)}</b></span>}
+                        <span className="tn-mk-ohlc-t">{new Date(hover.t).toLocaleString()}</span>
+                      </div>
                     )}
-                  </>
+                    <CandleChart candles={candles} height={240} up={chartUp} overlays={overlays} band={band} volume={volProfile} anomalies={anomalies} onHover={(c) => setHover(c)} />
+                    {ind.rsi && rsiPoints.length >= 2 && (
+                      <div className="tn-mk-rsi">
+                        <span className="tn-mk-rsi-label">RSI 14</span>
+                        <Chart points={rsiPoints} height={52} area={false} zeroBaseline={false} up={null} />
+                      </div>
+                    )}
+                  </div>
+                ) : chartPoints.length >= 2 ? (
+                  <Chart points={chartPoints} height={240} zeroBaseline={false} up={chartUp} markers gradient />
                 ) : (
                   <div className="tn-mk-chart-empty">{chartLoading ? "Loading chart…" : "No history yet — accumulating a live session series."}</div>
                 )}
+
+                {hasHistory ? (
+                  <div className="tn-mk-metrics">
+                    <span className={`tn-mk-metric ${chg.abs >= 0 ? "up" : "down"}`}>
+                      <span className="tn-mk-metric-label">Change ({RANGE_LABEL[range]})</span>{" "}
+                      <b>{chg.abs >= 0 ? "+" : ""}{fmtNum(chg.abs)} ({chg.pct >= 0 ? "+" : ""}{chg.pct.toFixed(2)}%)</b>
+                    </span>
+                    {range52 && (
+                      <span className="tn-mk-metric">
+                        <span className="tn-mk-metric-label">{range === "1y" ? "52-wk range" : "Range"}</span>{" "}
+                        <b>{fmtNum(range52.lo)} – {fmtNum(range52.hi)}</b>
+                      </span>
+                    )}
+                    <span className="tn-mk-metric"><span className="tn-mk-metric-label">{candles.length} bars · Yahoo v8, delayed</span></span>
+                  </div>
+                ) : chartPoints.length >= 2 ? (
+                  <div className="tn-mk-chart-note">Live session (accumulating) — historical unavailable for this symbol.</div>
+                ) : null}
               </div>
             ) : (
               <p className="tn-w-empty">Select an instrument to see its chart.</p>

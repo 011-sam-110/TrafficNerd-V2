@@ -50,6 +50,10 @@ export interface MarketRow {
   /** Optional secondary line (market cap, unit, as-of date). */
   sub?: string;
   image?: string;
+  /** Yahoo v8 ticker for the history chart when it differs from the display symbol
+   *  (e.g. crypto BTC→BTC-USD, commodity Brent→BZ=F). Undefined ⇒ no real history
+   *  chart for this row (the focus view falls back to its live session series). */
+  chartSymbol?: string;
 }
 
 export interface MarketSection {
@@ -79,6 +83,8 @@ export function cryptoRows(assets: MarketAsset[]): MarketRow[] {
     changePct: a.changePct24h,
     image: a.image,
     sub: a.marketCap != null ? `mkt cap ${formatCompactUsd(a.marketCap)}` : undefined,
+    // Yahoo charts crypto under the "-USD" pair (BTC→BTC-USD), so history works.
+    chartSymbol: `${a.symbol}-USD`,
   }));
 }
 

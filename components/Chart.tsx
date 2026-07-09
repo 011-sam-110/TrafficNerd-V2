@@ -2,6 +2,7 @@
 // Native SVG line/area chart — the shared, dependency-free charting primitive
 // (generalises Sparkline). Presentational: caller supplies {x,y} points already
 // in data space. Renders nothing below 2 points. up tints the stroke green/red.
+import { useId } from "react";
 import { extent, linear } from "@/lib/chart/scale";
 
 export interface ChartPoint { x: number; y: number }
@@ -14,6 +15,7 @@ export function Chart({
   up,
   zeroBaseline = true,
   markers = false,
+  gradient = false,
 }: {
   points: ChartPoint[];
   width?: number;
@@ -25,7 +27,11 @@ export function Chart({
   zeroBaseline?: boolean;
   /** Draw min-low / max-high / last dots with tiny value labels (price charts). */
   markers?: boolean;
+  /** Soft performance-tinted gradient beneath the line (green up / red down),
+   *  fading to transparent at the baseline. Replaces the flat area tint. */
+  gradient?: boolean;
 }) {
+  const gradId = useId();
   if (!points || points.length < 2) return null;
   const pad = 6;
   const xs = points.map((p) => p.x);
@@ -50,8 +56,16 @@ export function Chart({
 
   return (
     <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} className="tn-chart" preserveAspectRatio="none" role="img">
+      {gradient && (
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity="0.34" />
+            <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+      )}
       <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} stroke="var(--tn-border, #1e293b)" strokeWidth="1" />
-      {area && <path d={fillPath} fill={stroke} opacity="0.12" />}
+      {area && <path d={fillPath} fill={gradient ? `url(#${gradId})` : stroke} opacity={gradient ? 1 : 0.12} />}
       <path d={line} fill="none" stroke={stroke} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
       {markerDots.length > 0 && (
         <g>

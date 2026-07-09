@@ -76,9 +76,14 @@ async function getJson<T>(url: string, ms = 12_000): Promise<T | null> {
   }
 }
 
-/** Fetch each Yahoo symbol in parallel and keep the rows that resolve. */
+/** Fetch each Yahoo symbol in parallel and keep the rows that resolve. Carries the
+ *  Yahoo ticker as chartSymbol so the focus view can pull real OHLC history even
+ *  when the display symbol differs (e.g. Brent→BZ=F). */
 async function yahooRows(specs: { y: string; symbol: string; name: string }[]): Promise<MarketSection["rows"]> {
-  const rows = await Promise.all(specs.map(async (spec) => parseYahooChart(await getJson<YahooChart>(yahooUrl(spec.y)), spec)));
+  const rows = await Promise.all(specs.map(async (spec) => {
+    const row = parseYahooChart(await getJson<YahooChart>(yahooUrl(spec.y)), spec);
+    return row ? { ...row, chartSymbol: spec.y } : null;
+  }));
   return rows.filter((r): r is NonNullable<typeof r> => r != null);
 }
 
@@ -109,7 +114,8 @@ async function equitiesSection(): Promise<MarketSection> {
       return { symbol: e.symbol, name: e.name, c: q?.c, dp: q?.dp };
     }),
   );
-  return { key: "equities", label: "Equities", source: "Finnhub", rows: parseEquities(quotes) };
+  // Finnhub tickers match Yahoo's, so charts pull real OHLC under the same symbol.
+  return { key: "equities", label: "Equities", source: "Finnhub", rows: parseEquities(quotes).map((r) => ({ ...r, chartSymbol: r.symbol })) };
 }
 
 async function macroSection(): Promise<MarketSection> {
