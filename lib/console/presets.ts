@@ -112,7 +112,8 @@ export const BUILTIN_PRESETS: ConsolePreset[] = [
   // ── Explorer — relaxed, casual browsing ─────────────────────────────────
   { id: "explorer", title: "Explorer", icon: "🧭", blurb: "casual", build: () => compose("map2d", [
       { type: "cameras", segment: "left" }, { type: "events", segment: "left" },
-      { type: "news", segment: "right" }, { type: "headlines", segment: "bottom" },
+      { type: "news", segment: "right" }, { type: "locate", segment: "right" },
+      { type: "headlines", segment: "bottom" },
   ]) },
 ];
 
