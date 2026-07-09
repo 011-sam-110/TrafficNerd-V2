@@ -77,3 +77,36 @@ export function groupCommands(commands: Command[], query: string): GroupedComman
   }
   return out;
 }
+
+/**
+ * Lay the (already ordered) sections out across `columnCount` side-by-side columns
+ * for the mega-menu palette — sections stay whole (never split) and keep GROUP_ORDER,
+ * flowing left-to-right. Each section lands in the column its running "centre of mass"
+ * falls into, then clamped so columns fill sequentially with no gaps and no backwards
+ * jumps. The result reads column-major (top of col 0 → bottom, then col 1 …), which is
+ * exactly the order ↑/↓ walks in the palette. Columns beyond the section count collapse
+ * away, so a 2-section filter never renders 3 empty columns.
+ */
+export function columnize(sections: GroupedCommands[], columnCount: number): GroupedCommands[][] {
+  if (sections.length === 0) return [];
+  const n = Math.max(1, Math.min(columnCount, sections.length));
+  const cols: GroupedCommands[][] = Array.from({ length: n }, () => []);
+  const total = sections.reduce((s, g) => s + g.commands.length, 0);
+  const target = total / n; // items per column, on average
+  let col = 0;
+  let colWeight = 0;
+  for (let i = 0; i < sections.length; i++) {
+    const remaining = sections.length - i; // sections still to place, incl. this one
+    if (col < n - 1 && colWeight > 0) {
+      const emptyAfter = n - 1 - col; // columns after the current one still needing content
+      // Forced: keeping this section here would strand a trailing column empty.
+      const forced = remaining - 1 < emptyAfter;
+      // Balanced: current column has met its share and advancing won't strand columns.
+      const balanced = colWeight >= target && remaining - 1 >= emptyAfter;
+      if (forced || balanced) { col += 1; colWeight = 0; }
+    }
+    cols[col].push(sections[i]);
+    colWeight += sections[i].commands.length;
+  }
+  return cols;
+}

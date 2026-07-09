@@ -22,7 +22,7 @@ import { langStore } from "@/lib/i18n/store";
 import { LANGS } from "@/lib/i18n/catalog";
 import { variantStore } from "@/lib/variants/store";
 import { BUILTIN_VARIANTS } from "@/lib/variants/builtins";
-import { groupCommands, GROUP_ORDER, type Command } from "@/lib/console/paletteGroups";
+import { groupCommands, columnize, GROUP_ORDER, type Command } from "@/lib/console/paletteGroups";
 import type { GeocodeResult } from "@/lib/geo/geocode";
 
 // Pick a fly-to zoom from a geocode result's extent (wider areas frame out).
@@ -189,9 +189,20 @@ function buildCommands(close: () => void): Command[] {
 export default function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const [vw, setVw] = useState(1280);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const commands = useMemo(() => buildCommands(onClose), [onClose]);
+
+  // Column count for the mega-menu layout — sections sit side by side, more of
+  // them the wider the viewport. Tracked in state so a resize reflows the palette.
+  useEffect(() => {
+    const onResize = () => setVw(window.innerWidth);
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  const colCount = vw >= 1080 ? 3 : vw >= 680 ? 2 : 1;
 
   // Live place search: any query ≥2 chars also geocodes (keyless Photon via
   // /api/geocode) so you can fly to ANY place (Kyiv, Gaza…), not just the
@@ -233,14 +244,26 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
       .map((g) => ({ group: g, commands: byGroup.get(g)! }));
   }, [commands, query, geoCmds]);
 
-  // Flattened visual order (groups in fixed order, commands within) — the single
-  // index space the ↑/↓ highlight moves through.
-  const flat = useMemo(() => grouped.flatMap((g) => g.commands), [grouped]);
+  // Sections laid out into side-by-side columns (the mega-menu). The flat index
+  // space is column-major — down a column, then on to the next — so ↑/↓ walk a
+  // column and ←/→ hop columns.
+  const columns = useMemo(() => columnize(grouped, colCount), [grouped, colCount]);
+  const flat = useMemo(() => columns.flat().flatMap((sec) => sec.commands), [columns]);
   const indexById = useMemo(() => {
     const m = new Map<string, number>();
     flat.forEach((c, i) => m.set(c.id, i));
     return m;
   }, [flat]);
+  // Each column's start offset + length in the flat index space — drives ←/→.
+  const colMeta = useMemo(() => {
+    let start = 0;
+    return columns.map((col) => {
+      const len = col.reduce((s, sec) => s + sec.commands.length, 0);
+      const m = { start, len };
+      start += len;
+      return m;
+    });
+  }, [columns]);
 
   const activeRef = useRef<HTMLLIElement | null>(null);
   useEffect(() => { activeRef.current?.scrollIntoView({ block: "nearest" }); }, [active]);
@@ -271,6 +294,17 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setActive((a) => Math.max(a - 1, 0));
+    } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      const delta = e.key === "ArrowRight" ? 1 : -1;
+      setActive((a) => {
+        const ci = colMeta.findIndex((m) => a >= m.start && a < m.start + m.len);
+        if (ci < 0) return a;
+        const target = Math.min(Math.max(ci + delta, 0), colMeta.length - 1);
+        if (target === ci) return a;
+        const offset = a - colMeta[ci].start; // keep the same row when hopping columns
+        return colMeta[target].start + Math.min(offset, colMeta[target].len - 1);
+      });
     } else if (e.key === "Enter") {
       e.preventDefault();
       flat[active]?.run();
@@ -289,36 +323,43 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Command search"
         />
-        <ul className="tn-palette-list" role="listbox">
-          {flat.length === 0 ? (
-            <li className="tn-palette-empty">No matching commands</li>
-          ) : (
-            grouped.map((g) => (
-              <Fragment key={g.group}>
-                <li className="tn-palette-group" role="presentation" aria-hidden="true">{g.group}</li>
-                {g.commands.map((c) => {
-                  const i = indexById.get(c.id)!;
-                  return (
-                    <li
-                      key={c.id}
-                      ref={i === active ? activeRef : undefined}
-                      role="option"
-                      aria-selected={i === active}
-                      className={`tn-palette-item${i === active ? " is-active" : ""}`}
-                      onMouseEnter={() => setActive(i)}
-                      onClick={() => c.run()}
-                    >
-                      <span>{c.label}</span>
-                      <span className="tn-palette-hint">{c.hint}</span>
-                    </li>
-                  );
-                })}
-              </Fragment>
-            ))
-          )}
-        </ul>
+        {flat.length === 0 ? (
+          <div className="tn-palette-empty">No matching commands</div>
+        ) : (
+          <div className="tn-palette-cols" role="listbox">
+            {columns.map((col, ci) => (
+              <div className="tn-palette-col" key={ci}>
+                {col.map((g) => (
+                  <Fragment key={g.group}>
+                    <div className="tn-palette-group" aria-hidden="true">{g.group}</div>
+                    <ul className="tn-palette-seclist" role="presentation">
+                      {g.commands.map((c) => {
+                        const i = indexById.get(c.id)!;
+                        return (
+                          <li
+                            key={c.id}
+                            ref={i === active ? activeRef : undefined}
+                            role="option"
+                            aria-selected={i === active}
+                            className={`tn-palette-item${i === active ? " is-active" : ""}`}
+                            onMouseEnter={() => setActive(i)}
+                            onClick={() => c.run()}
+                          >
+                            <span className="tn-palette-label">{c.label}</span>
+                            <span className="tn-palette-hint">{c.hint}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </Fragment>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
         <div className="tn-palette-foot">
-          <span><span className="tn-kbd">↑↓</span> navigate</span>
+          <span><span className="tn-kbd">↑↓</span> in column</span>
+          <span><span className="tn-kbd">←→</span> columns</span>
           <span><span className="tn-kbd">↵</span> run</span>
           <span><span className="tn-kbd">esc</span> close</span>
         </div>
