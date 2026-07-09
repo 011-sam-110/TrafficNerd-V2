@@ -5,6 +5,7 @@ import {
   parseEquities,
   parseMacro,
   parseYahooChart,
+  macroRowFromYahoo,
   type CoinGeckoMarket,
   type MarketsPayload,
   type MarketSection,
@@ -61,6 +62,15 @@ const YAHOO_EQUITIES: { y: string; symbol: string; name: string }[] = [
   { y: "MSFT", symbol: "MSFT", name: "Microsoft" },
   { y: "NVDA", symbol: "NVDA", name: "Nvidia" },
 ];
+// Keyless macro fallback: Yahoo's rate/vol indices quote the figure directly
+// (^TNX/^FVX/^TYX = the Treasury yield in %; ^VIX = the volatility level), so the
+// Macro panel is live without a FRED key. FRED (real series) is used when keyed.
+const YAHOO_MACRO: { y: string; symbol: string; name: string; unit: string }[] = [
+  { y: "^TNX", symbol: "US 10Y", name: "US 10-Yr Treasury Yield", unit: "%" },
+  { y: "^FVX", symbol: "US 5Y", name: "US 5-Yr Treasury Yield", unit: "%" },
+  { y: "^TYX", symbol: "US 30Y", name: "US 30-Yr Treasury Yield", unit: "%" },
+  { y: "^VIX", symbol: "VIX", name: "Volatility (VIX)", unit: "" },
+];
 const yahooUrl = (sym: string) =>
   `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`;
 
@@ -76,9 +86,14 @@ async function getJson<T>(url: string, ms = 12_000): Promise<T | null> {
   }
 }
 
-/** Fetch each Yahoo symbol in parallel and keep the rows that resolve. */
+/** Fetch each Yahoo symbol in parallel and keep the rows that resolve. Carries the
+ *  Yahoo ticker as chartSymbol so the focus view can pull real OHLC history even
+ *  when the display symbol differs (e.g. Brent→BZ=F). */
 async function yahooRows(specs: { y: string; symbol: string; name: string }[]): Promise<MarketSection["rows"]> {
-  const rows = await Promise.all(specs.map(async (spec) => parseYahooChart(await getJson<YahooChart>(yahooUrl(spec.y)), spec)));
+  const rows = await Promise.all(specs.map(async (spec) => {
+    const row = parseYahooChart(await getJson<YahooChart>(yahooUrl(spec.y)), spec);
+    return row ? { ...row, chartSymbol: spec.y } : null;
+  }));
   return rows.filter((r): r is NonNullable<typeof r> => r != null);
 }
 
@@ -109,13 +124,16 @@ async function equitiesSection(): Promise<MarketSection> {
       return { symbol: e.symbol, name: e.name, c: q?.c, dp: q?.dp };
     }),
   );
-  return { key: "equities", label: "Equities", source: "Finnhub", rows: parseEquities(quotes) };
+  // Finnhub tickers match Yahoo's, so charts pull real OHLC under the same symbol.
+  return { key: "equities", label: "Equities", source: "Finnhub", rows: parseEquities(quotes).map((r) => ({ ...r, chartSymbol: r.symbol })) };
 }
 
 async function macroSection(): Promise<MarketSection> {
   const key = (process.env.FRED_API_KEY ?? "").trim();
   if (!key) {
-    return { key: "macro", label: "Macro / rates", source: "FRED (St. Louis Fed)", dormant: true, note: "Set FRED_API_KEY to enable.", rows: [] };
+    // Keyless: live Treasury yields + VIX from Yahoo instead of a dormant panel.
+    const rows = await Promise.all(YAHOO_MACRO.map(async (s) => macroRowFromYahoo(await getJson<YahooChart>(yahooUrl(s.y)), s)));
+    return { key: "macro", label: "Macro / rates", source: "Yahoo Finance · delayed, keyless", rows: rows.filter((r): r is NonNullable<typeof r> => r != null) };
   }
   const series = await Promise.all(
     FRED_SERIES.map(async (s) => {

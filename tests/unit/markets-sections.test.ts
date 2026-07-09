@@ -3,6 +3,7 @@ import {
   parseFx,
   parseEquities,
   parseMacro,
+  macroRowFromYahoo,
   cryptoRows,
   formatCompactUsd,
   type MarketAsset,
@@ -43,6 +44,16 @@ test("parseMacro formats latest observations with units", () => {
   expect(out).toHaveLength(2);
   expect(out.find((r) => r.id === "macro:DGS10")!.value).toBe("4.23%");
   expect(out.find((r) => r.id === "macro:VIXCLS")!.value).toBe("13.8");
+});
+
+test("macroRowFromYahoo formats a yield index with its unit + day change (keyless)", () => {
+  const json = { chart: { result: [{ meta: { regularMarketPrice: 4.561, chartPreviousClose: 4.569 } }] } };
+  const row = macroRowFromYahoo(json, { y: "^TNX", symbol: "US 10Y", name: "US 10-Yr Treasury Yield", unit: "%" });
+  expect(row!.value).toBe("4.56%");
+  expect(row!.num).toBe(4.561);
+  expect(row!.changePct).toBe(-0.18); // (4.561-4.569)/4.569*100
+  expect(row!.chartSymbol).toBe("^TNX"); // chartable history
+  expect(macroRowFromYahoo(null, { y: "^TNX", symbol: "x", name: "x", unit: "%" })).toBeNull();
 });
 
 test("cryptoRows carries market cap as a compact sub-line", () => {

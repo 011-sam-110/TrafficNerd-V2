@@ -1,4 +1,4 @@
-import { parseYahooSeries, RANGES, type Candle, type Range, type YahooChartResponse } from "@/lib/markets/chart";
+import { parseYahooSeries, sliceRecent, yahooParamsFor, RANGES, type Candle, type Range, type YahooChartResponse } from "@/lib/markets/chart";
 
 export const dynamic = "force-dynamic";
 
@@ -24,11 +24,6 @@ async function getJson<T>(url: string, ms = 12_000): Promise<T | null> {
   }
 }
 
-// Weekly bars over a year keep the point count sane; daily for the shorter windows.
-function intervalFor(range: Range): string {
-  return range === "1y" ? "1wk" : "1d";
-}
-
 const CACHE_MAX = 200; // bound the cache so a flood of distinct attacker-supplied symbols can't grow it unbounded
 const cache = new Map<string, { at: number; candles: Candle[] }>();
 
@@ -50,11 +45,14 @@ export async function GET(req: Request): Promise<Response> {
     return Response.json({ candles: hit.candles });
   }
 
+  // Map our timeframe → Yahoo (range, interval); intraday windows over-fetch a day
+  // and are trimmed to their trailing span (Yahoo has no native "last hour" range).
+  const { range: yRange, interval, sliceMs } = yahooParamsFor(range);
   const yahooUrl =
     `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}` +
-    `?range=${encodeURIComponent(range)}&interval=${intervalFor(range)}`;
+    `?range=${encodeURIComponent(yRange)}&interval=${encodeURIComponent(interval)}`;
   const json = await getJson<YahooChartResponse>(yahooUrl);
-  const candles = parseYahooSeries(json);
+  const candles = sliceRecent(parseYahooSeries(json), sliceMs);
   // Only cache a non-empty result so a transient upstream blip doesn't pin an empty
   // series for 5 minutes; empties simply retry next request.
   if (candles.length > 0) {

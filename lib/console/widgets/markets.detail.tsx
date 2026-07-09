@@ -7,19 +7,65 @@
 // fallback to the accumulated mkt:<id> series when it doesn't, and an
 // "indicative only — not financial advice" disclaimer. Pure series maths live in
 // the unit-tested lib/markets/chart.ts; this is the shell.
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import type { MarketsPayload, MarketRow, MarketSection } from "@/lib/markets";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
 import { recordSeries, seriesSamples } from "@/lib/series";
 import { Chart, type ChartPoint } from "@/components/Chart";
+import { CandleChart, type OverlayLine, type BandOverlay, type PriceGuide } from "@/components/CandleChart";
+import { loadAlerts, addAlert, removeAlert, crossed, type PriceAlert } from "@/lib/markets/alerts";
 import { shellLayoutStore } from "@/lib/console/store";
-import { candlesToPoints, hiLo, periodChange, RANGES, type Candle, type Range } from "@/lib/markets/chart";
+import { candlesToPoints, hiLo, periodChange, RANGES, RANGE_LABEL, type Candle, type Range } from "@/lib/markets/chart";
+import { sma, bollinger, rsi, volumeProfile, rescaleShape, anomalyFlags } from "@/lib/markets/indicators";
 import { toCsv, downloadText, exportFilename } from "@/lib/export";
 
 const EMPTY: MarketsPayload = { generatedAt: 0, sections: [] };
-const RANGE_LABEL: Record<Range, string> = { "1mo": "1M", "6mo": "6M", "1y": "1Y" };
-type TableSortKey = "name" | "changePct" | "value";
+type TableSortKey = "name" | "changePct" | "value" | "ath";
+type ChartType = "candles" | "line";
+type IndKey = "ma" | "boll" | "vol" | "rsi" | "bench" | "anom";
+const IND_CHIPS: [IndKey, string][] = [["ma", "MA 50/200"], ["boll", "Bollinger"], ["vol", "Volume"], ["rsi", "RSI"], ["bench", "Benchmark"], ["anom", "Events"]];
+
+/** Compact non-currency magnitude for volume, e.g. "1.2B", "845.0M", "12.3K". */
+function fmtVol(n: number): string {
+  const a = Math.abs(n);
+  if (a >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+  if (a >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (a >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return `${Math.round(n)}`;
+}
+
+/** Resample a series to `n` points by index (a faint benchmark shape need not be
+ *  time-exact — it maps the other asset's contour onto this instrument's window). */
+function resample(src: number[], n: number): number[] {
+  if (src.length === 0 || n <= 0) return [];
+  if (src.length === n) return src;
+  const out: number[] = [];
+  const span = src.length - 1, denom = n - 1 || 1;
+  for (let i = 0; i < n; i++) out.push(src[Math.min(span, Math.max(0, Math.round((i * span) / denom)))]);
+  return out;
+}
+
+/** Percent below the all-time high (0 = at ATH, −40 = 40% down). null if unknown. */
+function athPct(cur: number | undefined, ath: number | undefined): number | null {
+  if (cur == null || ath == null || !(ath > 0)) return null;
+  return (cur / ath - 1) * 100;
+}
+
+/** A 52-week (or period) range slider: where the current price sits between lo/hi. */
+function RangeBar({ lo, hi, cur }: { lo: number; hi: number; cur: number }) {
+  const pct = hi > lo ? Math.min(100, Math.max(0, ((cur - lo) / (hi - lo)) * 100)) : 50;
+  return (
+    <div className="tn-mk-rangebar" title={`low ${fmtNum(lo)} · now ${fmtNum(cur)} · high ${fmtNum(hi)}`}>
+      <span className="tn-mk-rb-end">{fmtNum(lo)}</span>
+      <span className="tn-mk-rb-track">
+        <span className="tn-mk-rb-fill" style={{ width: `${pct}%` }} />
+        <span className="tn-mk-rb-dot" style={{ left: `${pct}%` }} />
+      </span>
+      <span className="tn-mk-rb-end">{fmtNum(hi)}</span>
+    </div>
+  );
+}
 
 /** Adaptive-precision number formatting for prices/levels (large → 2dp, tiny → 6dp). */
 function fmtNum(n: number): string {
@@ -31,6 +77,18 @@ function fmtNum(n: number): string {
 /** Signed magnitude used for movers-first ordering; nulls sort last. */
 function absMove(r: MarketRow): number {
   return r.changePct == null ? -1 : Math.abs(r.changePct);
+}
+
+/** Fire a browser Notification for a crossed alert (dormant-safe: no-op unless the
+ *  user granted permission and the API exists). */
+function notifyAlert(a: PriceAlert, price: number): void {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  try {
+    new Notification(`${a.symbol} ${a.dir === "above" ? "≥" : "≤"} ${fmtNum(a.price)}`, {
+      body: `${a.name} is now ${fmtNum(price)}`,
+      tag: a.id,
+    });
+  } catch { /* dormant-safe */ }
 }
 
 /** Heat-strip / change colour scaled by move magnitude (green up, red down). */
@@ -93,7 +151,63 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
   );
 
   const selRow = useMemo(() => allRows.find((r) => r.id === selId) ?? null, [allRows, selId]);
-  const selSym = selRow ? (selRow.symbol ?? selRow.id) : null;
+  // Yahoo history ticker (crypto/commodity display symbols aren't Yahoo tickers).
+  const selSym = selRow ? (selRow.chartSymbol ?? selRow.symbol ?? selRow.id) : null;
+  const selSectionKey = useMemo(
+    () => railSections.find((s) => s.rows.some((r) => r.id === selId))?.key,
+    [railSections, selId],
+  );
+
+  // All-time-high enrichment for the "ATH %" column: batched, keyless, hard-cached
+  // server-side. Keyed by upper-cased chartSymbol (Yahoo ticker) so the table can
+  // show how far each asset trades below its historical peak.
+  const [athMap, setAthMap] = useState<Record<string, number>>({});
+  const athSyms = useMemo(
+    () => Array.from(new Set(allRows.map((r) => r.chartSymbol?.toUpperCase()).filter((s): s is string => !!s))),
+    [allRows],
+  );
+  useEffect(() => {
+    if (athSyms.length === 0) return;
+    let alive = true;
+    fetch(`/api/markets/ath?symbols=${encodeURIComponent(athSyms.join(","))}`)
+      .then((r) => r.json())
+      .then((d: { ath?: Record<string, number> }) => { if (alive) setAthMap(d.ath ?? {}); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [athSyms.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  const athOf = (r: MarketRow) => athPct(r.num, r.chartSymbol ? athMap[r.chartSymbol.toUpperCase()] : undefined);
+
+  // Local price alerts: arm the bell, click a price on the chart to set a level;
+  // a browser Notification fires when the live quote crosses it (edge-triggered).
+  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+  const [armed, setArmed] = useState(false);
+  useEffect(() => { setAlerts(loadAlerts()); }, []);
+  const prevPrices = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!data.generatedAt) return;
+    for (const a of alerts) {
+      const row = allRows.find((r) => r.id === a.rowId);
+      if (!row || typeof row.num !== "number") continue;
+      if (crossed(a, prevPrices.current[a.rowId], row.num)) notifyAlert(a, row.num);
+    }
+    for (const r of allRows) if (typeof r.num === "number") prevPrices.current[r.id] = r.num;
+  }, [data.generatedAt, alerts, allRows]);
+  const armToggle = () => setArmed((v) => {
+    const next = !v;
+    if (next && typeof Notification !== "undefined" && Notification.permission === "default") Notification.requestPermission().catch(() => {});
+    return next;
+  });
+  const placeAlert = (price: number) => {
+    if (!selRow) return;
+    const cur = selRow.num ?? price;
+    setAlerts(addAlert({ rowId: selRow.id, symbol: selRow.symbol ?? selRow.id, name: selRow.name, price, dir: price >= cur ? "above" : "below", createdAt: Date.now() }));
+    setArmed(false);
+  };
+  const selAlerts = useMemo(() => alerts.filter((a) => a.rowId === selId), [alerts, selId]);
+  const selGuides = useMemo<PriceGuide[]>(
+    () => selAlerts.map((a) => ({ price: a.price, color: a.dir === "above" ? "#16a34a" : "#dc2626", label: `${a.dir === "above" ? "▲" : "▼"} ${fmtNum(a.price)}` })),
+    [selAlerts],
+  );
 
   // Primary historical chart: keyless Yahoo v8 OHLC for the selected instrument +
   // range. Dormant-safe — the route never 5xxes, and a <2-candle result (dormant /
@@ -101,12 +215,18 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
   const [range, setRange] = useState<Range>("6mo");
   const [candles, setCandles] = useState<Candle[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
+  // Chart presentation: candlestick vs gradient line, technical overlays, and the
+  // candle under the cursor (drives the OHLC read-out).
+  const [chartType, setChartType] = useState<ChartType>("candles");
+  const [ind, setInd] = useState<Record<IndKey, boolean>>({ ma: false, boll: false, vol: false, rsi: false, bench: false, anom: true });
+  const toggleInd = (k: IndKey) => setInd((s) => ({ ...s, [k]: !s[k] }));
+  const [hover, setHover] = useState<Candle | null>(null);
   useEffect(() => {
-    if (!selSym) { setCandles([]); return; }
+    if (!selSym) { setCandles([]); setHover(null); return; }
     // Clear the previous instrument's candles immediately so a symbol/range switch never
     // renders — or exports — stale OHLC under the new header while the new fetch is in
     // flight (hasHistory drops to false → loading/live-series fallback + export disabled).
-    setCandles([]);
+    setCandles([]); setHover(null);
     let alive = true;
     setChartLoading(true);
     fetch(`/api/markets/chart?symbol=${encodeURIComponent(selSym)}&range=${range}`)
@@ -118,6 +238,54 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
   }, [selSym, range]);
 
   const hasHistory = candles.length >= 2;
+
+  // Benchmark correlation overlay: crypto compares against BTC (ETH if BTC is
+  // selected); everything else against SPY (QQQ if SPY is selected). Fetched only
+  // while the toggle is on; overlaid as a faint, rescaled SHAPE line (not a price).
+  const benchSym = useMemo(() => {
+    if (!ind.bench || !selSym) return null;
+    const crypto = selSectionKey === "crypto";
+    const pick = crypto ? (selSym === "BTC-USD" ? "ETH-USD" : "BTC-USD") : (selSym === "SPY" ? "QQQ" : "SPY");
+    return pick === selSym ? null : pick;
+  }, [ind.bench, selSym, selSectionKey]);
+  const [benchCandles, setBenchCandles] = useState<Candle[]>([]);
+  useEffect(() => {
+    if (!benchSym) { setBenchCandles([]); return; }
+    let alive = true;
+    fetch(`/api/markets/chart?symbol=${encodeURIComponent(benchSym)}&range=${range}`)
+      .then((r) => r.json())
+      .then((d: { candles?: Candle[] }) => { if (alive) setBenchCandles(Array.isArray(d.candles) ? d.candles : []); })
+      .catch(() => { if (alive) setBenchCandles([]); });
+    return () => { alive = false; };
+  }, [benchSym, range]);
+
+  // Technical overlays, all derived from the real candles via the unit-tested maths.
+  const closes = useMemo(() => candles.map((k) => k.c), [candles]);
+  const overlays = useMemo<OverlayLine[]>(() => {
+    const out: OverlayLine[] = [];
+    if (ind.ma) {
+      out.push({ values: sma(closes, 50), color: "#d9882f", width: 1.3 });
+      out.push({ values: sma(closes, 200), color: "#4a78c9", width: 1.3 });
+    }
+    if (ind.bench && benchCandles.length >= 2 && candles.length >= 2) {
+      let lo = Infinity, hi = -Infinity;
+      for (const k of candles) { if (k.l < lo) lo = k.l; if (k.h > hi) hi = k.h; }
+      const shaped = rescaleShape(resample(benchCandles.map((k) => k.c), candles.length), lo, hi);
+      out.push({ values: shaped, color: "#7c5cbf", width: 1.2, dash: true });
+    }
+    return out;
+  }, [ind.ma, ind.bench, closes, benchCandles, candles]);
+  const band = useMemo<BandOverlay | null>(() => {
+    if (!ind.boll) return null;
+    const b = bollinger(closes, 20, 2);
+    return { upper: b.map((x) => x.upper), lower: b.map((x) => x.lower), color: "#4a78c9" };
+  }, [ind.boll, closes]);
+  const volProfile = useMemo(() => (ind.vol ? volumeProfile(candles, 24) : null), [ind.vol, candles]);
+  const anomalies = useMemo(() => (ind.anom ? anomalyFlags(candles, 2.5) : []), [ind.anom, candles]);
+  const rsiPoints = useMemo<ChartPoint[]>(() => {
+    if (!ind.rsi) return [];
+    return rsi(closes, 14).map((v, i) => (v == null ? null : { x: candles[i].t, y: v })).filter((p): p is ChartPoint => p != null);
+  }, [ind.rsi, closes, candles]);
   const chg = useMemo(() => periodChange(candles), [candles]);
   const range52 = useMemo(() => hiLo(candles), [candles]);
   // Honest fallback: chart the accumulated live mkt:<id> series when there's no
@@ -141,10 +309,11 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
       let d: number;
       if (sortKey === "name") d = (a.r.symbol ?? a.r.name).localeCompare(b.r.symbol ?? b.r.name);
       else if (sortKey === "changePct") d = (a.r.changePct ?? -Infinity) - (b.r.changePct ?? -Infinity);
+      else if (sortKey === "ath") d = (athOf(a.r) ?? -Infinity) - (athOf(b.r) ?? -Infinity);
       else d = (a.r.num ?? -Infinity) - (b.r.num ?? -Infinity);
       return d * sortDir;
     });
-  }, [railSections, sortKey, sortDir]);
+  }, [railSections, sortKey, sortDir, athMap]); // eslint-disable-line react-hooks/exhaustive-deps
   const toggleSort = (k: TableSortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 1 ? -1 : 1));
     else { setSortKey(k); setSortDir(k === "name" ? 1 : -1); }
@@ -264,31 +433,86 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
                   </div>
                 </div>
 
-                {chartPoints.length >= 2 ? (
-                  <>
-                    <Chart points={chartPoints} height={220} zeroBaseline={false} up={chartUp} markers />
-                    {hasHistory ? (
-                      <>
-                        <div className="tn-mk-metrics">
-                          <span className={`tn-mk-metric ${chg.abs >= 0 ? "up" : "down"}`}>
-                            <span className="tn-mk-metric-label">Change ({RANGE_LABEL[range]})</span>{" "}
-                            <b>{chg.abs >= 0 ? "+" : ""}{fmtNum(chg.abs)} ({chg.pct >= 0 ? "+" : ""}{chg.pct.toFixed(2)}%)</b>
-                          </span>
-                          {range52 && (
-                            <span className="tn-mk-metric">
-                              <span className="tn-mk-metric-label">{range === "1y" ? "52-wk range" : "Range"}</span>{" "}
-                              <b>{fmtNum(range52.lo)} – {fmtNum(range52.hi)}</b>
-                            </span>
-                          )}
-                          <span className="tn-mk-metric"><span className="tn-mk-metric-label">{candles.length} bars · Yahoo v8, delayed</span></span>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="tn-mk-chart-note">Live session (accumulating) — historical unavailable for this symbol.</div>
+                <div className="tn-mk-chart-ctrls">
+                  <div className="tn-mk-ctrls-l">
+                    <div className="tn-mk-seg" role="tablist" aria-label="Chart type">
+                      <button role="tab" aria-selected={chartType === "candles"} className={chartType === "candles" ? "active" : ""} onClick={() => setChartType("candles")}>Candles</button>
+                      <button role="tab" aria-selected={chartType === "line"} className={chartType === "line" ? "active" : ""} onClick={() => setChartType("line")}>Line</button>
+                    </div>
+                    {hasHistory && chartType === "candles" && (
+                      <button className={`tn-mk-bell ${armed ? "on" : ""}`} aria-pressed={armed} onClick={armToggle}
+                        title={armed ? "Click a price on the chart to set an alert" : "Arm a price alert"}>🔔</button>
                     )}
-                  </>
+                  </div>
+                  {hasHistory && chartType === "candles" && (
+                    <div className="tn-mk-inds" role="group" aria-label="Technical overlays">
+                      {IND_CHIPS.map(([k, label]) => (
+                        <button key={k} className={`tn-mk-ind ${ind[k] ? "on" : ""}`} aria-pressed={ind[k]} onClick={() => toggleInd(k)}>{label}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {armed && <div className="tn-mk-arm-hint">Click a price level on the chart to set an alert.</div>}
+                {selAlerts.length > 0 && (
+                  <div className="tn-mk-alerts">
+                    {selAlerts.map((a) => (
+                      <span key={a.id} className={`tn-mk-alert ${a.dir}`}>
+                        🔔 {a.dir === "above" ? "≥" : "≤"} {fmtNum(a.price)}
+                        <button onClick={() => setAlerts(removeAlert(a.id))} aria-label="Remove alert">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {hasHistory && chartType === "candles" ? (
+                  <div className="tn-mk-canvas">
+                    {hover && (
+                      <div className="tn-mk-ohlc" aria-hidden>
+                        <span>O <b>{fmtNum(hover.o)}</b></span>
+                        <span>H <b className="up">{fmtNum(hover.h)}</b></span>
+                        <span>L <b className="down">{fmtNum(hover.l)}</b></span>
+                        <span>C <b>{fmtNum(hover.c)}</b></span>
+                        {hover.v > 0 && <span>V <b>{fmtVol(hover.v)}</b></span>}
+                        <span className="tn-mk-ohlc-t">{new Date(hover.t).toLocaleString()}</span>
+                      </div>
+                    )}
+                    <CandleChart candles={candles} height={240} up={chartUp} overlays={overlays} band={band} volume={volProfile} anomalies={anomalies} guides={selGuides} armed={armed} onPriceClick={placeAlert} onHover={(c) => setHover(c)} />
+                    {ind.rsi && rsiPoints.length >= 2 && (
+                      <div className="tn-mk-rsi">
+                        <span className="tn-mk-rsi-label">RSI 14</span>
+                        <Chart points={rsiPoints} height={52} area={false} zeroBaseline={false} up={null} />
+                      </div>
+                    )}
+                  </div>
+                ) : chartPoints.length >= 2 ? (
+                  <Chart points={chartPoints} height={240} zeroBaseline={false} up={chartUp} markers gradient />
                 ) : (
                   <div className="tn-mk-chart-empty">{chartLoading ? "Loading chart…" : "No history yet — accumulating a live session series."}</div>
+                )}
+
+                {hasHistory ? (
+                  <div className="tn-mk-metrics">
+                    <span className={`tn-mk-metric ${chg.abs >= 0 ? "up" : "down"}`}>
+                      <span className="tn-mk-metric-label">Change ({RANGE_LABEL[range]})</span>{" "}
+                      <b>{chg.abs >= 0 ? "+" : ""}{fmtNum(chg.abs)} ({chg.pct >= 0 ? "+" : ""}{chg.pct.toFixed(2)}%)</b>
+                    </span>
+                    {range52 && (
+                      <span className="tn-mk-metric">
+                        <span className="tn-mk-metric-label">{range === "1y" ? "52-wk range" : "Range"}</span>{" "}
+                        <b>{fmtNum(range52.lo)} – {fmtNum(range52.hi)}</b>
+                      </span>
+                    )}
+                    {(() => { const a = selRow ? athOf(selRow) : null; return a == null ? null : (
+                      <span className="tn-mk-metric"><span className="tn-mk-metric-label">From ATH</span> <b>{a >= -0.05 ? "at high" : `${a.toFixed(1)}%`}</b></span>
+                    ); })()}
+                    <span className="tn-mk-metric"><span className="tn-mk-metric-label">{candles.length} bars · Yahoo v8, delayed</span></span>
+                  </div>
+                ) : chartPoints.length >= 2 ? (
+                  <div className="tn-mk-chart-note">Live session (accumulating) — historical unavailable for this symbol.</div>
+                ) : null}
+
+                {hasHistory && range52 && candles.length > 0 && (
+                  <RangeBar lo={range52.lo} hi={range52.hi} cur={candles[candles.length - 1].c} />
                 )}
               </div>
             ) : (
@@ -300,6 +524,7 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
                 <tr>
                   <th className="sortable" onClick={() => toggleSort("name")}>Instrument{sortMark("name")}</th>
                   <th className="sortable num" onClick={() => toggleSort("changePct")}>Change{sortMark("changePct")}</th>
+                  <th className="sortable num" onClick={() => toggleSort("ath")} title="Percent below all-time high">ATH %{sortMark("ath")}</th>
                   <th className="sortable num" onClick={() => toggleSort("value")}>Value{sortMark("value")}</th>
                 </tr>
               </thead>
@@ -315,11 +540,14 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
                             ? <span className={`tn-mk-chg ${r.changePct >= 0 ? "up" : "down"}`}>{r.changePct >= 0 ? "+" : ""}{r.changePct}%</span>
                             : <span className="tn-mk-row-name">—</span>}
                         </td>
+                        <td className="num">
+                          {(() => { const a = athOf(r); return a == null ? <span className="tn-mk-row-name">—</span> : <span className="tn-mk-ath">{a >= -0.05 ? "at high" : `${a.toFixed(1)}%`}</span>; })()}
+                        </td>
                         <td className="num">{r.value}</td>
                       </tr>
                       {isOpen && (
                         <tr className="tn-mk-drill">
-                          <td colSpan={3}>
+                          <td colSpan={4}>
                             <dl>
                               <dt>Value</dt><dd>{r.value}</dd>
                               {r.changePct != null && (<><dt>Change</dt><dd className={`tn-mk-chg ${r.changePct >= 0 ? "up" : "down"}`}>{r.changePct >= 0 ? "+" : ""}{r.changePct}%</dd></>)}

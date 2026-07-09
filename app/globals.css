@@ -1575,6 +1575,40 @@ a { color: var(--tn-accent); }
 .tn-mk-metric-label { color: var(--tn-text-faint); }
 .tn-mk-chart-note { font-size: 11px; color: var(--tn-text-faint); margin-top: 6px; }
 .tn-mk-chart-empty { display: grid; place-items: center; height: 220px; color: var(--tn-text-faint); font-size: 13px; }
+/* chart controls: candle/line segmented switch + technical-overlay chips */
+.tn-mk-chart-ctrls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin-bottom: 6px; }
+.tn-mk-seg { display: inline-flex; border: 1px solid var(--tn-border); border-radius: 999px; overflow: hidden; }
+.tn-mk-seg button { font: inherit; font-size: 11px; padding: 3px 12px; border: 0; background: transparent; color: var(--tn-text-muted); cursor: pointer; }
+.tn-mk-seg button.active { background: var(--tn-accent); color: #fff; }
+.tn-mk-inds { display: flex; flex-wrap: wrap; gap: 4px; }
+.tn-mk-ind { font: inherit; font-size: 10.5px; padding: 2px 8px; border: 1px solid var(--tn-border); border-radius: 999px; background: transparent; color: var(--tn-text-muted); cursor: pointer; }
+.tn-mk-ind.on { background: var(--tn-surface-2); border-color: var(--tn-accent); color: var(--tn-text); }
+/* candle canvas + the top-left OHLC hover read-out */
+.tn-mk-canvas { position: relative; }
+.tn-candle { display: block; touch-action: none; }
+.tn-mk-ohlc { position: absolute; top: 4px; left: 6px; z-index: 2; display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 11px; font-variant-numeric: tabular-nums; color: var(--tn-text-muted); background: rgba(255,255,255,.72); backdrop-filter: blur(4px); border-radius: 6px; padding: 2px 7px; pointer-events: none; }
+.tn-mk-ohlc b { color: var(--tn-text); font-weight: 600; }
+.tn-mk-ohlc b.up { color: #16a34a; } .tn-mk-ohlc b.down { color: #dc2626; }
+.tn-mk-ohlc-t { color: var(--tn-text-faint); }
+.tn-mk-rsi { margin-top: 4px; }
+.tn-mk-rsi-label { font-size: 10px; color: var(--tn-text-faint); text-transform: uppercase; letter-spacing: .05em; }
+/* 52-week range slider */
+.tn-mk-rangebar { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--tn-text-faint); font-variant-numeric: tabular-nums; }
+.tn-mk-rb-end { flex: none; }
+.tn-mk-rb-track { position: relative; flex: 1 1 auto; height: 5px; border-radius: 999px; background: var(--tn-surface-2); }
+.tn-mk-rb-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: linear-gradient(90deg, var(--tn-border), var(--tn-accent)); }
+.tn-mk-rb-dot { position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%; background: #fff; border: 2px solid var(--tn-accent); transform: translate(-50%, -50%); }
+.tn-mk-ath { color: var(--tn-text-muted); font-variant-numeric: tabular-nums; }
+/* price alerts */
+.tn-mk-ctrls-l { display: flex; align-items: center; gap: 8px; }
+.tn-mk-bell { font: inherit; font-size: 12px; line-height: 1; padding: 3px 8px; border: 1px solid var(--tn-border); border-radius: 999px; background: transparent; cursor: pointer; filter: grayscale(1); opacity: .7; }
+.tn-mk-bell.on { filter: none; opacity: 1; border-color: var(--tn-accent); background: var(--tn-surface-2); }
+.tn-candle.is-armed { cursor: crosshair; }
+.tn-mk-arm-hint { font-size: 11px; color: var(--tn-accent); margin: 2px 0; }
+.tn-mk-alerts { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+.tn-mk-alert { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 1px 4px 1px 7px; border-radius: 999px; border: 1px solid var(--tn-border); font-variant-numeric: tabular-nums; }
+.tn-mk-alert.above { color: #16a34a; } .tn-mk-alert.below { color: #dc2626; }
+.tn-mk-alert button { border: 0; background: none; cursor: pointer; color: var(--tn-text-faint); font-size: 13px; line-height: 1; padding: 0 2px; }
 /* instrument table */
 .tn-mk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tn-mk-table th { text-align: left; color: var(--tn-text-faint); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 4px 8px; border-bottom: 1px solid var(--tn-border); }
