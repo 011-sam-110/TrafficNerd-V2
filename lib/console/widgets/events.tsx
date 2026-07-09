@@ -12,10 +12,12 @@
 //     r.magnitude?.value → EventLite.magnitude  (NESTED, optional number)
 //   Display uses r.place.name for the human location label.
 //
-// M20 ops upgrade: rows are now clickable (fly the globe + open the dossier, via
-// lib/events/openEvent) and the long feed collapses into region/type clusters with
-// counts (persisted per widget instance in `config`). Pure grouping lives in
-// lib/events/regions.ts; pure view-pref reads in lib/events/opsConfig.ts.
+// M20 ops upgrade: rows are clickable (fly the globe + open the dossier, via
+// lib/events/openEvent); the long feed collapses into region/type clusters with
+// counts; persisted signal-to-noise filters trim it (with an honest hidden count);
+// and events whose modelled impact radius reaches an operator asset are escalated
+// to Direct Operational Threats, pinned to the top. Pure logic: lib/events/{regions,
+// filters,assets}.ts; pure view-pref reads: lib/events/opsConfig.ts.
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EVENT_SOURCES } from "@/lib/events/sources";
@@ -29,11 +31,12 @@ import { useWidgetReport } from "@/components/console/WidgetFrame";
 import { shellLayoutStore } from "@/lib/console/store";
 import { runAlertRule } from "@/lib/console/alerts";
 import { eventAlerts, type EventLite } from "@/lib/console/widgets/events.rules";
-import type { SeverityTier } from "@/lib/events/model";
 import type { NormalizedEvent } from "@/lib/events/model";
 import type { SignalFeature } from "@/lib/signals/types";
 import { groupByRegion, groupByType, type EventGroup } from "@/lib/events/regions";
 import { readGroupBy, readCollapsed, isCollapsed, toggleCollapsed, type GroupBy } from "@/lib/events/opsConfig";
+import { readFilters, applyEventFilters } from "@/lib/events/filters";
+import { useAssets, assessThreats, type Threat } from "@/lib/events/assets";
 import { openEvent } from "@/lib/events/openEvent";
 import EventsDetail from "@/lib/console/widgets/events.detail";
 
@@ -46,25 +49,32 @@ const GROUP_TABS: { id: GroupBy; label: string }[] = [
 function EventRow({
   e,
   feature,
+  threat,
   flashed,
   onOpen,
 }: {
   e: NormalizedEvent;
   feature?: SignalFeature;
+  threat?: Threat;
   flashed: boolean;
   onOpen: (e: NormalizedEvent, f?: SignalFeature) => void;
 }) {
   return (
-    <li>
+    <li className={threat ? "is-threat" : undefined}>
       <button
         type="button"
         className={`tn-ev-row${flashed ? " is-flash" : ""}`}
         onClick={() => onOpen(e, feature)}
-        title={`${e.title} — ${e.place.name}\nClick to fly the map here`}
+        title={
+          threat
+            ? `${e.title} — ${e.place.name}\nDirect operational threat: ${Math.round(threat.distanceKm)} km from ${threat.assetName}`
+            : `${e.title} — ${e.place.name}\nClick to fly the map here`
+        }
       >
         <span className={`tn-w-sev tn-sev-${e.severity.tier}`}>{e.severity.tier}</span>
         <b className="tn-w-kind">{e.type}</b>
         <span className="tn-w-place">{e.place.name}</span>
+        {threat && <span className="tn-ev-threat-chip">⚠ {Math.round(threat.distanceKm)}km</span>}
         {e.magnitude && (
           <span className="tn-w-mag">
             {e.magnitude.value}
@@ -81,37 +91,41 @@ function EventsBody({ instanceId, config }: WidgetBodyProps) {
   const win = useTimeWindow();
   const now = useNow(60_000);
   const { bySource, status } = useEventFeeds();
+  const assets = useAssets();
 
-  // Exact pattern copied from components/shell/EventFeed.tsx.
   const inputs: FeedInput[] = useMemo(
     () => EVENT_SOURCES.map((source) => ({ source, features: bySource[source.id] ?? [] })),
     [bySource],
   );
 
-  const minTier = ((config.minTier as string) ?? "S1") as SeverityTier;
   const sort = ((config.sort as string) ?? "severity") as FeedSort;
   const groupBy = readGroupBy(config);
   const collapsed = readCollapsed(config);
+  const filters = useMemo(() => readFilters(config), [config]);
 
+  // Project ALL in-scope/in-window rows (minTier S0) so the filter module owns the
+  // tier/type/mag/region trim and the hidden count stays honest.
   const projected = useMemo(
     () =>
       projectEventFeed(inputs, scope, windowMsFor(win), now, {
         types: null,
-        minTier,
+        minTier: "S0",
         sort: sort === "nearest" && !scope.center ? "severity" : sort,
       }),
-    [inputs, scope, win, now, minTier, sort],
+    [inputs, scope, win, now, sort],
   );
+  const { rows: filtered, hidden } = useMemo(() => applyEventFilters(projected.rows, filters), [projected.rows, filters]);
 
-  // Join back to the raw SignalFeature so a row-click opens the same dossier a map
-  // click would (source label carried for the dossier credit).
+  const threats = useMemo(() => assessThreats(filtered, assets), [filtered, assets]);
+  const threatRows = useMemo(() => filtered.filter((e) => threats.has(e.id)), [filtered, threats]);
+  const restRows = useMemo(() => filtered.filter((e) => !threats.has(e.id)), [filtered, threats]);
+
   const featureIndex = useMemo(() => {
     const m = new Map<string, { feature: SignalFeature; sourceLabel: string }>();
     for (const s of EVENT_SOURCES) for (const f of bySource[s.id] ?? []) m.set(f.id, { feature: f, sourceLabel: s.label });
     return m;
   }, [bySource]);
 
-  // Row flash on click (a short highlight so the eye stays anchored while the map flies).
   const [flashId, setFlashId] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (flashTimer.current) clearTimeout(flashTimer.current); }, []);
@@ -126,28 +140,30 @@ function EventsBody({ instanceId, config }: WidgetBodyProps) {
   const setGroupBy = (g: GroupBy) => shellLayoutStore.configure(instanceId, { evGroupBy: g });
   const onToggleGroup = (key: string) =>
     shellLayoutStore.configure(instanceId, { evCollapsed: toggleCollapsed(collapsed, groupBy, key) });
+  const clearFilters = () =>
+    shellLayoutStore.configure(instanceId, { evMinTier: "S0", evMinQuakeMag: 0, evTypes: null, evRegions: null });
 
   const groups: EventGroup[] = useMemo(() => {
-    if (groupBy === "region") return groupByRegion(projected.rows);
-    if (groupBy === "type") return groupByType(projected.rows);
-    return [{ key: "all", label: "All events", events: projected.rows }];
-  }, [groupBy, projected.rows]);
+    if (groupBy === "region") return groupByRegion(restRows);
+    if (groupBy === "type") return groupByType(restRows);
+    return [{ key: "all", label: "All events", events: restRows }];
+  }, [groupBy, restRows]);
 
   const lite: EventLite[] = useMemo(
     () =>
-      projected.rows.map((r) => ({
+      filtered.map((r) => ({
         id: r.id,
         type: r.type,
         tier: r.severity.tier,
         title: r.title,
         magnitude: r.magnitude?.value,
       })),
-    [projected.rows],
+    [filtered],
   );
 
   const exportRows = useMemo(
     () =>
-      projected.rows.map((r) => ({
+      filtered.map((r) => ({
         tier: r.severity.tier,
         type: r.type,
         title: r.title,
@@ -156,41 +172,39 @@ function EventsBody({ instanceId, config }: WidgetBodyProps) {
         unit: r.magnitude?.unit ?? "",
         lat: r.geo.lat,
         lon: r.geo.lon,
+        threat: threats.has(r.id) ? `${Math.round(threats.get(r.id)!.distanceKm)}km from ${threats.get(r.id)!.assetName}` : "",
       })),
-    [projected.rows],
+    [filtered, threats],
   );
   const exportGeo = useMemo(
     () =>
-      projected.rows.map((r) => ({
+      filtered.map((r) => ({
         lat: r.geo.lat,
         lon: r.geo.lon,
         properties: { tier: r.severity.tier, type: r.type, title: r.title, place: r.place.name, magnitude: r.magnitude?.value },
       })),
-    [projected.rows],
+    [filtered],
   );
 
   const report = useWidgetReport();
   useEffect(() => {
     report({
       alerts: runAlertRule(eventAlerts, lite, config),
-      count: projected.shown,
+      count: filtered.length,
       freshLabel: "5m",
       export: { rows: exportRows, geo: exportGeo, name: "events" },
     });
-  }, [lite, projected.shown, report, config, exportRows, exportGeo]);
+  }, [lite, filtered.length, report, config, exportRows, exportGeo]);
 
-  if (status === "loading" && projected.shown === 0) {
+  if (status === "loading" && filtered.length === 0 && hidden === 0) {
     return <p className="tn-w-empty">Loading events…</p>;
-  }
-  if (projected.shown === 0) {
-    return (
-      <p className="tn-w-empty">
-        No events above {minTier} in {scope.label}.
-      </p>
-    );
   }
 
   const flat = groupBy === "none";
+  const renderRow = (e: NormalizedEvent) => {
+    const hit = featureIndex.get(e.id);
+    return <EventRow key={e.id} e={e} feature={hit?.feature} threat={threats.get(e.id)} flashed={flashId === e.id} onOpen={onOpen} />;
+  };
 
   return (
     <div className="tn-ev">
@@ -206,43 +220,55 @@ function EventsBody({ instanceId, config }: WidgetBodyProps) {
             {t.label}
           </button>
         ))}
+        {hidden > 0 && (
+          <button className="tn-ev-hidden" onClick={clearFilters} title="Filtered out by your signal-to-noise settings. Click to clear filters.">
+            {hidden} hidden ✕
+          </button>
+        )}
       </div>
 
-      {flat ? (
-        <ul className="tn-w-list">
-          {groups[0].events.slice(0, 200).map((e) => {
-            const hit = featureIndex.get(e.id);
-            return <EventRow key={e.id} e={e} feature={hit?.feature} flashed={flashId === e.id} onOpen={onOpen} />;
-          })}
-        </ul>
-      ) : (
-        <div className="tn-ev-groups">
-          {groups.map((g) => {
-            const open = !isCollapsed(collapsed, groupBy, g.key);
-            return (
-              <section key={g.key} className="tn-ev-group">
-                <button
-                  type="button"
-                  className="tn-ev-group-h"
-                  aria-expanded={open}
-                  onClick={() => onToggleGroup(g.key)}
-                >
-                  <span className={`tn-ev-chev${open ? " is-open" : ""}`} aria-hidden>▸</span>
-                  <span className="tn-ev-group-label">{g.label}</span>
-                  <span className="tn-ev-group-count">{g.events.length}</span>
-                </button>
-                {open && (
-                  <ul className="tn-w-list">
-                    {g.events.slice(0, 200).map((e) => {
-                      const hit = featureIndex.get(e.id);
-                      return <EventRow key={e.id} e={e} feature={hit?.feature} flashed={flashId === e.id} onOpen={onOpen} />;
-                    })}
-                  </ul>
-                )}
-              </section>
-            );
-          })}
-        </div>
+      {filtered.length === 0 && (
+        <p className="tn-w-empty">
+          {hidden > 0 ? `All ${hidden} events hidden by filters in ${scope.label}.` : `No events in ${scope.label}.`}
+        </p>
+      )}
+
+      {threatRows.length > 0 && (
+        <section className="tn-ev-group tn-ev-threats">
+          <div className="tn-ev-group-h tn-ev-threats-h">
+            <span aria-hidden>⚠</span>
+            <span className="tn-ev-group-label">Direct Operational Threats</span>
+            <span className="tn-ev-group-count">{threatRows.length}</span>
+          </div>
+          <ul className="tn-w-list">{threatRows.slice(0, 100).map(renderRow)}</ul>
+        </section>
+      )}
+
+      {restRows.length > 0 && (
+        flat ? (
+          <ul className="tn-w-list">{groups[0].events.slice(0, 200).map(renderRow)}</ul>
+        ) : (
+          <div className="tn-ev-groups">
+            {groups.map((g) => {
+              const open = !isCollapsed(collapsed, groupBy, g.key);
+              return (
+                <section key={g.key} className="tn-ev-group">
+                  <button
+                    type="button"
+                    className="tn-ev-group-h"
+                    aria-expanded={open}
+                    onClick={() => onToggleGroup(g.key)}
+                  >
+                    <span className={`tn-ev-chev${open ? " is-open" : ""}`} aria-hidden>▸</span>
+                    <span className="tn-ev-group-label">{g.label}</span>
+                    <span className="tn-ev-group-count">{g.events.length}</span>
+                  </button>
+                  {open && <ul className="tn-w-list">{g.events.slice(0, 200).map(renderRow)}</ul>}
+                </section>
+              );
+            })}
+          </div>
+        )
       )}
     </div>
   );
