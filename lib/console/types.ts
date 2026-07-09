@@ -28,9 +28,9 @@ export const MAX_WIDGETS = 50;
 export function createDefaultLayout(): ShellLayout {
   return {
     segments: {
-      left: { size: 320, collapsed: false },
-      right: { size: 320, collapsed: false },
-      bottom: { size: 240, collapsed: false },
+      left: { size: 300, collapsed: false },
+      right: { size: 300, collapsed: false },
+      bottom: { size: 220, collapsed: false },
     },
     stage: "map2d",
     widgets: [],

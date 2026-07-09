@@ -73,7 +73,7 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
   };
 
   return (
-    <div className="tn-cw" data-widget-type={instance.type} style={{ height: instance.collapsed ? undefined : instance.height }}>
+    <div className="tn-cw" data-widget-type={instance.type} style={{ maxHeight: instance.collapsed ? undefined : instance.height }}>
       <header className="tn-cw-head" draggable onDragStart={onDragStart}>
         <span className="tn-cw-icon">{type.icon}</span>
         <span className="tn-cw-title">{type.title}</span>

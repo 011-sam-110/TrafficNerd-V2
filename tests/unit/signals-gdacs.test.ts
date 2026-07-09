@@ -21,6 +21,18 @@ test("skips features with missing/invalid coordinates", () => {
   expect(normalizeGdacs(bad as never)).toHaveLength(0);
 });
 
+test("dedupes repeated event+episode entries (GDACS lists the same event twice)", () => {
+  const dup = {
+    features: [
+      { geometry: { coordinates: [10, 20] }, properties: { eventid: 42, episodeid: 3, eventtype: "TC", alertlevel: "Red" } },
+      { geometry: { coordinates: [10, 20] }, properties: { eventid: 42, episodeid: 3, eventtype: "TC", alertlevel: "Red" } },
+    ],
+  };
+  const out = normalizeGdacs(dup as never);
+  expect(out).toHaveLength(1); // one id → one row (no duplicate React keys)
+  expect(out[0].id).toBe("gdacs:42:3");
+});
+
 test("event-type labels and alert-level colours", () => {
   expect(gdacsEventLabel("TC")).toBe("Tropical cyclone");
   expect(gdacsEventLabel("WF")).toBe("Wildfire");

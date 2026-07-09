@@ -262,6 +262,7 @@ export const INSTABILITY_SOURCE: SignalSource = {
   color: "#dc2626",
   refreshMs: 60 * 60 * 1000, // composite of slow-moving inputs; hourly is ample
   attribution: "Composite — ACLED · WFP HungerMap · UNHCR · IODA",
+  metric: { field: "score", domain: [0, 100] }, // 0-100 composite → ranked score bar (green→dark-red)
   async fetch() {
     try {
       const [food, displacement, outages, conflict] = await Promise.all([

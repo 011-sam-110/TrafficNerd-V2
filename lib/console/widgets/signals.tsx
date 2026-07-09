@@ -17,6 +17,7 @@ import { useWidgetReport } from "@/components/console/WidgetFrame";
 import { useScope } from "@/lib/shell/scope";
 import { projectSignal } from "@/lib/console/signals/signalCard";
 import { useSignalFeed } from "@/lib/console/signals/useSignalFeed";
+import { MetricBar } from "@/components/MetricBar";
 import { makeSignalDetail } from "./signals.detail";
 
 const GROUP_ICON: Record<string, string> = {
@@ -66,9 +67,12 @@ function makeSignalBody(source: SignalSource) {
 
     const projected = useMemo(
       () =>
-        projectSignal(features, scope, {
-          alertMin: typeof config.alertMin === "number" ? config.alertMin : undefined,
-        }),
+        projectSignal(
+          features,
+          scope,
+          { alertMin: typeof config.alertMin === "number" ? config.alertMin : undefined },
+          source.metric,
+        ),
       [features, scope, config],
     );
 
@@ -94,7 +98,11 @@ function makeSignalBody(source: SignalSource) {
           const rel = relativeTime(r.ts, now);
           return (
             <li key={r.id}>
-              {r.magnitude != null && <span className="tn-w-mag">{r.magnitude}</span>}{" "}
+              {r.metric ? (
+                <MetricBar value={r.metric.value} domain={r.metric.domain} color={r.color} label={r.metric.label} />
+              ) : (
+                <span className="tn-w-dot" style={{ background: r.color || "var(--tn-text-faint, #94a3b8)" }} aria-hidden />
+              )}
               <span className="tn-w-place">{r.title}</span>
               {rel && <span className="tn-w-muted"> · {rel}</span>}
             </li>
