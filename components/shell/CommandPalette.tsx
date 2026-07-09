@@ -15,7 +15,7 @@ import "@/lib/console/widgets";
 import { widgetsByCategory, getWidgetType } from "@/lib/console/registry";
 import { shellLayoutStore } from "@/lib/console/store";
 import type { StageId } from "@/lib/console/types";
-import { listPresets, applyPreset, saveCustomPreset } from "@/lib/console/presets";
+import { listPresets, applyPreset, saveCustomPreset, DEFAULT_PRESET_ID } from "@/lib/console/presets";
 import { encodeLayout } from "@/lib/console/share";
 import { uiStore } from "@/lib/shell/ui";
 import { langStore } from "@/lib/i18n/store";
@@ -54,55 +54,18 @@ function alertCapacity() {
 function buildCommands(close: () => void): Command[] {
   const cmds: Command[] = [];
 
-  // ── Layers: toggles, layer presets, basemaps ────────────────────────────
-  for (const k of ACTIVE_LAYERS) {
-    cmds.push({
-      id: `toggle-${k}`,
-      label: `Toggle ${LAYER_NAMES[k]}`,
-      hint: "layer",
-      group: "Layers",
-      run: () => {
-        layersStore.toggle(k);
-        close();
-      },
-    });
-  }
+  // ── Profiles: apply a persona workspace (the fast path to a full board) ──
+  for (const p of listPresets()) cmds.push({ id: `cpreset-${p.id}`, label: `${p.icon} ${p.title}`, hint: p.blurb, group: "Profiles", run: () => { applyPreset(p.id); close(); } });
 
-  for (const p of LAYER_PRESETS) {
-    cmds.push({
-      id: `preset-${p.id}`,
-      label: `Preset: ${p.label}`,
-      hint: "preset",
-      group: "Layers",
-      run: () => {
-        layersStore.applyPreset(p.id);
-        close();
-      },
-    });
-  }
-
-  for (const k of Object.keys(BASEMAPS) as BasemapKey[]) {
-    cmds.push({
-      id: `basemap-${k}`,
-      label: `Basemap: ${BASEMAPS[k].label}`,
-      hint: "basemap",
-      group: "Layers",
-      run: () => {
-        mapViewStore.setBasemap(k);
-        close();
-      },
-    });
-  }
-
-  // ── Navigate: fly to a covered region, dive to a live feed ──────────────
+  // ── Go to: fly to a covered region, dive to a live feed ─────────────────
   for (const r of CAMERA_REGIONS) {
     if (!r.view) continue;
     const view = r.view;
     cmds.push({
       id: `jump-${r.source}`,
       label: `Fly to ${r.label}`,
-      hint: "jump",
-      group: "Navigate",
+      hint: "region",
+      group: "Go to",
       run: () => {
         mapViewStore.flyTo(view);
         close();
@@ -114,7 +77,7 @@ function buildCommands(close: () => void): Command[] {
     id: "dive-live",
     label: "Dive to a live feed",
     hint: "live",
-    group: "Navigate",
+    group: "Go to",
     run: () => {
       const cam = pickLiveCamera(loadedCamerasStore.get());
       if (cam) {
@@ -131,7 +94,7 @@ function buildCommands(close: () => void): Command[] {
     },
   });
 
-  // ── Widgets: add one of each type, or focus an already-open one ─────────
+  // ── Add widget: one command per registered type (hint = its category) ───
   for (const group of widgetsByCategory()) {
     for (const t of group.types) {
       const openCount = shellLayoutStore.get().widgets.filter((w) => w.type === t.id).length;
@@ -139,12 +102,13 @@ function buildCommands(close: () => void): Command[] {
         id: `add-${t.id}`,
         label: `Add ${t.title}${openCount ? ` (${openCount} open)` : ""}`,
         hint: group.category.toLowerCase(),
-        group: "Widgets",
+        group: "Add widget",
         run: () => { const r = shellLayoutStore.add(t.id, { config: { ...t.defaultConfig }, height: t.defaultHeight }); if (!r.ok) alertCapacity(); close(); },
       });
     }
   }
 
+  // ── Open widgets: jump focus to a card that's already on the workspace ──
   const openWidgets = shellLayoutStore.get().widgets;
   const typeSeen = new Map<string, number>();
   for (const w of openWidgets) {
@@ -156,27 +120,68 @@ function buildCommands(close: () => void): Command[] {
       id: `focus-${w.id}`,
       label: `Focus ${title}${total > 1 ? ` #${n}` : ""}`,
       hint: "widget",
-      group: "Widgets",
+      group: "Open widgets",
       run: () => { shellLayoutStore.focus(w.id); close(); },
     });
   }
 
-  // ── Views: stage, theme, language, scenario (variant) ───────────────────
+  // ── Map layers: toggle an individual globe layer ────────────────────────
+  for (const k of ACTIVE_LAYERS) {
+    cmds.push({
+      id: `toggle-${k}`,
+      label: `Toggle ${LAYER_NAMES[k]}`,
+      hint: "layer",
+      group: "Map layers",
+      run: () => {
+        layersStore.toggle(k);
+        close();
+      },
+    });
+  }
+
+  // ── Layer sets: apply a curated bundle of layers ────────────────────────
+  for (const p of LAYER_PRESETS) {
+    cmds.push({
+      id: `preset-${p.id}`,
+      label: `${p.label}`,
+      hint: "layer set",
+      group: "Layer sets",
+      run: () => {
+        layersStore.applyPreset(p.id);
+        close();
+      },
+    });
+  }
+
+  // ── Basemap: swap the underlying map style ──────────────────────────────
+  for (const k of Object.keys(BASEMAPS) as BasemapKey[]) {
+    cmds.push({
+      id: `basemap-${k}`,
+      label: `${BASEMAPS[k].label}`,
+      hint: "basemap",
+      group: "Basemap",
+      run: () => {
+        mapViewStore.setBasemap(k);
+        close();
+      },
+    });
+  }
+
+  // ── Stage: what the centre stage shows ──────────────────────────────────
   const STAGES: { id: StageId; label: string }[] = [{ id: "map3d", label: "3D map" }, { id: "map2d", label: "2D map" }, { id: "clock", label: "World clock" }];
-  for (const s of STAGES) cmds.push({ id: `stage-${s.id}`, label: `Stage → ${s.label}`, hint: "stage", group: "Views", run: () => { shellLayoutStore.stage(s.id); close(); } });
+  for (const s of STAGES) cmds.push({ id: `stage-${s.id}`, label: `Stage → ${s.label}`, hint: "stage", group: "Stage", run: () => { shellLayoutStore.stage(s.id); close(); } });
 
-  cmds.push({ id: "theme-toggle", label: "Toggle light / dark theme", hint: "theme", group: "Views", run: () => { uiStore.toggleTheme(); close(); } });
+  // ── Scenarios: switch the top-left monitor variant ──────────────────────
+  for (const v of BUILTIN_VARIANTS) cmds.push({ id: `variant-${v.id}`, label: `${v.title}`, hint: "scenario", group: "Scenarios", run: () => { variantStore.setActive(v.id); close(); } });
 
-  for (const l of LANGS) cmds.push({ id: `lang-${l.code}`, label: `Language: ${l.name}`, hint: "language", group: "Views", run: () => { langStore.set(l.code); close(); } });
+  // ── Appearance: theme + language ────────────────────────────────────────
+  cmds.push({ id: "theme-toggle", label: "Toggle light / dark theme", hint: "theme", group: "Appearance", run: () => { uiStore.toggleTheme(); close(); } });
+  for (const l of LANGS) cmds.push({ id: `lang-${l.code}`, label: `Language: ${l.name}`, hint: "language", group: "Appearance", run: () => { langStore.set(l.code); close(); } });
 
-  for (const v of BUILTIN_VARIANTS) cmds.push({ id: `variant-${v.id}`, label: `Scenario: ${v.title}`, hint: "scenario", group: "Views", run: () => { variantStore.setActive(v.id); close(); } });
-
-  // ── Layouts: console layout presets, save current as preset ─────────────
-  for (const p of listPresets()) cmds.push({ id: `cpreset-${p.id}`, label: `Layout: ${p.title}`, hint: "layout", group: "Layouts", run: () => { applyPreset(p.id); close(); } });
-  cmds.push({ id: "save-preset", label: "Save layout as preset…", hint: "layout", group: "Layouts", run: () => { const t = window.prompt("Preset name?"); if (t) saveCustomPreset(t); close(); } });
-
-  // ── Share: copy a shareable link to the composed view ───────────────────
-  cmds.push({ id: "share-layout", label: "Copy shareable link", hint: "share", group: "Share", run: () => { const url = `${location.origin}${location.pathname}?c=${encodeLayout(shellLayoutStore.get())}`; navigator.clipboard?.writeText(url); close(); } });
+  // ── Workspace: reset / save / share the current composition ─────────────
+  cmds.push({ id: "reset-layout", label: "Reset to default layout", hint: "reset", group: "Workspace", run: () => { applyPreset(DEFAULT_PRESET_ID); close(); } });
+  cmds.push({ id: "save-preset", label: "Save layout as preset…", hint: "save", group: "Workspace", run: () => { const t = window.prompt("Preset name?"); if (t) saveCustomPreset(t); close(); } });
+  cmds.push({ id: "share-layout", label: "Copy shareable link", hint: "share", group: "Workspace", run: () => { const url = `${location.origin}${location.pathname}?c=${encodeLayout(shellLayoutStore.get())}`; navigator.clipboard?.writeText(url); close(); } });
 
   return cmds;
 }
@@ -206,23 +211,23 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   }, [query]);
 
   // Live place results are the product of the query itself — surface them under
-  // Navigate unfiltered (never re-filtered by the substring), matching the prior
+  // "Go to" unfiltered (never re-filtered by the substring), matching the prior
   // "append to the list" behaviour, just now grouped.
   const geoCmds = useMemo<Command[]>(() => geo.map((r) => ({
     id: `geo-${r.lat},${r.lon}`,
     label: `Fly to ${r.name}`,
     hint: r.type || "place",
-    group: "Navigate",
+    group: "Go to",
     run: () => { mapViewStore.flyToPoint({ lat: r.lat, lon: r.lon, zoom: zoomForResult(r) }); onClose(); },
   })), [geo, onClose]);
 
   // Grouped, query-filtered sections in the fixed GROUP_ORDER; live geocode
-  // results fold into Navigate (added even when the static Navigate group filtered empty).
+  // results fold into "Go to" (added even when the static Go-to group filtered empty).
   const grouped = useMemo(() => {
     const base = groupCommands(commands, query);
     if (geoCmds.length === 0) return base;
     const byGroup = new Map(base.map((g) => [g.group, g.commands]));
-    byGroup.set("Navigate", [...(byGroup.get("Navigate") ?? []), ...geoCmds]);
+    byGroup.set("Go to", [...(byGroup.get("Go to") ?? []), ...geoCmds]);
     return GROUP_ORDER
       .filter((g) => (byGroup.get(g)?.length ?? 0) > 0)
       .map((g) => ({ group: g, commands: byGroup.get(g)! }));
@@ -279,7 +284,7 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
         <input
           ref={inputRef}
           className="tn-palette-input"
-          placeholder="Search layers, presets, basemaps — or fly to any place…"
+          placeholder="Search actions — switch profile, add a widget, fly to any place…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Command search"
