@@ -75,6 +75,80 @@ Spec: Investor C10 / Journalist C7.
 
 ---
 
+## Second review (2026-07-09) — 5-persona ingestibility + data-gap pass
+
+Derived from a blind 5-critic design review (OSINT analyst, emergency responder, competitor PM,
+information-design pro, mobile power-user). Consensus ~2/5: strong bones, but the product *looks*
+emptier/more broken than it is. Top cross-cutting fixes below, ordered by impact-per-effort.
+
+### M12: Persona → map-layer sync
+Status: [x] done (2026-07-09, <this branch>) — VERIFIED: Emergency board globe now shows quakes/fires/
+GDACS hazards (planes+cameras OFF); analyst default board opens with `— cam / 0 planes / 0 sat`.
+Screenshots: persona-shots/m12_intelligence_default.png, persona-shots/m12_emergency_hazards.png.
+Spec: 2nd-review finding #1 (flagged by 4/5 critics — the top issue).
+Problem: `applyPreset()` only swaps the widget cards (`shellLayoutStore.replace`), never the map's
+layer stores (`lib/layers.ts` core + `lib/signals/store.ts`), so every persona shows the same
+default planes+cameras globe. An emergency responder is shown airline traffic, not hazards.
+Approach: a PURE `layersForLayout(layout)` (widget type → map layer) in `lib/console/presetLayers.ts`,
+applied by `applyPreset` via `layersStore.applyExact` + `signalsStore.applyExact`. `signal:<id>`→that
+signal ON; cameras/aviation/satellites widget→that core layer ON; every other core layer OFF; the
+`countries` base layer always stays ON. Also fixes the default-board case (analyst board no longer
+opens on planes) since first-run seeds via the same `applyPreset`.
+Acceptance:
+- [ ] `layersForLayout` unit-tested: Intelligence → {instability,conflict,acled,protests,military-air} signals ON, all core off; Aviation → planes+cameras core ON + {gpsJamming,military-air,airports} signals.
+- [ ] Every built-in persona yields ≥1 ON map layer (regression guard against a persona with a blank map).
+- [ ] Applying Emergency Response turns planes/cameras OFF and hazard layers ON on the globe (screenshot before/after).
+- [ ] Gate green: `npx tsc --noEmit && npm test`.
+
+### M13: Honest empty & freshness states
+Status: [ ] todo
+Spec: 2nd-review finding #2 (flagged 5/5) + freshness (3/5).
+Also fold in a bug M12 surfaced: the GDACS feed carries duplicate event ids → React "two children
+with the same key" warning (×many) in the Disaster-alerts list. Dedupe by id in `lib/signals/gdacs.ts`
+(or use a composite row key in `signals.tsx`).
+Three distinct empty states instead of one grey "Nothing in World.": genuinely-quiet ("No active
+conflicts · checked 2m ago ✔"), feed-failed ("Feed unavailable — retrying"), dormant/keyed ("ACLED
+not connected — needs credentials"). Widget header chip shows last-successful-fetch age + a status
+dot, not the poll cadence. (ACLED provisioning itself → Needs from Sampo.)
+
+### M14: Mobile map-first layout + palette FAB
+Status: [ ] todo
+Spec: 2nd-review finding #3 (2 BLOCKERs from the mobile critic).
+At ≤768px the fixed-width `.tn-cw-*` columns crush the map to ~0px and ⌘K (only nav) is display:none
+on touch. Re-point the orphaned mobile CSS (currently targets old `.tn-rail`/`.tn-dossier`) at
+`.tn-cw-*`: full-bleed map + widgets in a swipe-up bottom sheet, plus a thumb-reachable palette FAB.
+
+### M15: Scannable list rows + severity ramp + map legend
+Status: [ ] todo
+Spec: 2nd-review finding #4 + ingestibility quick-wins (4/5).
+One row grammar across every list widget: `[severity/magnitude, colour-ramped, dominant] · [name] ·
+[age, muted, right]`. Drop the leaked "2.8" instability prefix; decode military-flight rows to
+altitude + country. One severity colour ramp (grey→amber→red) reserved for magnitude only. A
+persistent map legend keyed to the active layers (the 984/161 clusters + yellow markers are unlabelled).
+
+### M16: Country dossier "Active events" + mount daily digest
+Status: [ ] todo
+Spec: 2nd-review finding #5 + competitor #8 / mobile #3.
+Fill the dossier's "Active events" (COMING SOON) by spatially filtering loaded signal features to the
+country polygon (data is one bbox-test away). Mount the already-built-but-orphaned `DailyBrief`/
+`TopEventsPanel` as a "top 5 right now" digest strip for the 15-second glance.
+
+### M17: Close the data gaps (enrichment)
+Status: [ ] todo
+Spec: 2nd-review missing-data table.
+NASA FIRMS global wildfires + FRP (EONET fires are US-only); surface USGS PAGER alert / depth /
+tsunami (already fetched, discarded); global cyclone basins (JTWC/GDACS-TC — NHC is Atlantic-only,
+contradicts the BAVI-26 alert); real flood source (GDACS FL / Copernicus / GloFAS); add dormant
+ReliefWeb to the Emergency board. One adapter + one registry entry + one fixture test each.
+
+### M18: User-defined alerts / watchlist rules (moat)
+Status: [ ] todo
+Spec: competitor #4 (pairs with M7 replay).
+Turn "Saved places" (bookmarks) into persisted alert rules (geofence / threshold / new-event-near-X)
+that fire a browser/Push notification — the feature that separates a paid tool from a live curiosity.
+
+---
+
 ## Needs from Sampo
 - Open the two old-code PRs (gh token here can't create PRs):
   - /compare/main...feat/widget-width-resize (ready)
@@ -92,3 +166,5 @@ Spec: Investor C10 / Journalist C7.
 - M5 (f007132) real markets: keyless commodities + equities (Yahoo). verified: Brent/WTI/Gold live.
 - M6 (4de1aad) persisted series + market-row sparklines.
 - M8 CSV/GeoJSON export: serializers + WidgetFrame menu + Markets/Events/dossier. verified: Export CSV in menu.
+- M12 persona→map-layer sync: pure layersForLayout() + applyPreset drives layersStore/signalsStore.
+  verified live: Emergency board renders hazards not planes; analyst default no longer plane-swarmed. +4 tests (631 total).

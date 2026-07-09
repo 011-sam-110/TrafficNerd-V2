@@ -2,6 +2,9 @@
 import { createDefaultLayout, type ShellLayout, type SegmentId } from "@/lib/console/types";
 import { addWidget, setStage } from "@/lib/console/reducers";
 import { shellLayoutStore } from "@/lib/console/store";
+import { layersStore } from "@/lib/layers";
+import { signalsStore } from "@/lib/signals/store";
+import { layersForLayout } from "@/lib/console/presetLayers";
 import { loadPersisted, savePersisted } from "@/lib/shell/persist";
 
 // A preset is a persona: a curated workspace aimed at ONE kind of user. `blurb` is the
@@ -121,9 +124,15 @@ function loadCustom(): CustomPreset[] { return loadPersisted<CustomPreset[]>(KEY
 
 export function applyPreset(presetId: string): void {
   const built = BUILTIN_PRESETS.find((p) => p.id === presetId);
-  if (built) { shellLayoutStore.replace(built.build()); return; }
-  const custom = loadCustom().find((p) => p.id === presetId);
-  if (custom) shellLayoutStore.replace(custom.layout);
+  const layout = built ? built.build() : loadCustom().find((p) => p.id === presetId)?.layout;
+  if (!layout) return;
+  shellLayoutStore.replace(layout);
+  // Drive the globe to match the board: the persona's widgets decide which core +
+  // signal layers are lit, so switching persona actually re-skins the map (not just
+  // the side rail). See lib/console/presetLayers.ts.
+  const { core, signals } = layersForLayout(layout);
+  layersStore.applyExact(core);
+  signalsStore.applyExact(signals);
 }
 
 export function saveCustomPreset(title: string): void {
