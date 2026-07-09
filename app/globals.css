@@ -1159,9 +1159,14 @@ a { color: var(--tn-accent); }
 /* ===========================================================================
    ConsoleWorkspace + Segment — Task 7
    =========================================================================== */
-/* Full-bleed: the map fills the shell; the segments float over it as glass panels. */
+/* The map is a framed panel sized to the CENTRE box: it insets by the segment
+   size-vars so it fills only the gap between the floating panels and reflows the
+   instant --tn-lw/--tn-rw/--tn-bh change on a resize drag (WorldMap re-fits via a
+   ResizeObserver). The segments still float over the shell as glass panels. */
 .tn-cw-shell{position:absolute;inset:var(--tn-topbar-h) 0 0 0;overflow:hidden}
-.tn-cw-stage{position:absolute;inset:0;z-index:0}
+.tn-cw-stage{position:absolute;top:10px;left:calc(var(--tn-lw) + 20px);
+  right:calc(var(--tn-rw) + 20px);bottom:calc(var(--tn-bh) + 20px);z-index:0;
+  border-radius:12px;overflow:hidden;box-shadow:0 6px 22px rgba(20,28,38,.16)}
 .tn-cw-col{position:absolute;top:10px;bottom:10px;z-index:15;overflow:hidden;display:flex}
 .tn-cw-col-left{left:10px}
 .tn-cw-col-right{right:10px}
@@ -1180,9 +1185,10 @@ a { color: var(--tn-accent); }
 .tn-grip-l{left:calc(10px + var(--tn-lw))}
 .tn-grip-r{right:calc(10px + var(--tn-rw))}
 .tn-grip-b{left:calc(20px + var(--tn-lw));right:calc(20px + var(--tn-rw));bottom:calc(10px + var(--tn-bh));height:7px;cursor:row-resize}
-/* Lift the MapLibre zoom + attribution off the floating panels. */
-.maplibregl-ctrl-bottom-right{right:calc(var(--tn-rw,0px) + 16px);bottom:calc(var(--tn-bh,0px) + 14px)}
-.maplibregl-ctrl-bottom-left{bottom:calc(var(--tn-bh,0px) + 14px);left:calc(var(--tn-lw,0px) + 16px)}
+/* The map is now an inset panel, so its zoom + attribution controls sit at the
+   inset container's own corners — no need to push them off the side panels. */
+.maplibregl-ctrl-bottom-right{right:12px;bottom:12px}
+.maplibregl-ctrl-bottom-left{bottom:12px;left:12px}
 
 /* ===========================================================================
    Widget body — shared table primitives (Task 9 Aviation widget)
