@@ -7,12 +7,13 @@
 // reuses lib/basemaps + /api/geocode via the /api/geolocate route. Honest by
 // design — everything is labelled "estimated", with the method and a confidence.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { BASEMAPS } from "@/lib/basemaps";
-import type { GeolocateResponse, ResolvedCandidate, GeolocateMethod } from "@/lib/geolocate/types";
+import { useGeolocate } from "@/lib/geolocate/useGeolocate";
+import type { ResolvedCandidate, GeolocateMethod } from "@/lib/geolocate/types";
 import "./locate.css";
 
 const METHOD_LABEL: Record<GeolocateMethod, string> = {
@@ -21,74 +22,23 @@ const METHOD_LABEL: Record<GeolocateMethod, string> = {
 };
 
 export default function LocatePage() {
-  const [file, setFile] = useState<File | null>(null);
-  const [imageUrl, setImageUrl] = useState("");
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // The upload → /api/geolocate → ranked-candidates state machine is shared with the
+  // console `locate` widget via useGeolocate; this page keeps its own inset map below.
+  const {
+    imageUrl,
+    previewUrl,
+    loading,
+    error,
+    result,
+    selected,
+    candidates,
+    canLocate,
+    pickFile,
+    onUrlChange,
+    locate,
+    select,
+  } = useGeolocate();
   const [dragging, setDragging] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<GeolocateResponse | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-
-  const candidates = result?.candidates ?? [];
-
-  // ---- Image selection -----------------------------------------------------
-  const pickFile = useCallback((f: File | null) => {
-    if (!f) return;
-    setFile(f);
-    setImageUrl("");
-    setResult(null);
-    setError(null);
-    setSelected(null);
-    setPreviewUrl((old) => {
-      if (old?.startsWith("blob:")) URL.revokeObjectURL(old);
-      return URL.createObjectURL(f);
-    });
-  }, []);
-
-  const onUrlChange = useCallback((v: string) => {
-    setImageUrl(v);
-    setFile(null);
-    setResult(null);
-    setError(null);
-    setSelected(null);
-    setPreviewUrl((old) => {
-      if (old?.startsWith("blob:")) URL.revokeObjectURL(old);
-      return v.trim() ? v.trim() : null;
-    });
-  }, []);
-
-  // Revoke any blob URL on unmount.
-  useEffect(() => {
-    return () => {
-      if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ---- Locate --------------------------------------------------------------
-  const locate = useCallback(async () => {
-    if (!file && !imageUrl.trim()) return;
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    setSelected(null);
-    try {
-      const form = new FormData();
-      if (file) form.append("image", file);
-      else form.append("imageUrl", imageUrl.trim());
-
-      const res = await fetch("/api/geolocate", { method: "POST", body: form });
-      const body = (await res.json()) as GeolocateResponse;
-      setResult(body);
-      if (body.error && body.candidates.length === 0) setError(body.error);
-      else if (body.candidates.length > 0) setSelected(0);
-    } catch {
-      setError("Could not reach the geolocation service. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [file, imageUrl]);
 
   return (
     <div className="loc-page">
@@ -116,7 +66,7 @@ export default function LocatePage() {
             pickFile={pickFile}
             locate={locate}
             loading={loading}
-            canLocate={Boolean(file || imageUrl.trim())}
+            canLocate={canLocate}
             method={result?.method}
           />
 
@@ -133,7 +83,7 @@ export default function LocatePage() {
                     c={c}
                     rank={i + 1}
                     active={selected === i}
-                    onClick={() => setSelected(i)}
+                    onClick={() => select(i)}
                   />
                 ))}
               </div>
@@ -141,7 +91,7 @@ export default function LocatePage() {
           )}
         </section>
 
-        <ResultMap candidates={candidates} selected={selected} onSelect={setSelected} />
+        <ResultMap candidates={candidates} selected={selected} onSelect={select} />
       </div>
     </div>
   );
