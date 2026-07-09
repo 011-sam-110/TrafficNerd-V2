@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { groupCommands, GROUP_ORDER, type Command } from "@/lib/console/paletteGroups";
+import { groupCommands, columnize, GROUP_ORDER, type Command, type GroupedCommands } from "@/lib/console/paletteGroups";
 
 const cmd = (id: string, label: string, hint: string, group: Command["group"]): Command =>
   ({ id, label, hint, group, run: () => {} });
@@ -72,4 +72,48 @@ test("partial matches across groups keep only the non-empty groups, in order", (
   const g = groupCommands(cmds, "wor");
   // "wor" hits World (Profiles) + Worthing (Go to) + world (Layer sets), in GROUP_ORDER.
   expect(g.map((x) => x.group)).toEqual(["Profiles", "Go to", "Layer sets"]);
+});
+
+// ── columnize: lay ordered sections into side-by-side mega-menu columns ──────
+const sec = (group: Command["group"], n: number): GroupedCommands =>
+  ({ group, commands: Array.from({ length: n }, (_, i) => cmd(`${group}-${i}`, `${group} ${i}`, "", group)) });
+
+test("columnize preserves section order when read column-major", () => {
+  const sections = [sec("Profiles", 4), sec("Go to", 4), sec("Add widget", 4), sec("Stage", 4)];
+  const cols = columnize(sections, 2);
+  const order = cols.flat().map((s) => s.group);
+  expect(order).toEqual(["Profiles", "Go to", "Add widget", "Stage"]);
+});
+
+test("columnize fills columns with no gaps and never splits a section", () => {
+  const sections = [sec("Profiles", 40), sec("Go to", 2), sec("Stage", 2)]; // one huge section
+  const cols = columnize(sections, 3);
+  expect(cols.every((c) => c.length > 0)).toBe(true); // no empty column
+  // every section appears exactly once, intact
+  const groups = cols.flat().map((s) => s.group).sort();
+  expect(groups).toEqual(["Go to", "Profiles", "Stage"]);
+});
+
+test("columnize caps the column count at the number of sections", () => {
+  const cols = columnize([sec("Profiles", 3), sec("Go to", 3)], 5);
+  expect(cols).toHaveLength(2);
+});
+
+test("columnize with one column keeps everything in a single column", () => {
+  const sections = [sec("Profiles", 3), sec("Go to", 3), sec("Stage", 3)];
+  const cols = columnize(sections, 1);
+  expect(cols).toHaveLength(1);
+  expect(cols[0].map((s) => s.group)).toEqual(["Profiles", "Go to", "Stage"]);
+});
+
+test("columnize returns no columns for no sections", () => {
+  expect(columnize([], 3)).toEqual([]);
+});
+
+test("columnize roughly balances even sections across columns", () => {
+  const sections = [sec("Profiles", 3), sec("Go to", 3), sec("Add widget", 3), sec("Stage", 3), sec("Scenarios", 3), sec("Appearance", 3)];
+  const cols = columnize(sections, 3);
+  expect(cols).toHaveLength(3);
+  // 6 equal sections into 3 columns → 2 sections each
+  expect(cols.map((c) => c.length)).toEqual([2, 2, 2]);
 });
