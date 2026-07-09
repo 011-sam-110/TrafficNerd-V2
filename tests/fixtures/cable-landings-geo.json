@@ -1,0 +1,65 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "virginia-beach-va-united-states",
+        "name": "Virginia Beach, VA, United States",
+        "is_tbd": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -76.05919805548162,
+          36.755008440641625
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "luanda-angola",
+        "name": "Luanda, Angola",
+        "is_tbd": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.234998,
+          -8.812663
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "bilbao-spain",
+        "name": "Bilbao, Spain",
+        "is_tbd": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -2.946163911940864,
+          43.26834394430466
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "orphan-station-nowhere",
+        "name": "Orphan Station, Nowhere",
+        "is_tbd": false
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          0.0,
+          0.0
+        ]
+      }
+    }
+  ]
+}

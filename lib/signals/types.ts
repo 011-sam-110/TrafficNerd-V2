@@ -78,6 +78,14 @@ export interface SignalMetric {
 export interface SignalSource {
   /** Stable id; also the dynamic route segment (/api/signals/<id>) + store key. */
   id: string;
+  /**
+   * Semantic layer kind. Most sources are transient EVENTS (earthquakes, storms,
+   * news) whose focus view renders magnitude/severity + a time window. Some are
+   * permanent ASSETS (submarine cables, landing stations) with no magnitude, no
+   * severity and no "when" — for those the focus view renders an asset schema
+   * (attributes + filters) instead of the event schema. Absent ⇒ "event".
+   */
+  kind?: "event" | "asset";
   /** Human label shown in the rail. */
   label: string;
   /** Rail grouping, e.g. "Natural hazards" / "Space weather". */

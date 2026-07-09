@@ -2,6 +2,10 @@ import { getSignal } from "@/lib/signals/registry";
 import type { SignalFeature } from "@/lib/signals/types";
 
 export const dynamic = "force-dynamic";
+// Most adapters are a single fast upstream call. A few (e.g. submarine cables,
+// which enriches ~700 keyless per-cable JSONs on a cold, 24h-cached load) need a
+// wider ceiling; this is a MAX, so cheap layers are unaffected.
+export const maxDuration = 60;
 
 // Generic signals proxy: GET /api/signals/<id> → getSignal(id).fetch().
 //

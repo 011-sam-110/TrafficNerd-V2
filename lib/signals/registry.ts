@@ -39,7 +39,7 @@ import {
 } from "@/lib/signals/eonet";
 import { AURORA_SOURCE } from "@/lib/signals/aurora";
 import { LAUNCHES_SOURCE } from "@/lib/signals/launches";
-import { CABLES_SOURCE } from "@/lib/signals/cables";
+import { CABLES_SOURCE, CABLE_LANDINGS_SOURCE } from "@/lib/signals/cables";
 import { GPS_JAMMING_SOURCE } from "@/lib/signals/gpsjam";
 import { NUCLEAR_SOURCE } from "@/lib/signals/nuclear";
 import { AIRPORTS_SOURCE } from "@/lib/signals/airports";
@@ -84,8 +84,9 @@ export const SIGNALS: SignalSource[] = [
   SPACE_WEATHER_SOURCE, // NOAA SWPC Kp/storm-scale status pin (keyless)
   // Space
   LAUNCHES_SOURCE,
-  // Infrastructure (cables = line layer, gpsJamming = fill layer)
+  // Infrastructure (cables = line layer + landing-station nodes, gpsJamming = fill layer)
   CABLES_SOURCE,
+  CABLE_LANDINGS_SOURCE,
   GPS_JAMMING_SOURCE,
   NUCLEAR_SOURCE,
   AIRPORTS_SOURCE,
