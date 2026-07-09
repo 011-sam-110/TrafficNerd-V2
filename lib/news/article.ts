@@ -4,7 +4,7 @@
 // on the publisher's main domain, e.g. bbc.com — NOT the feeds.* host). This is a
 // SEPARATE list from lib/proxy/allowlist.ts (which is camera hosts only).
 
-const NEWS_DOMAINS = ["bbc.com", "bbc.co.uk", "theguardian.com", "aljazeera.com", "npr.org"];
+const NEWS_DOMAINS = ["bbc.com", "bbc.co.uk", "theguardian.com", "aljazeera.com", "npr.org", "dw.com", "france24.com"];
 
 /** https + hostname is one of NEWS_DOMAINS or a subdomain of one. */
 export function isNewsArticleUrl(raw: string): boolean {
