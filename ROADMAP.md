@@ -118,11 +118,14 @@ density (segment 320→300, bottom 240→220, gap/pad 8→10, radius 8→10). Pr
 Acceptance: [x] no empty widget exceeds ~90px · [x] empty bottom reclaims map height · [x] gate green.
 
 ### M19: Full-bleed floating-panel map (the true immersive look)
-Status: [ ] todo
-Spec: 3rd-review agent A ship-order 3. Make the map a `position:absolute; inset:0` base under the top
-bar and float the three segments over it as translucent glass cards (Windy/ShadowBroker feel), instead
-of the current opaque rails that box the map. Reposition the 3 resize grips as absolute handles
-(explicit `tn-grip-l/-r/-b` classes) and lift MapLibre's zoom/attribution controls off the panels.
+Status: [x] done (2026-07-09, <this branch>) — VERIFIED at 1920×1080: the map fills the whole viewport
+edge-to-edge and the three segments float over it as translucent glass panels (Windy/ShadowBroker feel).
+Screenshot: persona-shots/m19_fullbleed_final.png.
+Spec: 3rd-review agent A ship-order 3. `.tn-cw-shell` map is now `position:absolute; inset:0` (z0) with
+the segments as absolute overlay columns (z15); segment track transparent; cards pinned light glass
+(rgba(255,255,255,.9) + backdrop-blur — not var(--tn-surface), which would break dark-theme ink). Grips
+became absolute `tn-grip-l/-r/-b` handles positioned off `--tn-lw/--tn-rw/--tn-bh`; MapLibre zoom +
+attribution lifted off the panels via the same vars. ⌘K, resize, share URLs, M12/M13/M14 all intact.
 
 ### M14: Widget data-viz — MetricBar + severity dots
 Status: [x] done (2026-07-09, <this branch>) — VERIFIED live: Earthquakes rows now carry a proportional
@@ -194,3 +197,5 @@ mount the orphaned `DailyBrief`/`TopEventsPanel` digest. (ACLED provisioning →
   segment 300/220 + gap/pad 10. verified 1920×1080: empty widgets ~90px, map +125px. 631 tests green.
 - M14 widget data-viz: SignalMetric descriptor + pure rowMetric() + <MetricBar> + severity dots wired into the
   generic signal row; earthquakes/EMSC/instability get bars, all else a colour dot. GDACS dedupe (errors 64→0). 637 tests.
+- M19 full-bleed immersive map: map is now the 100% base layer; segments float over it as glass panels; absolute
+  grips + lifted MapLibre controls off --tn-lw/--tn-rw/--tn-bh. verified 1920×1080. 637 tests green.
