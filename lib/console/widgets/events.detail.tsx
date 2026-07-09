@@ -2,9 +2,12 @@
 "use client";
 // Events focus view. Reuses the SAME feed pipeline as the docked widget
 // (useEventFeeds → projectEventFeed) but renders deep: a tier/type triage header,
-// a feed grouped by event type with honest per-domain metric lines joined back to
-// the raw SignalFeature props, and (Task 10/11) a recency chart, event map and export.
-import { useMemo } from "react";
+// a feed grouped by region OR hazard type with honest per-domain metric lines
+// joined back to the raw SignalFeature props, a recency chart, an event map, and
+// export. Rows are clickable — they fly the globe and open the same dossier a map
+// click would (lib/events/openEvent). Grouping + collapse state persist per widget
+// instance in `config` (shared with the compact widget via lib/events/opsConfig).
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import { EVENT_SOURCES } from "@/lib/events/sources";
 import { useEventFeeds } from "@/lib/widgets/useEventFeeds";
@@ -12,7 +15,8 @@ import { projectEventFeed, type FeedInput } from "@/lib/widgets/eventFeed";
 import { useScope } from "@/lib/shell/scope";
 import { useTimeWindow, windowMsFor } from "@/lib/shell/timeWindow";
 import { useNow } from "@/lib/shell/useNow";
-import { SEVERITY_COLOR, type SeverityTier, type EventType } from "@/lib/events/model";
+import { shellLayoutStore } from "@/lib/console/store";
+import { SEVERITY_COLOR, type SeverityTier, type NormalizedEvent } from "@/lib/events/model";
 import type { SignalFeature } from "@/lib/signals/types";
 import { countBy } from "@/lib/widgets/buckets";
 import { eventMetricLine } from "@/lib/widgets/eventMetrics";
@@ -21,11 +25,18 @@ import { Chart, type ChartPoint } from "@/components/Chart";
 import InsetMap from "@/components/InsetMap";
 import type { InsetPoint } from "@/lib/map/inset";
 import { toCsv, toGeoJson, downloadText, exportFilename } from "@/lib/export";
+import { groupByRegion, groupByType, type EventGroup } from "@/lib/events/regions";
+import { readGroupBy, readCollapsed, isCollapsed, toggleCollapsed, type GroupBy } from "@/lib/events/opsConfig";
+import { openEvent } from "@/lib/events/openEvent";
 
 const TIERS: SeverityTier[] = ["S4", "S3", "S2", "S1", "S0"];
-const TYPE_LABEL: Partial<Record<EventType, string>> = { quake: "Quakes", disaster: "Disasters", cyclone: "Cyclones" };
+const GROUP_TABS: { id: GroupBy; label: string }[] = [
+  { id: "region", label: "By region" },
+  { id: "type", label: "By hazard" },
+  { id: "none", label: "Flat" },
+];
 
-export default function EventsDetail({ config }: WidgetDetailProps) {
+export default function EventsDetail({ instanceId, config }: WidgetDetailProps) {
   const scope = useScope();
   const win = useTimeWindow();
   const now = useNow(60_000);
@@ -36,25 +47,47 @@ export default function EventsDetail({ config }: WidgetDetailProps) {
     [bySource],
   );
   const minTier = ((config.minTier as string) ?? "S1") as SeverityTier;
+  const groupBy = readGroupBy(config);
+  const collapsed = readCollapsed(config);
 
   const projected = useMemo(
     () => projectEventFeed(inputs, scope, windowMsFor(win), now, { types: null, minTier, sort: "severity" }),
     [inputs, scope, win, now, minTier],
   );
 
-  // Join back to raw props for per-domain metrics (lost in NormalizedEvent).
-  const featureById = useMemo(() => {
-    const m = new Map<string, SignalFeature>();
-    for (const s of EVENT_SOURCES) for (const f of bySource[s.id] ?? []) m.set(f.id, f);
+  // Join back to raw props for per-domain metrics (lost in NormalizedEvent) AND the
+  // dossier a row-click opens.
+  const featureIndex = useMemo(() => {
+    const m = new Map<string, { feature: SignalFeature; sourceLabel: string }>();
+    for (const s of EVENT_SOURCES) for (const f of bySource[s.id] ?? []) m.set(f.id, { feature: f, sourceLabel: s.label });
     return m;
   }, [bySource]);
 
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (flashTimer.current) clearTimeout(flashTimer.current); }, []);
+  const onOpen = useCallback((e: NormalizedEvent) => {
+    const hit = featureIndex.get(e.id);
+    openEvent(e, hit?.feature, hit?.sourceLabel);
+    setFlashId(e.id);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlashId(null), 1200);
+  }, [featureIndex]);
+  const onSelectId = useCallback((id: string) => {
+    const e = projected.rows.find((r) => r.id === id);
+    if (e) onOpen(e);
+  }, [projected.rows, onOpen]);
+
+  const setGroupBy = (g: GroupBy) => shellLayoutStore.configure(instanceId, { evGroupBy: g });
+  const onToggleGroup = (key: string) =>
+    shellLayoutStore.configure(instanceId, { evCollapsed: toggleCollapsed(collapsed, groupBy, key) });
+
   const tierCounts = useMemo(() => countBy(projected.rows, (e) => e.severity.tier), [projected.rows]);
-  const groups = useMemo(() => {
-    const by = new Map<EventType, typeof projected.rows>();
-    for (const e of projected.rows) { const g = by.get(e.type) ?? []; g.push(e); by.set(e.type, g); }
-    return [...by.entries()];
-  }, [projected.rows]);
+  const groups: EventGroup[] = useMemo(() => {
+    if (groupBy === "region") return groupByRegion(projected.rows);
+    if (groupBy === "type") return groupByType(projected.rows);
+    return [{ key: "all", label: "All events", events: projected.rows }];
+  }, [groupBy, projected.rows]);
 
   const recency: ChartPoint[] = useMemo(() => {
     const ts = projected.rows
@@ -79,10 +112,10 @@ export default function EventsDetail({ config }: WidgetDetailProps) {
   const exportRows = useMemo(
     () => projected.rows.map((e) => ({
       tier: e.severity.tier, type: e.type, title: e.title, place: e.place.name,
-      metric: eventMetricLine(e.type, featureById.get(e.id)?.props),
+      metric: eventMetricLine(e.type, featureIndex.get(e.id)?.feature.props),
       lat: e.geo.lat, lon: e.geo.lon, occurredAt: e.occurredAt ?? "",
     })),
-    [projected.rows, featureById],
+    [projected.rows, featureIndex],
   );
   const exportGeo = useMemo(
     () => projected.rows.map((e) => ({ lat: e.geo.lat, lon: e.geo.lon, properties: { tier: e.severity.tier, type: e.type, title: e.title } })),
@@ -111,9 +144,9 @@ export default function EventsDetail({ config }: WidgetDetailProps) {
             : <p className="tn-w-empty">No timestamped events in the window.</p>}
         </div>
         <div className="tn-evd-panel">
-          <h3 className="tn-evd-group-h">Locations</h3>
+          <h3 className="tn-evd-group-h">Locations · click a dot to fly</h3>
           {mapPoints.length > 0
-            ? <InsetMap points={mapPoints} height={220} />
+            ? <InsetMap points={mapPoints} height={220} onSelect={onSelectId} />
             : <p className="tn-w-empty">No mappable events right now.</p>}
         </div>
       </div>
@@ -123,24 +156,65 @@ export default function EventsDetail({ config }: WidgetDetailProps) {
         <p className="tn-w-empty">No events above {minTier} in {scope.label}.</p>
       )}
 
-      {groups.map(([type, rows]) => (
-        <section key={type} className="tn-evd-group">
-          <h3 className="tn-evd-group-h">{TYPE_LABEL[type] ?? type} · {rows.length}</h3>
-          <ul className="tn-evd-list">
-            {rows.map((e) => {
-              const metric = eventMetricLine(e.type, featureById.get(e.id)?.props);
-              return (
-                <li key={e.id}>
-                  <span className="tn-w-sev" style={{ background: SEVERITY_COLOR[e.severity.tier] }}>{e.severity.tier}</span>{" "}
-                  <b>{e.title}</b> <span className="tn-w-place">{e.place.name}</span>
-                  {metric && <span className="tn-evd-metric"> · {metric}</span>}
-                  {e.link && <a className="tn-evd-src" href={e.link} target="_blank" rel="noreferrer"> source ↗</a>}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ))}
+      {projected.shown > 0 && (
+        <div className="tn-evd-toolbar">
+          <div className="tn-ev-tabs" role="tablist" aria-label="Group events by">
+            {GROUP_TABS.map((t) => (
+              <button
+                key={t.id}
+                role="tab"
+                aria-selected={groupBy === t.id}
+                className={`tn-ev-tab${groupBy === t.id ? " is-active" : ""}`}
+                onClick={() => setGroupBy(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {groups.map((g) => {
+        const open = groupBy === "none" || !isCollapsed(collapsed, groupBy, g.key);
+        return (
+          <section key={g.key} className="tn-evd-group">
+            {groupBy !== "none" && (
+              <button
+                type="button"
+                className="tn-evd-group-toggle"
+                aria-expanded={open}
+                onClick={() => onToggleGroup(g.key)}
+              >
+                <span className={`tn-ev-chev${open ? " is-open" : ""}`} aria-hidden>▸</span>
+                <span className="tn-evd-group-h">{g.label}</span>
+                <span className="tn-ev-group-count">{g.events.length}</span>
+              </button>
+            )}
+            {open && (
+              <ul className="tn-evd-list">
+                {g.events.map((e) => {
+                  const metric = eventMetricLine(e.type, featureIndex.get(e.id)?.feature.props);
+                  return (
+                    <li key={e.id}>
+                      <button
+                        type="button"
+                        className={`tn-evd-rowbtn${flashId === e.id ? " is-flash" : ""}`}
+                        onClick={() => onOpen(e)}
+                        title="Click to fly the map here and open the dossier"
+                      >
+                        <span className="tn-w-sev" style={{ background: SEVERITY_COLOR[e.severity.tier] }}>{e.severity.tier}</span>{" "}
+                        <b>{e.title}</b> <span className="tn-w-place">{e.place.name}</span>
+                        {metric && <span className="tn-evd-metric"> · {metric}</span>}
+                      </button>
+                      {e.link && <a className="tn-evd-src" href={e.link} target="_blank" rel="noreferrer"> source ↗</a>}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        );
+      })}
 
       <footer className="tn-evd-foot">
         <div className="tn-evd-sources">
