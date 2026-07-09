@@ -7,9 +7,18 @@
 // a glanceable monitor card lives here, once, and is unit-tested. The component
 // and the per-signal fetch hook are dumb shells around it.
 
-import type { SignalFeature } from "@/lib/signals/types";
+import type { SignalFeature, SignalMetric } from "@/lib/signals/types";
 import { withinScope, type Scope } from "@/lib/shell/scope";
 import type { Alert, AlertSeverity } from "@/lib/console/alerts";
+
+export interface RowMetric {
+  /** Raw scalar (drives the bar fill). */
+  value: number;
+  /** [calm, extreme] normalisation domain from the source. */
+  domain: [number, number];
+  /** Pre-formatted label, e.g. "5.8", "88". */
+  label: string;
+}
 
 export interface SignalRow {
   id: string;
@@ -18,6 +27,27 @@ export interface SignalRow {
   magnitude?: number;
   ts?: string;
   link?: string;
+  /** Per-feature severity-ramp colour → the row's bar/dot. */
+  color?: string;
+  /** The source's declared metric resolved for this feature → a <MetricBar>. Absent ⇒ a dot. */
+  metric?: RowMetric;
+}
+
+/** Compact numeric label: integers bare, else one decimal. */
+function fmtMetric(v: number): string {
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
+/**
+ * Resolve a source's declared metric for one feature into a bar spec, or undefined
+ * when the source declares no metric or the field is missing/non-finite. PURE + unit-
+ * tested — reads the REAL field the source named (never the overloaded radius proxy).
+ */
+export function rowMetric(f: SignalFeature, metric?: SignalMetric): RowMetric | undefined {
+  if (!metric) return undefined;
+  const raw = metric.field === "magnitude" ? f.props?.magnitude : f.props?.[metric.field];
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined;
+  return { value: raw, domain: metric.domain, label: metric.unit ? `${fmtMetric(raw)}${metric.unit}` : fmtMetric(raw) };
 }
 
 export interface SignalProjection {
@@ -80,6 +110,7 @@ export function projectSignal(
   features: SignalFeature[],
   scope: Scope,
   config: SignalCardConfig,
+  metric?: SignalMetric,
 ): SignalProjection {
   const total = features.length;
   const scoped = features.filter((f) => withinScope(f.lat, f.lon, scope));
@@ -90,6 +121,8 @@ export function projectSignal(
     magnitude: magnitudeOf(f),
     ts: f.ts,
     link: f.link,
+    color: f.color,
+    metric: rowMetric(f, metric),
   }));
 
   const hasMagnitude = rows.some((r) => r.magnitude != null);

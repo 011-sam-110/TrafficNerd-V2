@@ -79,6 +79,7 @@ export const EARTHQUAKES_SOURCE: SignalSource = {
   color: "#f97316",
   refreshMs: 60_000, // USGS regenerates the summary feed ~minutely
   attribution: USGS_ATTRIBUTION,
+  metric: { field: "magnitude", domain: [2, 8] }, // Richter → magnitude bar (lime→red ramp)
   async fetch() {
     try {
       const res = await fetch(ENDPOINT, {

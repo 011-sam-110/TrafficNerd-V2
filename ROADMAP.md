@@ -124,16 +124,19 @@ bar and float the three segments over it as translucent glass cards (Windy/Shado
 of the current opaque rails that box the map. Reposition the 3 resize grips as absolute handles
 (explicit `tn-grip-l/-r/-b` classes) and lift MapLibre's zoom/attribution controls off the panels.
 
-### M14: Widget data-viz — MetricBar / SeverityChip primitive
-Status: [ ] todo
-Spec: 3rd-review agent B. Root cause: `projectSignal()` (`signalCard.ts`) drops `feature.color`
-(already severity-ramped) and `feature.props`, so every row is a grey number. Build one reusable
-`<MetricBar>` (+ `variant="chip"` SeverityChip) + a declared per-source `metric` descriptor in
-`types.ts`, thread `color`+`metric` through `SignalRow`, wire into the generic `signals.tsx` row →
-lifts ~30 widgets at once. Then GDACS severity chip + Earthquakes magnitude bar+depth, then the
-Instability leaderboard hero (ranked score bars + weighted factor breakdown + coverage badge).
-One severity ramp reserved for magnitude; honest dot/chip where no scalar exists (fires/news).
-Includes the GDACS duplicate-key fix M12 surfaced (dedupe in `lib/signals/gdacs.ts`).
+### M14: Widget data-viz — MetricBar + severity dots
+Status: [x] done (2026-07-09, <this branch>) — VERIFIED live: Earthquakes rows now carry a proportional
+lime→red magnitude bar; GDACS Disaster-alerts + Wildfires rows carry a Green/Orange/Red severity dot;
+the leaked grey magnitude number is gone. GDACS dedupe dropped console errors 64→0.
+Screenshot: persona-shots/m14_emergency_metricbars.png.
+Spec: 3rd-review agent B. `projectSignal()` dropped `feature.color` (already severity-ramped) so every
+row was a grey number. Added a declared per-source `metric` descriptor (`SignalMetric` in types.ts) +
+a pure `rowMetric()`, threaded `color`+`metric` through `SignalRow`, built `<MetricBar>` and wired the
+generic `signals.tsx` row (bar when a source declares a metric — earthquakes/EMSC/instability — else a
+severity-coloured dot from `feature.color`). Honest: no bar where a source declares no real scalar
+(GDACS/fires get a dot, not the fake radius proxy). +6 tests. Also deduped GDACS by id (the M12 key bug).
+Follow-ups (M14b, deferred): SeverityChip variant for GDACS (glyph+RED/ORANGE pill), Earthquakes depth
+in the meta line, the Instability leaderboard hero (ranked score bars + weighted factor breakdown).
 
 ### M15: Data depth — surface dropped upstream fields
 Status: [ ] todo
@@ -189,3 +192,5 @@ mount the orphaned `DailyBrief`/`TopEventsPanel` digest. (ACLED provisioning →
   verified live: Emergency board renders hazards not planes; analyst default no longer plane-swarmed. +4 tests (631 total).
 - M13 dead-space + density: WidgetFrame maxHeight + content-height body; bottom dock collapse-when-empty/hug-content;
   segment 300/220 + gap/pad 10. verified 1920×1080: empty widgets ~90px, map +125px. 631 tests green.
+- M14 widget data-viz: SignalMetric descriptor + pure rowMetric() + <MetricBar> + severity dots wired into the
+  generic signal row; earthquakes/EMSC/instability get bars, all else a colour dot. GDACS dedupe (errors 64→0). 637 tests.

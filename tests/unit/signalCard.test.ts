@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import type { SignalFeature } from "@/lib/signals/types";
-import { projectSignal } from "@/lib/console/signals/signalCard";
+import type { SignalFeature, SignalMetric } from "@/lib/signals/types";
+import { projectSignal, rowMetric } from "@/lib/console/signals/signalCard";
 import { WORLD_SCOPE, type Scope } from "@/lib/shell/scope";
 
 const sf = (over: Partial<SignalFeature>): SignalFeature => ({
@@ -81,5 +81,42 @@ describe("projectSignal", () => {
     expect(r.rows).toHaveLength(10);
     expect(r.shown).toBe(80);
     expect(r.rows[0].magnitude).toBe(79); // highest first
+  });
+
+  it("threads feature colour and a resolved metric onto rows", () => {
+    const metric: SignalMetric = { field: "magnitude", domain: [2, 8] };
+    const r = projectSignal([
+      sf({ id: "q", title: "M5.8", color: "#dc2626", props: { magnitude: 5.8 } }),
+    ], WORLD_SCOPE, {}, metric);
+    expect(r.rows[0].color).toBe("#dc2626");
+    expect(r.rows[0].metric).toEqual({ value: 5.8, domain: [2, 8], label: "5.8" });
+  });
+
+  it("leaves metric undefined when the source declares none (dot fallback)", () => {
+    const r = projectSignal([sf({ id: "a", color: "#16a34a", props: { magnitude: 3 } })], WORLD_SCOPE, {});
+    expect(r.rows[0].color).toBe("#16a34a");
+    expect(r.rows[0].metric).toBeUndefined();
+  });
+});
+
+describe("rowMetric", () => {
+  const m = (over: Partial<SignalMetric> = {}): SignalMetric => ({ field: "magnitude", domain: [2, 8], ...over });
+
+  it("reads the DECLARED field, not the overloaded radius proxy", () => {
+    // instability's props.magnitude is a score/10 proxy; the metric names `score`.
+    const f = sf({ props: { magnitude: 8.8, score: 88 } });
+    expect(rowMetric(f, m({ field: "score", domain: [0, 100] }))).toEqual({ value: 88, domain: [0, 100], label: "88" });
+  });
+
+  it("formats integers bare and non-integers to one decimal, with an optional unit", () => {
+    expect(rowMetric(sf({ props: { magnitude: 6 } }), m())!.label).toBe("6");
+    expect(rowMetric(sf({ props: { magnitude: 5.83 } }), m())!.label).toBe("5.8");
+    expect(rowMetric(sf({ props: { maxWindKt: 120 } }), m({ field: "maxWindKt", unit: "kt" }))!.label).toBe("120kt");
+  });
+
+  it("returns undefined for no metric, missing field, or a non-finite value", () => {
+    expect(rowMetric(sf({ props: { magnitude: 5 } }), undefined)).toBeUndefined();
+    expect(rowMetric(sf({ props: {} }), m())).toBeUndefined();
+    expect(rowMetric(sf({ props: { magnitude: Number.NaN } }), m())).toBeUndefined();
   });
 });

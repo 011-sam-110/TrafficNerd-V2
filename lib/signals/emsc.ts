@@ -73,6 +73,7 @@ export const EMSC_SOURCE: SignalSource = {
   color: "#f59e0b",
   refreshMs: 60_000,
   attribution: EMSC_ATTRIBUTION,
+  metric: { field: "magnitude", domain: [2, 8] }, // Richter → magnitude bar
   async fetch() {
     try {
       const res = await fetch(`${ENDPOINT}?limit=500&format=json`, {

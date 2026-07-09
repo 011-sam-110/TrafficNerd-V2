@@ -58,6 +58,22 @@ export interface SignalFeature {
   ts?: string;
 }
 
+/**
+ * Declares the scalar that drives a monitor row's <MetricBar>. Kept separate from
+ * the overloaded `props.magnitude` (which is a Richter value for quakes but a rescaled
+ * radius proxy for GDACS/cyclones/instability) so a bar never mislabels a source: each
+ * source names the REAL field + its [calm, extreme] domain. Sources without a metric
+ * render a severity-coloured dot instead of a bar (honest — no invented scale).
+ */
+export interface SignalMetric {
+  /** props key holding the raw scalar, or the literal "magnitude". */
+  field: string;
+  /** [calm, extreme] — normalises the bar fill to 0..1. */
+  domain: [number, number];
+  /** Optional unit suffix on the numeric label (e.g. "kt"). */
+  unit?: string;
+}
+
 /** A registered signal layer: metadata + a pure-ish fetch that yields points. */
 export interface SignalSource {
   /** Stable id; also the dynamic route segment (/api/signals/<id>) + store key. */
@@ -72,6 +88,8 @@ export interface SignalSource {
   refreshMs: number;
   /** Mandatory upstream credit, shown in the rail and the dossier. */
   attribution: string;
+  /** Optional: the scalar → magnitude bar in the monitor row. Omit for a plain dot. */
+  metric?: SignalMetric;
   /** Fetch + normalise upstream into points. MUST resolve (never reject) to []. */
   fetch(): Promise<SignalFeature[]>;
 }

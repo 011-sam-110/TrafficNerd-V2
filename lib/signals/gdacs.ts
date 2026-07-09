@@ -68,6 +68,7 @@ const GDACS_MAG: Record<string, number> = { Green: 3, Orange: 6, Red: 8 };
 /** Pure: GDACS FeatureCollection → SignalFeature[]. Skips features without coords/id. */
 export function normalizeGdacs(geojson: { features?: GdacsFeature[] }): SignalFeature[] {
   const out: SignalFeature[] = [];
+  const seen = new Set<string>(); // GDACS repeats the same event+episode across entries — dedupe by id
   for (const f of geojson.features ?? []) {
     const p = f.properties ?? {};
     const c = f.geometry?.coordinates;
@@ -79,10 +80,13 @@ export function normalizeGdacs(geojson: { features?: GdacsFeature[] }): SignalFe
     const eventId = (p.eventid ?? "").toString().trim();
     if (!eventId) continue;
     const episodeId = (p.episodeid ?? "").toString().trim();
+    const id = `gdacs:${eventId}:${episodeId}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
     const typeLabel = gdacsEventLabel(p.eventtype ?? "");
     const level = p.alertlevel ?? "Unknown";
     out.push({
-      id: `gdacs:${eventId}:${episodeId}`,
+      id,
       lat,
       lon,
       title: p.name?.trim() || `${typeLabel}${p.country ? ` in ${p.country}` : ""}`,
