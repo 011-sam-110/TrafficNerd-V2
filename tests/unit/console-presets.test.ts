@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { BUILTIN_PRESETS, DEFAULT_PRESET_ID } from "@/lib/console/presets";
 import { SIGNALS } from "@/lib/signals/registry";
 
-const CORE_WIDGETS = new Set(["events", "news", "cameras", "aviation", "satellites", "markets", "headlines"]);
+const CORE_WIDGETS = new Set(["events", "news", "cameras", "aviation", "satellites", "markets", "headlines", "locate"]);
 const SIGNAL_WIDGETS = new Set(SIGNALS.map((s) => `signal:${s.id}`));
 
 // The persona lineup: one preset per major user type. Ids are stable (used by the

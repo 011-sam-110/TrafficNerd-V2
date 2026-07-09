@@ -1,0 +1,169 @@
+/* ===========================================================================
+   Locate widget — photo geolocation card + focus view. Widget-scoped styles only
+   (imported by lib/console/widgets/locate.tsx). Reuses the calm-LIGHT design tokens
+   from globals.css (--tn-*); adds nothing to the global sheet.
+   =========================================================================== */
+
+/* ---- Compact card ---- */
+.tnl { display: flex; flex-direction: column; gap: 8px; }
+
+.tnl-drop {
+  border: 1.5px dashed var(--tn-border-strong);
+  border-radius: 10px;
+  background: var(--tn-surface-2);
+  padding: 14px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.tnl-drop:hover { border-color: var(--tn-accent); }
+.tnl-drop.is-drag { border-color: var(--tn-accent); background: var(--tn-accent-soft); }
+.tnl-drop p { margin: 2px 0; font-size: 12.5px; color: var(--tn-text-muted); }
+.tnl-drop strong { color: var(--tn-text); font-weight: 600; }
+.tnl-hint { font-size: 11px !important; color: var(--tn-text-faint) !important; }
+
+.tnl-thumb {
+  display: block;
+  width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: var(--tn-surface-solid);
+}
+
+.tnl-controls { display: flex; gap: 8px; align-items: center; }
+.tnl-url {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--tn-border-strong);
+  border-radius: 8px;
+  background: var(--tn-surface-solid);
+  color: var(--tn-text);
+  font-size: 12.5px;
+  font-family: inherit;
+}
+.tnl-url:focus { outline: 2px solid var(--tn-accent-soft); border-color: var(--tn-accent); }
+
+.tnl-btn {
+  appearance: none;
+  border: 1px solid var(--tn-accent);
+  background: var(--tn-accent);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.tnl-btn:hover { background: var(--tn-accent-strong); border-color: var(--tn-accent-strong); }
+.tnl-btn:disabled { opacity: 0.5; cursor: default; }
+.tnl-btn-ghost { background: transparent; color: var(--tn-text-muted); border-color: var(--tn-border-strong); }
+.tnl-btn-ghost:hover { background: var(--tn-surface-2); color: var(--tn-text); border-color: var(--tn-border-strong); }
+
+.tnl-error {
+  font-size: 12px;
+  color: var(--tn-down);
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 8px;
+  padding: 7px 9px;
+  line-height: 1.4;
+}
+.tnl-note {
+  font-size: 11px;
+  color: var(--tn-text-muted);
+  background: var(--tn-accent-soft);
+  border-radius: 8px;
+  padding: 7px 9px;
+  line-height: 1.4;
+}
+
+.tnl-results { display: flex; flex-direction: column; gap: 6px; }
+.tnl-cand {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  gap: 9px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: var(--tn-surface-solid);
+  border: 1px solid var(--tn-border);
+  border-radius: 9px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.tnl-cand:hover { border-color: var(--tn-accent); }
+.tnl-cand.is-active { border-color: var(--tn-accent); box-shadow: 0 0 0 2px var(--tn-accent-soft); }
+
+.tnl-rank {
+  display: grid;
+  place-items: center;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--tn-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--tn-mono);
+}
+.tnl-cand-main { min-width: 0; }
+.tnl-cand-place { font-size: 13px; font-weight: 600; }
+.tnl-cand-sub { font-size: 11.5px; color: var(--tn-text-muted); }
+.tnl-conf { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ---- Focus / detail view ---- */
+.tnl-detail { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px; }
+.tnl-d-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tnl-d-title { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.tnl-d-sub { font-size: 12px; color: var(--tn-text-muted); max-width: 60ch; margin-top: 2px; }
+.tnl-d-method { font-size: 11.5px; color: var(--tn-text-faint); white-space: nowrap; }
+
+.tnl-d-grid { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; gap: 16px; align-items: start; }
+@media (max-width: 820px) { .tnl-d-grid { grid-template-columns: 1fr; } }
+
+.tnl-d-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.tnl-drop-lg { padding: 26px 16px; border-radius: 12px; }
+.tnl-drop-lg p { margin: 5px 0; font-size: 13px; }
+.tnl-thumb-lg { max-height: 260px; }
+
+.tnl-cand-lg { grid-template-columns: 26px 1fr auto; padding: 9px 12px; }
+.tnl-cand-lg .tnl-rank { width: 26px; height: 26px; font-size: 13px; }
+.tnl-cand-place { display: inline; }
+.tnl-cand-reason { display: block; font-size: 11.5px; color: var(--tn-text-faint); margin-top: 3px; line-height: 1.35; }
+.tnl-conf-col { text-align: right; }
+.tnl-conf-col .tnl-conf { font-size: 14px; }
+.tnl-conf-bar { width: 56px; height: 4px; border-radius: 2px; background: var(--tn-chip-bg); margin-top: 4px; overflow: hidden; }
+.tnl-conf-fill { display: block; height: 100%; background: var(--tn-accent); border-radius: 2px; }
+
+.tnl-d-map { position: relative; display: flex; flex-direction: column; gap: 8px; }
+.tnl-d-map-empty {
+  border: 1px solid var(--tn-border);
+  border-radius: 12px;
+  background: var(--tn-surface-2);
+  min-height: 200px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  color: var(--tn-text-faint);
+  font-size: 13px;
+  padding: 24px;
+}
+.tnl-d-export { display: flex; gap: 8px; }
+.tnl-d-export button {
+  appearance: none;
+  border: 1px solid var(--tn-border-strong);
+  background: var(--tn-surface-solid);
+  color: var(--tn-text-muted);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.tnl-d-export button:hover { border-color: var(--tn-accent); color: var(--tn-text); }
