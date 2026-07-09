@@ -20,7 +20,7 @@ import { sma, bollinger, rsi, volumeProfile, rescaleShape, anomalyFlags } from "
 import { toCsv, downloadText, exportFilename } from "@/lib/export";
 
 const EMPTY: MarketsPayload = { generatedAt: 0, sections: [] };
-type TableSortKey = "name" | "changePct" | "value";
+type TableSortKey = "name" | "changePct" | "value" | "ath";
 type ChartType = "candles" | "line";
 type IndKey = "ma" | "boll" | "vol" | "rsi" | "bench" | "anom";
 const IND_CHIPS: [IndKey, string][] = [["ma", "MA 50/200"], ["boll", "Bollinger"], ["vol", "Volume"], ["rsi", "RSI"], ["bench", "Benchmark"], ["anom", "Events"]];
@@ -43,6 +43,27 @@ function resample(src: number[], n: number): number[] {
   const span = src.length - 1, denom = n - 1 || 1;
   for (let i = 0; i < n; i++) out.push(src[Math.min(span, Math.max(0, Math.round((i * span) / denom)))]);
   return out;
+}
+
+/** Percent below the all-time high (0 = at ATH, −40 = 40% down). null if unknown. */
+function athPct(cur: number | undefined, ath: number | undefined): number | null {
+  if (cur == null || ath == null || !(ath > 0)) return null;
+  return (cur / ath - 1) * 100;
+}
+
+/** A 52-week (or period) range slider: where the current price sits between lo/hi. */
+function RangeBar({ lo, hi, cur }: { lo: number; hi: number; cur: number }) {
+  const pct = hi > lo ? Math.min(100, Math.max(0, ((cur - lo) / (hi - lo)) * 100)) : 50;
+  return (
+    <div className="tn-mk-rangebar" title={`low ${fmtNum(lo)} · now ${fmtNum(cur)} · high ${fmtNum(hi)}`}>
+      <span className="tn-mk-rb-end">{fmtNum(lo)}</span>
+      <span className="tn-mk-rb-track">
+        <span className="tn-mk-rb-fill" style={{ width: `${pct}%` }} />
+        <span className="tn-mk-rb-dot" style={{ left: `${pct}%` }} />
+      </span>
+      <span className="tn-mk-rb-end">{fmtNum(hi)}</span>
+    </div>
+  );
 }
 
 /** Adaptive-precision number formatting for prices/levels (large → 2dp, tiny → 6dp). */
@@ -123,6 +144,25 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
     () => railSections.find((s) => s.rows.some((r) => r.id === selId))?.key,
     [railSections, selId],
   );
+
+  // All-time-high enrichment for the "ATH %" column: batched, keyless, hard-cached
+  // server-side. Keyed by upper-cased chartSymbol (Yahoo ticker) so the table can
+  // show how far each asset trades below its historical peak.
+  const [athMap, setAthMap] = useState<Record<string, number>>({});
+  const athSyms = useMemo(
+    () => Array.from(new Set(allRows.map((r) => r.chartSymbol?.toUpperCase()).filter((s): s is string => !!s))),
+    [allRows],
+  );
+  useEffect(() => {
+    if (athSyms.length === 0) return;
+    let alive = true;
+    fetch(`/api/markets/ath?symbols=${encodeURIComponent(athSyms.join(","))}`)
+      .then((r) => r.json())
+      .then((d: { ath?: Record<string, number> }) => { if (alive) setAthMap(d.ath ?? {}); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [athSyms.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  const athOf = (r: MarketRow) => athPct(r.num, r.chartSymbol ? athMap[r.chartSymbol.toUpperCase()] : undefined);
 
   // Primary historical chart: keyless Yahoo v8 OHLC for the selected instrument +
   // range. Dormant-safe — the route never 5xxes, and a <2-candle result (dormant /
@@ -224,10 +264,11 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
       let d: number;
       if (sortKey === "name") d = (a.r.symbol ?? a.r.name).localeCompare(b.r.symbol ?? b.r.name);
       else if (sortKey === "changePct") d = (a.r.changePct ?? -Infinity) - (b.r.changePct ?? -Infinity);
+      else if (sortKey === "ath") d = (athOf(a.r) ?? -Infinity) - (athOf(b.r) ?? -Infinity);
       else d = (a.r.num ?? -Infinity) - (b.r.num ?? -Infinity);
       return d * sortDir;
     });
-  }, [railSections, sortKey, sortDir]);
+  }, [railSections, sortKey, sortDir, athMap]); // eslint-disable-line react-hooks/exhaustive-deps
   const toggleSort = (k: TableSortKey) => {
     if (sortKey === k) setSortDir((d) => (d === 1 ? -1 : 1));
     else { setSortKey(k); setSortDir(k === "name" ? 1 : -1); }
@@ -399,11 +440,18 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
                         <b>{fmtNum(range52.lo)} – {fmtNum(range52.hi)}</b>
                       </span>
                     )}
+                    {(() => { const a = selRow ? athOf(selRow) : null; return a == null ? null : (
+                      <span className="tn-mk-metric"><span className="tn-mk-metric-label">From ATH</span> <b>{a >= -0.05 ? "at high" : `${a.toFixed(1)}%`}</b></span>
+                    ); })()}
                     <span className="tn-mk-metric"><span className="tn-mk-metric-label">{candles.length} bars · Yahoo v8, delayed</span></span>
                   </div>
                 ) : chartPoints.length >= 2 ? (
                   <div className="tn-mk-chart-note">Live session (accumulating) — historical unavailable for this symbol.</div>
                 ) : null}
+
+                {hasHistory && range52 && candles.length > 0 && (
+                  <RangeBar lo={range52.lo} hi={range52.hi} cur={candles[candles.length - 1].c} />
+                )}
               </div>
             ) : (
               <p className="tn-w-empty">Select an instrument to see its chart.</p>
@@ -414,6 +462,7 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
                 <tr>
                   <th className="sortable" onClick={() => toggleSort("name")}>Instrument{sortMark("name")}</th>
                   <th className="sortable num" onClick={() => toggleSort("changePct")}>Change{sortMark("changePct")}</th>
+                  <th className="sortable num" onClick={() => toggleSort("ath")} title="Percent below all-time high">ATH %{sortMark("ath")}</th>
                   <th className="sortable num" onClick={() => toggleSort("value")}>Value{sortMark("value")}</th>
                 </tr>
               </thead>
@@ -429,11 +478,14 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
                             ? <span className={`tn-mk-chg ${r.changePct >= 0 ? "up" : "down"}`}>{r.changePct >= 0 ? "+" : ""}{r.changePct}%</span>
                             : <span className="tn-mk-row-name">—</span>}
                         </td>
+                        <td className="num">
+                          {(() => { const a = athOf(r); return a == null ? <span className="tn-mk-row-name">—</span> : <span className="tn-mk-ath">{a >= -0.05 ? "at high" : `${a.toFixed(1)}%`}</span>; })()}
+                        </td>
                         <td className="num">{r.value}</td>
                       </tr>
                       {isOpen && (
                         <tr className="tn-mk-drill">
-                          <td colSpan={3}>
+                          <td colSpan={4}>
                             <dl>
                               <dt>Value</dt><dd>{r.value}</dd>
                               {r.changePct != null && (<><dt>Change</dt><dd className={`tn-mk-chg ${r.changePct >= 0 ? "up" : "down"}`}>{r.changePct >= 0 ? "+" : ""}{r.changePct}%</dd></>)}

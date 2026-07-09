@@ -1586,6 +1586,13 @@ a { color: var(--tn-accent); }
 .tn-mk-ohlc-t { color: var(--tn-text-faint); }
 .tn-mk-rsi { margin-top: 4px; }
 .tn-mk-rsi-label { font-size: 10px; color: var(--tn-text-faint); text-transform: uppercase; letter-spacing: .05em; }
+/* 52-week range slider */
+.tn-mk-rangebar { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: var(--tn-text-faint); font-variant-numeric: tabular-nums; }
+.tn-mk-rb-end { flex: none; }
+.tn-mk-rb-track { position: relative; flex: 1 1 auto; height: 5px; border-radius: 999px; background: var(--tn-surface-2); }
+.tn-mk-rb-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: linear-gradient(90deg, var(--tn-border), var(--tn-accent)); }
+.tn-mk-rb-dot { position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%; background: #fff; border: 2px solid var(--tn-accent); transform: translate(-50%, -50%); }
+.tn-mk-ath { color: var(--tn-text-muted); font-variant-numeric: tabular-nums; }
 /* instrument table */
 .tn-mk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .tn-mk-table th { text-align: left; color: var(--tn-text-faint); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 4px 8px; border-bottom: 1px solid var(--tn-border); }

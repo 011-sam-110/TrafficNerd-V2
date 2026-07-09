@@ -5,6 +5,7 @@ import {
   parseEquities,
   parseMacro,
   parseYahooChart,
+  macroRowFromYahoo,
   type CoinGeckoMarket,
   type MarketsPayload,
   type MarketSection,
@@ -60,6 +61,15 @@ const YAHOO_EQUITIES: { y: string; symbol: string; name: string }[] = [
   { y: "AAPL", symbol: "AAPL", name: "Apple" },
   { y: "MSFT", symbol: "MSFT", name: "Microsoft" },
   { y: "NVDA", symbol: "NVDA", name: "Nvidia" },
+];
+// Keyless macro fallback: Yahoo's rate/vol indices quote the figure directly
+// (^TNX/^FVX/^TYX = the Treasury yield in %; ^VIX = the volatility level), so the
+// Macro panel is live without a FRED key. FRED (real series) is used when keyed.
+const YAHOO_MACRO: { y: string; symbol: string; name: string; unit: string }[] = [
+  { y: "^TNX", symbol: "US 10Y", name: "US 10-Yr Treasury Yield", unit: "%" },
+  { y: "^FVX", symbol: "US 5Y", name: "US 5-Yr Treasury Yield", unit: "%" },
+  { y: "^TYX", symbol: "US 30Y", name: "US 30-Yr Treasury Yield", unit: "%" },
+  { y: "^VIX", symbol: "VIX", name: "Volatility (VIX)", unit: "" },
 ];
 const yahooUrl = (sym: string) =>
   `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?interval=1d&range=1d`;
@@ -121,7 +131,9 @@ async function equitiesSection(): Promise<MarketSection> {
 async function macroSection(): Promise<MarketSection> {
   const key = (process.env.FRED_API_KEY ?? "").trim();
   if (!key) {
-    return { key: "macro", label: "Macro / rates", source: "FRED (St. Louis Fed)", dormant: true, note: "Set FRED_API_KEY to enable.", rows: [] };
+    // Keyless: live Treasury yields + VIX from Yahoo instead of a dormant panel.
+    const rows = await Promise.all(YAHOO_MACRO.map(async (s) => macroRowFromYahoo(await getJson<YahooChart>(yahooUrl(s.y)), s)));
+    return { key: "macro", label: "Macro / rates", source: "Yahoo Finance · delayed, keyless", rows: rows.filter((r): r is NonNullable<typeof r> => r != null) };
   }
   const series = await Promise.all(
     FRED_SERIES.map(async (s) => {

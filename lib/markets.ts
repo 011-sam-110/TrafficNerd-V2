@@ -182,6 +182,31 @@ export function parseYahooChart(json: YahooChart | null | undefined, spec: Quote
   return { id: `q:${spec.symbol}`, name: spec.name, symbol: spec.symbol, value: formatPrice(price), num: price, changePct };
 }
 
+/** Pure: a Yahoo index quote (e.g. ^TNX yield, ^VIX) → a macro row with a unit
+ *  suffix instead of a "$" price. Keyless macro fallback when FRED isn't keyed —
+ *  ^TNX/^FVX/^TYX quote the yield directly in %; ^VIX is a plain level. */
+export function macroRowFromYahoo(
+  json: YahooChart | null | undefined,
+  spec: { y: string; symbol: string; name: string; unit: string },
+): MarketRow | null {
+  const meta = json?.chart?.result?.[0]?.meta;
+  if (!meta) return null;
+  const price = meta.regularMarketPrice == null ? Number.NaN : Number(meta.regularMarketPrice);
+  if (!Number.isFinite(price)) return null;
+  const prevRaw = meta.chartPreviousClose ?? meta.previousClose;
+  const prev = prevRaw == null ? Number.NaN : Number(prevRaw);
+  const changePct = Number.isFinite(prev) && prev !== 0 ? Number((((price - prev) / prev) * 100).toFixed(2)) : null;
+  return {
+    id: `macro:${spec.symbol}`,
+    name: spec.name,
+    symbol: spec.symbol,
+    value: `${price.toLocaleString("en-US", { maximumFractionDigits: 2 })}${spec.unit}`,
+    num: price,
+    changePct,
+    chartSymbol: spec.y,
+  };
+}
+
 /** Compact USD, e.g. "$1.2T", "$845B", "$12.3M". */
 export function formatCompactUsd(n: number): string {
   const abs = Math.abs(n);
