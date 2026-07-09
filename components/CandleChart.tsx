@@ -20,6 +20,9 @@ export interface BandOverlay { upper: (number | null)[]; lower: (number | null)[
 
 const UP = "#16a34a", DOWN = "#dc2626";
 
+/** A persistent horizontal price guide (e.g. an armed alert level). */
+export interface PriceGuide { price: number; color: string; label?: string }
+
 export function CandleChart({
   candles,
   height = 240,
@@ -28,7 +31,10 @@ export function CandleChart({
   band = null,
   volume = null,
   anomalies = [],
+  guides = [],
+  armed = false,
   onHover,
+  onPriceClick,
 }: {
   candles: Candle[];
   height?: number;
@@ -37,7 +43,10 @@ export function CandleChart({
   band?: BandOverlay | null;
   volume?: VolBin[] | null;
   anomalies?: Anomaly[];
+  guides?: PriceGuide[];
+  armed?: boolean;
   onHover?: (candle: Candle | null, idx: number) => void;
+  onPriceClick?: (price: number) => void;
 }) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [w, setW] = useState(640);
@@ -64,13 +73,18 @@ export function CandleChart({
     for (const k of candles) { ys.push(k.h, k.l); }
     for (const o of overlays) for (const v of o.values) if (v != null && Number.isFinite(v)) ys.push(v);
     if (band) for (const arr of [band.upper, band.lower]) for (const v of arr) if (v != null && Number.isFinite(v)) ys.push(v);
-    const sy = linear(extent(ys), [height - padB, padT]);
+    const [yLo, yHi] = extent(ys);
+    const sy = linear([yLo, yHi], [height - padB, padT]);
     const cx = (i: number) => padX + (i + 0.5) * bandW;
-    return { n, bandW, bodyW, sy, cx };
+    return { n, bandW, bodyW, sy, cx, yLo, yHi };
   }, [candles, overlays, band, w, height, padB]);
 
+  const [armPrice, setArmPrice] = useState<number | null>(null);
+
   if (!geom || candles.length < 1) return <div ref={wrapRef} style={{ width: "100%", height }} />;
-  const { n, bandW, bodyW, sy, cx } = geom;
+  const { n, bandW, bodyW, sy, cx, yLo, yHi } = geom;
+  // Inverse of sy: pixel-y → price (yLo maps to the axis bottom, yHi to the top).
+  const priceAtY = (pix: number) => yLo + (pix - (height - padB)) * ((yHi - yLo) / (padT - (height - padB)));
 
   // Index-aligned overlay → an SVG path, broken at nulls.
   const linePath = (values: (number | null)[]): string => {
@@ -110,8 +124,19 @@ export function CandleChart({
     let idx = Math.floor((px - padX) / bandW);
     if (idx < 0) idx = 0; if (idx >= n) idx = n - 1;
     if (idx !== hoverIdx) { setHoverIdx(idx); onHover?.(candles[idx], idx); }
+    if (armed) {
+      const py = (e.clientY - rect.top) * (rect.height ? height / rect.height : 1);
+      setArmPrice(priceAtY(py));
+    }
   };
-  const onLeave = () => { setHoverIdx(null); onHover?.(null, -1); };
+  const onLeave = () => { setHoverIdx(null); setArmPrice(null); onHover?.(null, -1); };
+  const onClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!armed || !onPriceClick) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const py = (e.clientY - rect.top) * (rect.height ? height / rect.height : 1);
+    onPriceClick(priceAtY(py));
+  };
+  const fmtP = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: n >= 1 ? 2 : 6 });
 
   return (
     <div ref={wrapRef} style={{ width: "100%", height }}>
@@ -120,10 +145,11 @@ export function CandleChart({
         height={height}
         viewBox={`0 0 ${w} ${height}`}
         preserveAspectRatio="none"
-        className="tn-candle"
+        className={`tn-candle${armed ? " is-armed" : ""}`}
         role="img"
         onMouseMove={onMove}
         onMouseLeave={onLeave}
+        onClick={onClick}
       >
         {/* Volume-by-price profile (behind everything) */}
         {volume?.map((b, i) => {
@@ -174,6 +200,26 @@ export function CandleChart({
             </path>
           </g>
         ))}
+
+        {/* Persistent price guides (armed alert levels) */}
+        {guides.map((g, i) => {
+          const gy = sy(g.price);
+          if (!Number.isFinite(gy)) return null;
+          return (
+            <g key={`g${i}`}>
+              <line x1={padX} y1={gy} x2={w - padX} y2={gy} stroke={g.color} strokeWidth="1" strokeDasharray="4 3" opacity="0.85" />
+              <text x={padX + 3} y={gy - 3} fontSize={10} fill={g.color}>{g.label ?? fmtP(g.price)}</text>
+            </g>
+          );
+        })}
+
+        {/* Armed cursor guide: the price the next click would set an alert at */}
+        {armed && armPrice != null && (
+          <g>
+            <line x1={padX} y1={sy(armPrice)} x2={w - padX} y2={sy(armPrice)} stroke="var(--tn-accent, #38bdf8)" strokeWidth="1" strokeDasharray="2 2" />
+            <text x={w - padX - 3} y={sy(armPrice) - 3} fontSize={10} textAnchor="end" fill="var(--tn-accent, #38bdf8)">🔔 {fmtP(armPrice)}</text>
+          </g>
+        )}
 
         {/* Hover crosshair */}
         {hovered && (

@@ -7,13 +7,14 @@
 // fallback to the accumulated mkt:<id> series when it doesn't, and an
 // "indicative only — not financial advice" disclaimer. Pure series maths live in
 // the unit-tested lib/markets/chart.ts; this is the shell.
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import type { MarketsPayload, MarketRow, MarketSection } from "@/lib/markets";
 import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
 import { recordSeries, seriesSamples } from "@/lib/series";
 import { Chart, type ChartPoint } from "@/components/Chart";
-import { CandleChart, type OverlayLine, type BandOverlay } from "@/components/CandleChart";
+import { CandleChart, type OverlayLine, type BandOverlay, type PriceGuide } from "@/components/CandleChart";
+import { loadAlerts, addAlert, removeAlert, crossed, type PriceAlert } from "@/lib/markets/alerts";
 import { shellLayoutStore } from "@/lib/console/store";
 import { candlesToPoints, hiLo, periodChange, RANGES, RANGE_LABEL, type Candle, type Range } from "@/lib/markets/chart";
 import { sma, bollinger, rsi, volumeProfile, rescaleShape, anomalyFlags } from "@/lib/markets/indicators";
@@ -76,6 +77,18 @@ function fmtNum(n: number): string {
 /** Signed magnitude used for movers-first ordering; nulls sort last. */
 function absMove(r: MarketRow): number {
   return r.changePct == null ? -1 : Math.abs(r.changePct);
+}
+
+/** Fire a browser Notification for a crossed alert (dormant-safe: no-op unless the
+ *  user granted permission and the API exists). */
+function notifyAlert(a: PriceAlert, price: number): void {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  try {
+    new Notification(`${a.symbol} ${a.dir === "above" ? "≥" : "≤"} ${fmtNum(a.price)}`, {
+      body: `${a.name} is now ${fmtNum(price)}`,
+      tag: a.id,
+    });
+  } catch { /* dormant-safe */ }
 }
 
 /** Heat-strip / change colour scaled by move magnitude (green up, red down). */
@@ -163,6 +176,38 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
     return () => { alive = false; };
   }, [athSyms.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
   const athOf = (r: MarketRow) => athPct(r.num, r.chartSymbol ? athMap[r.chartSymbol.toUpperCase()] : undefined);
+
+  // Local price alerts: arm the bell, click a price on the chart to set a level;
+  // a browser Notification fires when the live quote crosses it (edge-triggered).
+  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+  const [armed, setArmed] = useState(false);
+  useEffect(() => { setAlerts(loadAlerts()); }, []);
+  const prevPrices = useRef<Record<string, number>>({});
+  useEffect(() => {
+    if (!data.generatedAt) return;
+    for (const a of alerts) {
+      const row = allRows.find((r) => r.id === a.rowId);
+      if (!row || typeof row.num !== "number") continue;
+      if (crossed(a, prevPrices.current[a.rowId], row.num)) notifyAlert(a, row.num);
+    }
+    for (const r of allRows) if (typeof r.num === "number") prevPrices.current[r.id] = r.num;
+  }, [data.generatedAt, alerts, allRows]);
+  const armToggle = () => setArmed((v) => {
+    const next = !v;
+    if (next && typeof Notification !== "undefined" && Notification.permission === "default") Notification.requestPermission().catch(() => {});
+    return next;
+  });
+  const placeAlert = (price: number) => {
+    if (!selRow) return;
+    const cur = selRow.num ?? price;
+    setAlerts(addAlert({ rowId: selRow.id, symbol: selRow.symbol ?? selRow.id, name: selRow.name, price, dir: price >= cur ? "above" : "below", createdAt: Date.now() }));
+    setArmed(false);
+  };
+  const selAlerts = useMemo(() => alerts.filter((a) => a.rowId === selId), [alerts, selId]);
+  const selGuides = useMemo<PriceGuide[]>(
+    () => selAlerts.map((a) => ({ price: a.price, color: a.dir === "above" ? "#16a34a" : "#dc2626", label: `${a.dir === "above" ? "▲" : "▼"} ${fmtNum(a.price)}` })),
+    [selAlerts],
+  );
 
   // Primary historical chart: keyless Yahoo v8 OHLC for the selected instrument +
   // range. Dormant-safe — the route never 5xxes, and a <2-candle result (dormant /
@@ -389,9 +434,15 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
                 </div>
 
                 <div className="tn-mk-chart-ctrls">
-                  <div className="tn-mk-seg" role="tablist" aria-label="Chart type">
-                    <button role="tab" aria-selected={chartType === "candles"} className={chartType === "candles" ? "active" : ""} onClick={() => setChartType("candles")}>Candles</button>
-                    <button role="tab" aria-selected={chartType === "line"} className={chartType === "line" ? "active" : ""} onClick={() => setChartType("line")}>Line</button>
+                  <div className="tn-mk-ctrls-l">
+                    <div className="tn-mk-seg" role="tablist" aria-label="Chart type">
+                      <button role="tab" aria-selected={chartType === "candles"} className={chartType === "candles" ? "active" : ""} onClick={() => setChartType("candles")}>Candles</button>
+                      <button role="tab" aria-selected={chartType === "line"} className={chartType === "line" ? "active" : ""} onClick={() => setChartType("line")}>Line</button>
+                    </div>
+                    {hasHistory && chartType === "candles" && (
+                      <button className={`tn-mk-bell ${armed ? "on" : ""}`} aria-pressed={armed} onClick={armToggle}
+                        title={armed ? "Click a price on the chart to set an alert" : "Arm a price alert"}>🔔</button>
+                    )}
                   </div>
                   {hasHistory && chartType === "candles" && (
                     <div className="tn-mk-inds" role="group" aria-label="Technical overlays">
@@ -401,6 +452,17 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
                     </div>
                   )}
                 </div>
+                {armed && <div className="tn-mk-arm-hint">Click a price level on the chart to set an alert.</div>}
+                {selAlerts.length > 0 && (
+                  <div className="tn-mk-alerts">
+                    {selAlerts.map((a) => (
+                      <span key={a.id} className={`tn-mk-alert ${a.dir}`}>
+                        🔔 {a.dir === "above" ? "≥" : "≤"} {fmtNum(a.price)}
+                        <button onClick={() => setAlerts(removeAlert(a.id))} aria-label="Remove alert">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {hasHistory && chartType === "candles" ? (
                   <div className="tn-mk-canvas">
@@ -414,7 +476,7 @@ export default function MarketsDetail({ instanceId, config }: WidgetDetailProps)
                         <span className="tn-mk-ohlc-t">{new Date(hover.t).toLocaleString()}</span>
                       </div>
                     )}
-                    <CandleChart candles={candles} height={240} up={chartUp} overlays={overlays} band={band} volume={volProfile} anomalies={anomalies} onHover={(c) => setHover(c)} />
+                    <CandleChart candles={candles} height={240} up={chartUp} overlays={overlays} band={band} volume={volProfile} anomalies={anomalies} guides={selGuides} armed={armed} onPriceClick={placeAlert} onHover={(c) => setHover(c)} />
                     {ind.rsi && rsiPoints.length >= 2 && (
                       <div className="tn-mk-rsi">
                         <span className="tn-mk-rsi-label">RSI 14</span>
