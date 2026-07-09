@@ -1033,11 +1033,16 @@ export default function WorldMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the canvas sized to the window.
+  // Keep the canvas sized to its container. The map is an inset centre panel (not
+  // the full viewport), so dragging a side/bottom panel wall changes the map's box
+  // WITHOUT a window resize — a ResizeObserver re-fits the globe on those drags.
   useEffect(() => {
     const onResize = () => mapRef.current?.resize();
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const el = containerRef.current;
+    const ro = el ? new ResizeObserver(onResize) : null;
+    if (el && ro) ro.observe(el);
+    return () => { window.removeEventListener("resize", onResize); ro?.disconnect(); };
   }, []);
 
   // Basemap swap → setStyle; addAppLayers re-runs on the resulting style.load.
