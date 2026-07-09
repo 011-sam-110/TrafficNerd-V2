@@ -21,11 +21,17 @@ import { shellLayoutStore } from "@/lib/console/store";
 import { openSignalFeature } from "@/lib/widgets/openSignal";
 import { humaniseKey } from "@/lib/text/humanise";
 import { distribution, timeModel, sortFeatures, type SortKey } from "@/lib/console/signals/signalDetail";
+import { makeAssetDetail } from "./cables.detail";
 
 // Sources whose upstream needs a key that may be unset — surface an honest dormant note.
 const KEYED = new Set(["acled", "firms", "aisstream", "openaq", "reliefweb", "entsoe"]);
 
 export function makeSignalDetail(source: SignalSource) {
+  // Permanent-infrastructure layers (submarine cables, landing stations) render an
+  // ASSET schema — attributes + filters, no magnitude / severity / time window.
+  // Event layers (earthquakes, storms, …) keep the schema below unchanged.
+  if (source.kind === "asset") return makeAssetDetail(source);
+
   function SignalDetailView(_props: WidgetDetailProps) {
     const scope = useScope();
     const { features, status, updatedAt } = useSignalFeed(source.id, source.refreshMs);

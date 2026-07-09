@@ -8,6 +8,36 @@
 import type { WorldObject } from "@/lib/world";
 import { humaniseKey } from "@/lib/text/humanise";
 
+/**
+ * Curated [label, value] rows for the two cable ASSET kinds. Cables carry no
+ * magnitude / severity / time, so the dossier shows infrastructure attributes with
+ * proper labels (capacity is honestly flagged unpublished, never invented). Any
+ * other signal keeps the generic humanised prop dump.
+ */
+function assetEntries(kind: string, p: Record<string, unknown>): [string, string][] {
+  const val = (v: unknown) => (v == null || v === "" ? "—" : String(v));
+  if (kind === "cable") {
+    const rows: [string, string][] = [
+      ["Status", val(p.status)],
+      ["Ready for service", val(p.rfs ?? p.rfsYear)],
+      ["Length", val(p.length)],
+      ["Design capacity", `${val(p.capacity)} (not published)`],
+      ["Owners / consortium", val(p.owners)],
+      ["Supplier", val(p.suppliers)],
+      ["Landing region", val(p.region)],
+      ["Landing points", val(p.landings)],
+    ];
+    return rows.filter(([, v]) => v && v !== "—" && v !== "— (not published)");
+  }
+  if (kind === "landing") {
+    return [
+      ["Cables landing here", val(p.cableCount)],
+      ["Cables", val(p.cables)],
+    ].filter(([, v]) => v && v !== "—") as [string, string][];
+  }
+  return [];
+}
+
 export default function SignalDetail({ object }: { object: WorldObject }) {
   const meta = object.meta ?? {};
   const props = (meta.props as Record<string, unknown> | undefined) ?? {};
@@ -16,7 +46,12 @@ export default function SignalDetail({ object }: { object: WorldObject }) {
   const link = meta.link as string | undefined;
   const accent = object.color ?? "var(--tn-accent)";
 
-  const entries = Object.entries(props).filter(([, v]) => v != null && v !== "");
+  const assetKind = typeof props.assetKind === "string" ? (props.assetKind as string) : undefined;
+  const entries: [string, string][] = assetKind
+    ? assetEntries(assetKind, props)
+    : Object.entries(props)
+        .filter(([, v]) => v != null && v !== "")
+        .map(([k, v]) => [humaniseKey(k), String(v)]);
 
   return (
     <div style={{ color: "var(--tn-text)", fontFamily: "var(--tn-sans)" }}>
@@ -47,8 +82,8 @@ export default function SignalDetail({ object }: { object: WorldObject }) {
             fontSize: 13,
           }}
         >
-          {entries.map(([k, v]) => (
-            <div key={k} style={{ display: "contents" }}>
+          {entries.map(([label, v]) => (
+            <div key={label} style={{ display: "contents" }}>
               <dt
                 style={{
                   color: "var(--tn-accent)",
@@ -59,9 +94,9 @@ export default function SignalDetail({ object }: { object: WorldObject }) {
                   alignSelf: "center",
                 }}
               >
-                {humaniseKey(k)}
+                {label}
               </dt>
-              <dd style={{ margin: 0, color: "var(--tn-text)", fontWeight: 600 }}>{String(v)}</dd>
+              <dd style={{ margin: 0, color: "var(--tn-text)", fontWeight: 600 }}>{v}</dd>
             </div>
           ))}
         </dl>

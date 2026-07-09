@@ -1,0 +1,80 @@
+[
+  {
+    "id": "marea",
+    "name": "MAREA",
+    "length": "6,605 km",
+    "landing_points": [
+      {
+        "id": "bilbao-spain",
+        "name": "Bilbao, Spain",
+        "country": "Spain",
+        "is_tbd": null
+      },
+      {
+        "id": "virginia-beach-va-united-states",
+        "name": "Virginia Beach, VA, United States",
+        "country": "United States",
+        "is_tbd": null
+      }
+    ],
+    "owners": "Meta, Microsoft, Telxius",
+    "suppliers": "SubCom",
+    "rfs": "2018 May",
+    "rfs_year": 2018,
+    "is_planned": false,
+    "url": "http://www.telxius.com",
+    "notes": null
+  },
+  {
+    "id": "adamasia-cable-system-1",
+    "name": "Adamasia Cable System 1",
+    "length": "1,015 km",
+    "landing_points": [
+      {
+        "id": "honiara-solomon-islands",
+        "name": "Honiara, Solomon Islands",
+        "country": "Solomon Islands",
+        "is_tbd": null
+      }
+    ],
+    "owners": "Solomon Island Submarine Cable Company",
+    "suppliers": "SubCom",
+    "rfs": "2027 Q4",
+    "rfs_year": 2027,
+    "is_planned": true,
+    "url": null,
+    "notes": null
+  },
+  {
+    "id": "2africa",
+    "name": "2Africa",
+    "length": "45,000 km",
+    "landing_points": [
+      {
+        "id": "luanda-angola",
+        "name": "Luanda, Angola",
+        "country": "Angola",
+        "is_tbd": null
+      },
+      {
+        "id": "abidjan-cte-divoire",
+        "name": "Abidjan, C\u00f4te d'Ivoire",
+        "country": "C\u00f4te d'Ivoire",
+        "is_tbd": null
+      },
+      {
+        "id": "marseille-france",
+        "name": "Marseille, France",
+        "country": "France",
+        "is_tbd": null
+      }
+    ],
+    "owners": "Bayobab, China Mobile, Meta, Orange, Telecom Egypt, Vodafone, WIOCC, center3",
+    "suppliers": "ASN",
+    "rfs": "2024",
+    "rfs_year": 2024,
+    "is_planned": false,
+    "url": "https://www.2africacable.net/",
+    "notes": null
+  }
+]
