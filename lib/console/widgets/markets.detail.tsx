@@ -14,11 +14,10 @@ import { useJsonPoll } from "@/lib/console/widgets/useJsonPoll";
 import { recordSeries, seriesSamples } from "@/lib/series";
 import { Chart, type ChartPoint } from "@/components/Chart";
 import { shellLayoutStore } from "@/lib/console/store";
-import { candlesToPoints, hiLo, periodChange, RANGES, type Candle, type Range } from "@/lib/markets/chart";
+import { candlesToPoints, hiLo, periodChange, RANGES, RANGE_LABEL, type Candle, type Range } from "@/lib/markets/chart";
 import { toCsv, downloadText, exportFilename } from "@/lib/export";
 
 const EMPTY: MarketsPayload = { generatedAt: 0, sections: [] };
-const RANGE_LABEL: Record<Range, string> = { "1mo": "1M", "6mo": "6M", "1y": "1Y" };
 type TableSortKey = "name" | "changePct" | "value";
 
 /** Adaptive-precision number formatting for prices/levels (large → 2dp, tiny → 6dp). */
