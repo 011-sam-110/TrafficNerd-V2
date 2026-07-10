@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "World Monitor — live global situational-awareness map",
+  title: "OpenData — live global situational-awareness map",
   description:
     "A live satellite globe of the world's cameras, aircraft, satellites and global signals — hazards, conflict, infrastructure, markets and news on one map.",
-  applicationName: "World Monitor",
+  applicationName: "OpenData",
   // app/manifest.ts is auto-linked by Next; this is the explicit reference.
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "World Monitor", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "OpenData", statusBarStyle: "default" },
   icons: {
     icon: [
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
