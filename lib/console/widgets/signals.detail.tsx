@@ -27,6 +27,7 @@ import {
 } from "@/lib/console/signals/signalDetail";
 import { rowMetric } from "@/lib/console/signals/signalCard";
 import { makeAssetDetail } from "./cables.detail";
+import { makeScheduleDetail } from "./schedule.detail";
 
 // Sources whose upstream needs a key that may be unset — surface an honest dormant note.
 const KEYED = new Set(["acled", "firms", "aisstream", "openaq", "reliefweb", "entsoe"]);
@@ -43,10 +44,13 @@ function withAlpha(hex: string, a: number): string {
 }
 
 export function makeSignalDetail(source: SignalSource) {
-  // Permanent-infrastructure layers (submarine cables, landing stations) render an
-  // ASSET schema — attributes + filters, no magnitude / severity / time window.
-  // Event layers (earthquakes, storms, …) keep the schema below unchanged.
+  // Permanent-infrastructure layers (cables, ports, airports, plants) render an
+  // ASSET directory — attributes + ranking, no magnitude / severity / time window.
+  // Forward-looking, time-anchored layers (rocket launches) render a SCHEDULE — a
+  // countdown-ordered agenda. Event layers (earthquakes, storms, …) keep the
+  // schema below unchanged.
   if (source.kind === "asset") return makeAssetDetail(source);
+  if (source.kind === "schedule") return makeScheduleDetail(source);
 
   const metric = source.metric;
   const hasMetric = !!metric;

@@ -100,13 +100,16 @@ export interface SignalSource {
   /** Stable id; also the dynamic route segment (/api/signals/<id>) + store key. */
   id: string;
   /**
-   * Semantic layer kind. Most sources are transient EVENTS (earthquakes, storms,
-   * news) whose focus view renders magnitude/severity + a time window. Some are
-   * permanent ASSETS (submarine cables, landing stations) with no magnitude, no
-   * severity and no "when" — for those the focus view renders an asset schema
-   * (attributes + filters) instead of the event schema. Absent ⇒ "event".
+   * Semantic layer kind, selecting the focus-view archetype:
+   *   • "event" (default) — transient occurrences (earthquakes, storms, news):
+   *     magnitude/severity + a "last N hours" time window.
+   *   • "asset" — permanent infrastructure (cables, ports, airports, plants):
+   *     a ranked/browsable directory, no magnitude/severity/"when".
+   *   • "schedule" — forward-looking, time-anchored items (rocket launches):
+   *     a countdown-ordered agenda grouped by day with a "next up" hero, driven
+   *     off each feature's `ts` (the scheduled time). No map-blob, no severity.
    */
-  kind?: "event" | "asset";
+  kind?: "event" | "asset" | "schedule";
   /** Human label shown in the rail. */
   label: string;
   /** Rail grouping, e.g. "Natural hazards" / "Space weather". */

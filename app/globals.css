@@ -1619,6 +1619,33 @@ a { color: var(--tn-accent); }
 .tn-sd-actions button { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--tn-text); cursor: pointer; }
 .tn-sd-actions button:disabled { opacity: .4; cursor: default; }
 
+/* ── Schedule focus view — hero countdown + day-grouped agenda (launches) ── */
+.tn-sch-cd { font-family: var(--tn-mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 12px; padding: 2px 7px; border-radius: 6px; white-space: nowrap; }
+.tn-sch-cd.is-imminent { color: #b91c1c; background: rgba(239, 68, 68, .14); }
+.tn-sch-cd.is-soon { color: #b45309; background: rgba(217, 136, 47, .16); }
+.tn-sch-cd.is-scheduled { color: var(--tn-accent); background: var(--tn-chip-bg); }
+.tn-sch-cd.is-past, .tn-sch-cd.is-unknown { color: var(--tn-text-muted); background: var(--tn-chip-bg); }
+.tn-sch-hero { border: 1px solid var(--tn-border); border-left: 4px solid var(--tn-accent); border-radius: 10px; background: var(--tn-surface-2); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.tn-sch-hero-cd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tn-sch-hero-cd .tn-sch-cd { font-size: 18px; padding: 4px 10px; }
+.tn-sch-hero-when { font-size: 12px; color: var(--tn-text-muted); }
+.tn-sch-hero-name { font-size: 16px; font-weight: 700; color: var(--tn-text); }
+.tn-sch-hero-meta { font-size: 12px; color: var(--tn-text-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tn-sch-agenda { display: flex; flex-direction: column; }
+.tn-sch-day { position: sticky; top: 0; background: var(--tn-surface); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--tn-text-faint); font-weight: 700; padding: 9px 2px 4px; border-bottom: 1px solid var(--tn-border); z-index: 1; }
+.tn-sch-row { display: grid; grid-template-columns: 132px 1fr auto; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px solid var(--tn-border); cursor: pointer; }
+.tn-sch-row:hover, .tn-sch-row.is-open { background: var(--tn-surface-2); }
+.tn-sch-when { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.tn-sch-clock { font-family: var(--tn-mono); font-size: 11px; color: var(--tn-text-muted); }
+.tn-sch-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tn-sch-name { font-weight: 600; font-size: 13px; color: var(--tn-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn-sch-meta { font-size: 11px; color: var(--tn-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn-sch-pill { color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; text-transform: uppercase; letter-spacing: .03em; }
+.tn-sch-drill { background: var(--tn-surface-2); padding: 6px 10px 10px; border-bottom: 1px solid var(--tn-border); font-size: 12px; }
+.tn-sch-drill dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 2px 0 6px; }
+.tn-sch-drill dt { color: var(--tn-accent); text-transform: uppercase; font-size: 10px; letter-spacing: .06em; font-weight: 600; }
+.tn-sch-drill dd { margin: 0; }
+
 /* ── Signals FOCUS overhaul — KPI cards, filter bar, chart axes, map legend, value chips ── */
 .tn-sd-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .tn-sd-kpi { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 8px; padding: 8px 10px; }
