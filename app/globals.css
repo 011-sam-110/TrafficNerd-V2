@@ -1683,6 +1683,18 @@ a { color: var(--tn-accent); }
 .tn-ais-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
 .tn-sd-more { font-size: 11px; color: var(--tn-text-faint); text-align: center; padding: 6px 0; }
 
+/* ── "What's abnormal" anomaly-triage widget — cross-layer ranked feed ── */
+.tn-anom-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.tn-anom-row { display: flex; align-items: center; gap: 9px; width: 100%; background: none; border: 0; text-align: left; padding: 5px 4px; border-radius: 6px; cursor: pointer; color: var(--tn-text); }
+.tn-anom-row:hover { background: var(--tn-surface-2); }
+.tn-anom-sev { flex: none; width: 42px; height: 6px; border-radius: 4px; background: var(--tn-chip-bg); overflow: hidden; }
+.tn-anom-sev > i { display: block; height: 100%; border-radius: 4px; }
+.tn-anom-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tn-anom-title { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn-anom-meta { font-size: 11px; color: var(--tn-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn-anom-layer { font-weight: 700; }
+.tn-anom .tn-anom-list { gap: 1px; }
+
 /* ── OSINT recon tools (Tools preset) — shared target input + result renderers ── */
 .tn-recon { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
 .tn-recon-target { display: flex; align-items: center; gap: 6px; }

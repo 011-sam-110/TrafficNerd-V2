@@ -40,7 +40,7 @@ function compose(stage: ShellLayout["stage"], specs: { type: string; segment: Se
 export const BUILTIN_PRESETS: ConsolePreset[] = [
   // ── World Overview — the calm landing board (a bit of everything) ────────
   { id: "overview", title: "World Overview", icon: "🌐", blurb: "a bit of everything", build: () => compose("map2d", [
-      { type: "signal:instability", segment: "left" }, { type: "events", segment: "left" }, { type: "signal:gdacs", segment: "left" },
+      { type: "anomaly", segment: "left" }, { type: "signal:instability", segment: "left" }, { type: "events", segment: "left" }, { type: "signal:gdacs", segment: "left" },
       { type: "cameras", segment: "right" }, { type: "markets", segment: "right" }, { type: "locate", segment: "right" },
       { type: "headlines", segment: "bottom" },
   ]) },
