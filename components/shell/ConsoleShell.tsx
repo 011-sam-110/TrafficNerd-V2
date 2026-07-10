@@ -30,6 +30,7 @@ import { profileStore } from "@/lib/shell/profile";
 import { telegramStore } from "@/lib/shell/telegram";
 import { notificationsStore } from "@/lib/shell/notifications";
 import { trackStore } from "@/lib/planes/track";
+import { pinsStore } from "@/lib/map/pins";
 import { applyPreset, DEFAULT_PRESET_ID } from "@/lib/console/presets";
 import { decodeLayout } from "@/lib/console/share";
 import "@/lib/console/widgets";
@@ -59,6 +60,7 @@ export default function ConsoleShell() {
     telegramStore.hydrate();
     notificationsStore.hydrate();
     trackStore.hydrate();
+    pinsStore.hydrate();
     const c = new URLSearchParams(window.location.search).get("c");
     if (c) { const l = decodeLayout(c); if (l) shellLayoutStore.replace(l); }
     else if (shellLayoutStore.get().widgets.length === 0) applyPreset(DEFAULT_PRESET_ID); // first-run seed
