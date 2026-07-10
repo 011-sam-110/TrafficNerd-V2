@@ -2,8 +2,10 @@
 // logic is deliberately honest: it shows a magnitude histogram only when the
 // source actually carries numeric magnitudes, falls back to declared severity
 // counts, and reports "none" when neither exists (the caller then hides the panel).
-import type { SignalFeature } from "@/lib/signals/types";
+import type { SignalFeature, SignalMetric } from "@/lib/signals/types";
 import { histogram } from "@/lib/widgets/buckets";
+import { rowMetric } from "@/lib/console/signals/signalCard";
+import type { CountSample } from "@/lib/widgets/history";
 
 /** Declared severity read from common alert-level props — only unambiguous words. */
 export function declaredSeverity(props?: Record<string, unknown>): "critical" | "warn" | null {
@@ -85,16 +87,107 @@ export function timeModel(features: SignalFeature[]): { values: number[]; undate
 
 export type SortKey = "magnitude" | "recency" | "title";
 
-/** Stable-ish sort by magnitude / recency / title. Missing values sort last. */
-export function sortFeatures(features: SignalFeature[], key: SortKey, dir: 1 | -1): SignalFeature[] {
-  const mag = (f: SignalFeature) =>
-    typeof f.props?.magnitude === "number" && Number.isFinite(f.props.magnitude) ? (f.props.magnitude as number) : -Infinity;
+/** Compact numeric label: integers bare, else one decimal (mirrors signalCard). */
+export function fmtValue(v: number): string {
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
+/**
+ * The scalar shown in the "Value"/"Magnitude" column and used for ranking, the
+ * min-value filter and the KPI peak. Metric-first: when the source declares a
+ * `metric` its REAL scalar wins (e.g. instability score 0–100, not the overloaded
+ * props.magnitude radius proxy); otherwise the plain props.magnitude; else undefined.
+ */
+export function rowValue(f: SignalFeature, metric?: SignalMetric): number | undefined {
+  if (metric) return rowMetric(f, metric)?.value;
+  const m = f.props?.magnitude;
+  return typeof m === "number" && Number.isFinite(m) ? m : undefined;
+}
+
+/** Stable-ish sort by value / recency / title. Missing values sort last.
+ *  With a `metric` the value axis ranks by the resolved metric (so metric-only
+ *  sources — no props.magnitude — become sortable), else by props.magnitude. */
+export function sortFeatures(features: SignalFeature[], key: SortKey, dir: 1 | -1, metric?: SignalMetric): SignalFeature[] {
+  const val = (f: SignalFeature) => {
+    const v = rowValue(f, metric);
+    return v == null ? -Infinity : v;
+  };
   const rec = (f: SignalFeature) => (f.ts ? Date.parse(f.ts) : NaN);
   const cmp = (a: SignalFeature, b: SignalFeature): number => {
     if (key === "title") return a.title.localeCompare(b.title);
-    if (key === "magnitude") return mag(a) - mag(b);
+    if (key === "magnitude") return val(a) - val(b);
     const ra = rec(a), rb = rec(b);
     return (Number.isFinite(ra) ? ra : -Infinity) - (Number.isFinite(rb) ? rb : -Infinity);
   };
   return [...features].sort((a, b) => dir * cmp(a, b));
+}
+
+/** Human "time ago" for the When column: "12s" / "5m" / "2h" / "3d". "" when
+ *  undated or unparseable (the caller renders a dash). Future stamps clamp to 0s. */
+export function relativeAge(ts: string | undefined, now: number): string {
+  if (!ts) return "";
+  const t = Date.parse(ts);
+  if (!Number.isFinite(t)) return "";
+  const s = Math.max(0, Math.floor((now - t) / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}
+
+export interface DetailFilter {
+  /** Case-insensitive substring matched against the feature title. */
+  query: string;
+  /** Minimum resolved value; 0 lets everything through (incl. valueless features). */
+  min: number;
+}
+
+/** Apply the FOCUS filter bar: title search + min-value threshold. When min > 0,
+ *  features with no resolvable value are excluded (can't clear a positive bar). */
+export function filterDetailFeatures(features: SignalFeature[], filter: DetailFilter, metric?: SignalMetric): SignalFeature[] {
+  const q = filter.query.trim().toLowerCase();
+  const min = Number.isFinite(filter.min) ? filter.min : 0;
+  return features.filter((f) => {
+    if (q && !f.title.toLowerCase().includes(q)) return false;
+    if (min > 0) {
+      const v = rowValue(f, metric);
+      if (v == null || v < min) return false;
+    }
+    return true;
+  });
+}
+
+export interface DetailKpis {
+  /** Features currently in view (post-filter). */
+  inView: number;
+  /** Highest resolved value + its formatted label, or null when none carry a value. */
+  peak: { value: number; label: string } | null;
+  /** Signed percent change of the count series over ≤24h, or "—" when uncomputable. */
+  change24h: string;
+}
+
+/** Percent change of the persisted count series across the last ≤24h. Baseline =
+ *  earliest sample within 24h of the latest (⇒ the whole series when it spans <24h). */
+function change24hOf(samples: CountSample[]): string {
+  if (samples.length < 2) return "—";
+  const last = samples[samples.length - 1];
+  const base = samples.find((s) => s.t >= last.t - 86_400_000) ?? samples[0];
+  if (base === last || base.n === 0) return "—";
+  const pct = Math.round(((last.n - base.n) / base.n) * 100);
+  return `${pct > 0 ? "+" : ""}${pct}%`;
+}
+
+/** KPI cards under the masthead: In view / Peak / 24h Δ. Pure — `samples` is the
+ *  count series already computed in the component; `features` is the filtered set. */
+export function detailKpis(features: SignalFeature[], samples: CountSample[], metric?: SignalMetric): DetailKpis {
+  let peak: { value: number; label: string } | null = null;
+  for (const f of features) {
+    const rm = metric ? rowMetric(f, metric) : undefined;
+    const value = rm ? rm.value : rowValue(f, undefined);
+    if (value == null) continue;
+    if (!peak || value > peak.value) peak = { value, label: rm ? rm.label : fmtValue(value) };
+  }
+  return { inView: features.length, peak, change24h: change24hOf(samples) };
 }

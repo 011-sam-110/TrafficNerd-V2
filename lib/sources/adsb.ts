@@ -26,9 +26,17 @@ export interface AdsbRegion {
 }
 
 // A coarse worldwide grid of busy-airspace centres, each a 250 nm (adsb.lol max)
-// point+radius query. Kept to ~25 cells so one sweep is ~25 upstream calls total —
-// shared across all users via the Data Cache below, not per visitor. Overlaps are
-// deduped by hex; "region" chips in the UI are derived from lat/lon, not these.
+// point+radius query, merged into one snapshot. Overlaps are deduped by hex;
+// "region" chips in the UI are derived from lat/lon, not these.
+//
+// Beyond the metro hubs we deliberately seed OCEANIC GATEWAY + COASTAL + under-
+// served-land cells (North Atlantic tracks via Reykjavik/Gander/Azores/Shannon;
+// the Pacific via Anchorage/Honolulu/Guam/Fiji; plus interior land gaps). Terrestrial
+// ADS-B is line-of-sight to a ground receiver, so DEEP mid-ocean is inherently
+// invisible here — these cells reach as far offshore as real coverage allows and
+// pick up the coastal-water + cross-border legs the old 25-cell grid missed. The
+// whole sweep is cached deployment-wide (see below), so more cells ≠ more per-visitor
+// load. True mid-ocean would need satellite ADS-B (paid) — labelled honestly in the UI.
 const NM = 250;
 export const ADSB_GRID: AdsbRegion[] = [
   // North America
@@ -37,32 +45,60 @@ export const ADSB_GRID: AdsbRegion[] = [
   { lat: 41.9, lon: -87.9, distNm: NM }, // Chicago
   { lat: 40.7, lon: -74.0, distNm: NM }, // New York
   { lat: 25.8, lon: -80.3, distNm: NM }, // Miami
+  { lat: 32.9, lon: -97.0, distNm: NM }, // Dallas–Fort Worth
+  { lat: 47.4, lon: -122.3, distNm: NM }, // Seattle / Vancouver
+  { lat: 43.7, lon: -79.4, distNm: NM }, // Toronto
   { lat: 19.4, lon: -99.1, distNm: NM }, // Mexico City
+  { lat: 61.2, lon: -149.9, distNm: NM }, // Anchorage (Pacific/Arctic gateway)
+  { lat: 21.3, lon: -157.9, distNm: NM }, // Honolulu (mid-Pacific)
+  // North Atlantic oceanic corridor
+  { lat: 64.1, lon: -21.9, distNm: NM }, // Reykjavík
+  { lat: 48.9, lon: -54.6, distNm: NM }, // Gander (Newfoundland, NAT tracks)
+  { lat: 37.7, lon: -25.7, distNm: NM }, // Azores
+  { lat: 52.7, lon: -8.9, distNm: NM }, // Shannon (NAT entry)
   // South America
+  { lat: 9.0, lon: -79.5, distNm: NM }, // Panama
   { lat: 4.7, lon: -74.1, distNm: NM }, // Bogotá
+  { lat: -12.0, lon: -77.0, distNm: NM }, // Lima
   { lat: -23.5, lon: -46.6, distNm: NM }, // São Paulo
+  { lat: -33.4, lon: -70.7, distNm: NM }, // Santiago
   { lat: -34.6, lon: -58.4, distNm: NM }, // Buenos Aires
   // Europe
   { lat: 51.5, lon: -0.1, distNm: NM }, // London
   { lat: 50.0, lon: 8.6, distNm: NM }, // Frankfurt
   { lat: 40.4, lon: -3.7, distNm: NM }, // Madrid
+  { lat: 41.9, lon: 12.5, distNm: NM }, // Rome
   { lat: 41.0, lon: 28.9, distNm: NM }, // Istanbul
   { lat: 55.7, lon: 37.6, distNm: NM }, // Moscow
   // Middle East
   { lat: 25.2, lon: 55.3, distNm: NM }, // Dubai
+  { lat: 24.7, lon: 46.7, distNm: NM }, // Riyadh
+  { lat: 35.7, lon: 51.4, distNm: NM }, // Tehran
   // Africa
+  { lat: 33.6, lon: -7.6, distNm: NM }, // Casablanca
   { lat: 30.0, lon: 31.2, distNm: NM }, // Cairo
   { lat: 6.5, lon: 3.4, distNm: NM }, // Lagos
+  { lat: -1.3, lon: 36.8, distNm: NM }, // Nairobi
   { lat: -26.2, lon: 28.0, distNm: NM }, // Johannesburg
   // Asia
+  { lat: 24.9, lon: 67.0, distNm: NM }, // Karachi
+  { lat: 19.1, lon: 72.9, distNm: NM }, // Mumbai
   { lat: 28.6, lon: 77.2, distNm: NM }, // Delhi
   { lat: 13.7, lon: 100.5, distNm: NM }, // Bangkok
   { lat: 1.35, lon: 103.8, distNm: NM }, // Singapore
+  { lat: -6.1, lon: 106.8, distNm: NM }, // Jakarta
   { lat: 22.3, lon: 114.2, distNm: NM }, // Hong Kong
   { lat: 31.2, lon: 121.5, distNm: NM }, // Shanghai
+  { lat: 39.9, lon: 116.4, distNm: NM }, // Beijing
+  { lat: 37.5, lon: 127.0, distNm: NM }, // Seoul
+  { lat: 14.5, lon: 121.0, distNm: NM }, // Manila
   { lat: 35.6, lon: 139.8, distNm: NM }, // Tokyo
-  // Oceania
+  // Oceania & Pacific
+  { lat: 13.5, lon: 144.8, distNm: NM }, // Guam (west Pacific)
+  { lat: -31.9, lon: 115.9, distNm: NM }, // Perth
   { lat: -33.9, lon: 151.2, distNm: NM }, // Sydney
+  { lat: -37.0, lon: 174.8, distNm: NM }, // Auckland
+  { lat: -17.8, lon: 177.4, distNm: NM }, // Nadi (Fiji, south Pacific)
 ];
 
 export interface Aircraft {
@@ -186,8 +222,10 @@ const REVALIDATE_S = 25;
 // Cap the served set so the cached entry stays under the Data Cache's 2 MB limit
 // and the client payload stays reasonable. Airborne aircraft are kept before ground.
 export const MAX_AIRCRAFT = 3000;
-// Grid cells fetched at once — friendly to the community API, no 25-request herd.
-const CONCURRENCY = 6;
+// Grid cells fetched at once. With ~50 cells a batch of 8 keeps the whole sweep
+// well inside REVALIDATE_S while staying friendly to the community API (no herd —
+// the sweep runs once per deployment per window, not once per visitor).
+const CONCURRENCY = 8;
 
 async function fetchRegion(r: AdsbRegion): Promise<RawAircraft[]> {
   const url = `https://api.adsb.lol/v2/lat/${r.lat}/lon/${r.lon}/dist/${r.distNm}`;

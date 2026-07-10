@@ -1136,6 +1136,21 @@ a { color: var(--tn-accent); }
 .tn-cw-menu-pop{display:flex;flex-direction:column;border-bottom:1px solid var(--tn-border);background:var(--tn-surface-solid)}
 .tn-cw-menu-pop button{text-align:left;border:0;background:none;padding:7px 10px;font-size:12px;cursor:pointer;color:var(--tn-text)}
 .tn-cw-menu-pop button:hover{background:var(--tn-surface-2)}.tn-cw-danger{color:#d9534f}
+/* per-widget notifications — bell + arm popover (see WidgetFrame + lib/shell/notifications) */
+.tn-cw-bell{border:0;background:none;cursor:pointer;color:var(--tn-text-faint);font-size:13px;line-height:1;padding:0;filter:grayscale(1) opacity(.6)}
+.tn-cw-bell:hover{color:var(--tn-text);filter:grayscale(.4) opacity(.9)}
+.tn-cw-bell.is-on{filter:none;color:var(--tn-accent)}
+.tn-cw-notify-pop{display:flex;flex-direction:column;gap:8px;padding:9px 10px;border-bottom:1px solid var(--tn-border);background:var(--tn-surface-solid);color:var(--tn-text)}
+.tn-cw-notify-toggle{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer}
+.tn-cw-notify-toggle input,.tn-cw-notify-ch input{width:14px;height:14px;accent-color:var(--tn-accent);cursor:pointer}
+.tn-cw-notify-chs{display:flex;flex-direction:column;gap:5px;padding-left:2px}
+.tn-cw-notify-ch{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tn-text);cursor:pointer}
+.tn-cw-notify-ch.is-off{color:var(--tn-text-faint)}
+.tn-cw-notify-ch input:disabled{cursor:not-allowed}
+.tn-cw-notify-hint{font-style:normal;font-size:10px;color:var(--tn-text-faint)}
+.tn-cw-notify-field{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--tn-text-muted)}
+.tn-cw-notify-num{font:inherit;font-size:12px;color:var(--tn-text);background:var(--tn-surface-2);border:1px solid var(--tn-border);border-radius:7px;padding:5px 8px;width:100%}
+.tn-cw-notify-num:focus{outline:none;border-color:var(--tn-accent)}
 .tn-cw-attn{border-bottom:1px solid var(--tn-border)}.tn-cw-attn-h{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--tn-text-faint);padding:5px 8px 2px}
 .tn-cw-alert{font-size:11px;padding:4px 8px;border-left:3px solid #d9534f;background:rgba(217,83,79,.12);color:var(--tn-text)}
 .tn-cw-alert.tn-sev-warn{border-left-color:#d9882f;background:rgba(217,136,47,.12)}.tn-cw-alert.tn-sev-info{border-left-color:#4a78c9;background:rgba(74,120,201,.12)}
@@ -1578,6 +1593,39 @@ a { color: var(--tn-accent); }
 .tn-sd-actions button { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--tn-text); cursor: pointer; }
 .tn-sd-actions button:disabled { opacity: .4; cursor: default; }
 
+/* ── Signals FOCUS overhaul — KPI cards, filter bar, chart axes, map legend, value chips ── */
+.tn-sd-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tn-sd-kpi { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 8px; padding: 8px 10px; }
+.tn-sd-kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--tn-text-faint); }
+.tn-sd-kpi-value { font-size: 18px; font-weight: 700; color: var(--tn-text); line-height: 1.2; }
+.tn-sd-kpi-value.up { color: #16a34a; } .tn-sd-kpi-value.down { color: #dc2626; }
+.tn-sd-kpi-sub { font-size: 11px; color: var(--tn-text-muted); }
+
+.tn-sd-filter { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.tn-sd-filter input[type="text"] { flex: 1; min-width: 160px; font: inherit; font-size: 13px; color: var(--tn-text); background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 8px; padding: 5px 10px; }
+.tn-sd-filter input[type="text"]::placeholder { color: var(--tn-text-faint); }
+.tn-sd-range { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--tn-text-muted); }
+.tn-sd-range input[type="range"] { accent-color: var(--tn-accent); }
+.tn-sd-range b { color: var(--tn-text); min-width: 20px; text-align: right; }
+.tn-sd-filter-clear { background: var(--tn-chip-bg); border: 1px solid var(--tn-border); border-radius: 8px; padding: 4px 10px; font-size: 12px; color: var(--tn-text-muted); cursor: pointer; }
+.tn-sd-filter-clear:hover { color: var(--tn-text); }
+
+.tn-sd-plot { display: flex; gap: 6px; align-items: flex-start; }
+.tn-sd-plot-body { flex: 1; min-width: 0; }
+.tn-sd-yaxis { display: flex; flex-direction: column; justify-content: space-between; height: 120px; font-size: 10px; color: var(--tn-text-faint); text-align: right; min-width: 16px; }
+.tn-sd-binlabels { display: flex; gap: 4px; }
+.tn-sd-xaxis { display: flex; justify-content: space-between; font-size: 10px; color: var(--tn-text-faint); margin-top: 2px; }
+
+.tn-sd-legend { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: 11px; color: var(--tn-text-muted); }
+.tn-sd-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+.tn-sd-swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+.tn-sd-swatch-other { background: var(--tn-text-faint); }
+.tn-sd-legend-grad { display: flex; align-items: center; gap: 6px; width: 100%; }
+.tn-sd-gradbar { flex: 1; height: 8px; border-radius: 4px; }
+
+.tn-sd-val { display: inline-flex; align-items: center; gap: 6px; }
+.tn-sd-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
 /* ── Aviation focus view (airspace console) — mirrors the .tn-sd visual language ── */
 .tn-av { display: flex; flex-direction: column; gap: 14px; height: 100%; overflow: auto; padding: 4px 2px; color: var(--tn-text); }
 .tn-av-head { display: flex; flex-direction: column; gap: 6px; }
@@ -1614,6 +1662,28 @@ a { color: var(--tn-accent); }
 .tn-av-actions { display: flex; gap: 8px; }
 .tn-av-actions button { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--tn-text); cursor: pointer; }
 .tn-av-actions button:disabled { opacity: .4; cursor: default; }
+/* aviation — search + private-jet + track affordances */
+.tn-av-search {
+  flex: 1 1 200px; min-width: 140px; font-size: 12px; padding: 4px 9px; border-radius: 8px;
+  background: var(--tn-surface); border: 1px solid var(--tn-border); color: var(--tn-text);
+}
+.tn-av-search:focus { outline: none; border-color: var(--tn-accent); }
+.tn-av-search::placeholder { color: var(--tn-text-faint); }
+.tn-av-fclear { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: transparent; border: 1px solid var(--tn-border); color: var(--tn-text-muted); cursor: pointer; }
+.tn-av-fclear:hover { color: var(--tn-accent); border-color: var(--tn-accent); }
+.tn-av-chip-jet { color: var(--tn-accent); border-color: var(--tn-accent); }
+.tn-av-jet-tag { color: var(--tn-accent); margin-right: 4px; font-weight: 700; }
+.tn-av-owner { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 600; color: var(--tn-accent); background: var(--tn-chip-bg, var(--tn-surface-2)); border: 1px solid var(--tn-border); border-radius: 6px; padding: 0 5px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.tn-av-track-btn { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 7px; background: var(--tn-surface-2); border: 1px solid var(--tn-border); color: var(--tn-text-muted); cursor: pointer; white-space: nowrap; }
+.tn-av-track-btn:hover { border-color: var(--tn-accent); color: var(--tn-accent); }
+.tn-av-track-btn.is-on { background: var(--tn-accent); border-color: var(--tn-accent); color: var(--tn-surface-solid); }
+.tn-av-row.is-tracked { background: color-mix(in srgb, var(--tn-accent) 12%, transparent); }
+.tn-av-row.is-tracked:hover { background: color-mix(in srgb, var(--tn-accent) 18%, transparent); }
+/* aviation — private-jet surge alert control */
+.tn-av-surge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--tn-text-muted); }
+.tn-av-surge input { width: 58px; font-size: 12px; padding: 3px 6px; border-radius: 7px; background: var(--tn-surface); border: 1px solid var(--tn-border); color: var(--tn-text); text-align: center; }
+.tn-av-surge input:focus { outline: none; border-color: var(--tn-accent); }
+.tn-av-surge-hint { font-size: 11px; color: var(--tn-text-faint); }
 
 /* ── Cameras focus view (W5) — mirrors the .tn-av / .tn-sd visual language ── */
 .tn-cm { display: flex; flex-direction: column; gap: 14px; height: 100%; overflow: auto; padding: 4px 2px; color: var(--tn-text); }
@@ -1911,6 +1981,11 @@ a { color: var(--tn-accent); }
 .tn-settings-tg-test:disabled { opacity: .5; cursor: not-allowed; }
 .tn-settings-tg-ok { font-size: 12px; font-weight: 600; color: var(--tn-live); }
 .tn-settings-tg-err { font-size: 12px; color: var(--tn-down); }
+/* Notifications section — armed-widget list */
+.tn-settings-notify-list { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--tn-border); padding-top: 8px; }
+.tn-settings-notify-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; }
+.tn-settings-notify-name { font-size: 13px; color: var(--tn-text); }
+.tn-settings-notify-chs { font-size: 11px; color: var(--tn-text-faint); white-space: nowrap; }
 
 /* ── Floated map-view controls (top-right of the centre stage) ────────────── */
 .tn-map-controls { position: absolute; top: 10px; right: 10px; z-index: 5; display: flex; align-items: center; gap: 8px; }
@@ -1935,3 +2010,35 @@ a { color: var(--tn-accent); }
 /* The clock is decorative chrome — drop it on tight viewports where the ribbon would
    crowd the map-view controls / breaking banner. */
 @media (max-width: 900px) { .tn-worldclock { display: none; } }
+
+/* ── Plane-tracking chip (top-left of the map; see WorldMap + lib/planes/track) ── */
+.tn-track-chip {
+  position: absolute; top: 10px; left: 10px; z-index: 6;
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 11px;
+  border-radius: 12px; background: var(--tn-surface); border: 1px solid var(--tn-border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .18); color: var(--tn-text);
+  font-size: 12px; line-height: 1.2; pointer-events: auto; max-width: min(70vw, 320px);
+}
+.tn-track-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--tn-accent); flex: 0 0 auto;
+  box-shadow: 0 0 0 0 rgba(14, 125, 151, .5); animation: tn-track-pulse 1.8s ease-out infinite;
+}
+@keyframes tn-track-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(14, 125, 151, .45); }
+  70% { box-shadow: 0 0 0 7px rgba(14, 125, 151, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 125, 151, 0); }
+}
+.tn-track-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tn-track-label b { font-weight: 700; }
+.tn-track-lost { color: var(--tn-down); font-weight: 600; }
+.tn-track-recenter {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 8px;
+  border: 1px solid var(--tn-border); background: var(--tn-surface-2); color: var(--tn-text); cursor: pointer;
+}
+.tn-track-recenter:hover { border-color: var(--tn-accent); color: var(--tn-accent); }
+.tn-track-stop {
+  font-size: 12px; line-height: 1; width: 22px; height: 22px; flex: 0 0 auto; border-radius: 7px;
+  border: 1px solid var(--tn-border); background: var(--tn-surface-2); color: var(--tn-text-muted); cursor: pointer;
+}
+.tn-track-stop:hover { border-color: var(--tn-down); color: var(--tn-down); }
+@media (prefers-reduced-motion: reduce) { .tn-track-dot { animation: none; } }

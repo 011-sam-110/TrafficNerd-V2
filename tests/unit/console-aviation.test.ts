@@ -22,3 +22,20 @@ test("flags military entry as info", () => {
 test("clean traffic produces no alerts", () => {
   expect(aviationAlerts([{ callsign: "X", squawk: "1000" }], {})).toEqual([]);
 });
+
+const jets = (n: number, onGround = false): PlaneLite[] =>
+  Array.from({ length: n }, (_, i) => ({ callsign: `NJE${i}`, isBizjet: true, onGround }));
+
+test("fires ONE private-jet surge alert when the airborne count crosses the threshold", () => {
+  const a = aviationAlerts(jets(5), { jetSurgeMin: 5 });
+  const surge = a.filter((x) => x.ref === "jet-surge");
+  expect(surge).toHaveLength(1);
+  expect(surge[0].severity).toBe("warn");
+  expect(surge[0].text).toContain("5 private jets");
+});
+
+test("no surge alert below the threshold, when unset, or when jets are grounded", () => {
+  expect(aviationAlerts(jets(4), { jetSurgeMin: 5 }).some((x) => x.ref === "jet-surge")).toBe(false);
+  expect(aviationAlerts(jets(9), {}).some((x) => x.ref === "jet-surge")).toBe(false); // opt-in
+  expect(aviationAlerts(jets(9, true), { jetSurgeMin: 5 }).some((x) => x.ref === "jet-surge")).toBe(false);
+});

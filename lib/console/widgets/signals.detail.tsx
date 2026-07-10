@@ -2,8 +2,9 @@
 // Signals focus view — ONE parameterised template covering every registered signal
 // layer. makeSignalDetail(source) mirrors makeSignalBody(source): it reuses the SAME
 // live pipeline (useSignalFeed → projectSignal) but renders deep — masthead + count
-// sparkline, source map, honest magnitude/severity + time distributions, a sortable
-// feature table with per-row props drill-down, attribution, and export/show-on-map.
+// sparkline, KPI cards, a filter bar, source map + colour legend, honest magnitude/
+// severity + time distributions (with light axes), a sortable feature table with
+// per-row props drill-down, attribution, and export/show-on-map.
 import { Fragment, useEffect, useMemo, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import type { SignalSource } from "@/lib/signals/types";
@@ -20,11 +21,26 @@ import { signalsStore } from "@/lib/signals/store";
 import { shellLayoutStore } from "@/lib/console/store";
 import { openSignalFeature } from "@/lib/widgets/openSignal";
 import { humaniseKey } from "@/lib/text/humanise";
-import { distribution, timeModel, sortFeatures, type SortKey } from "@/lib/console/signals/signalDetail";
+import {
+  distribution, timeModel, sortFeatures, relativeAge, filterDetailFeatures, detailKpis, rowValue,
+  type SortKey,
+} from "@/lib/console/signals/signalDetail";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 import { makeAssetDetail } from "./cables.detail";
 
 // Sources whose upstream needs a key that may be unset — surface an honest dormant note.
 const KEYED = new Set(["acled", "firms", "aisstream", "openaq", "reliefweb", "entsoe"]);
+
+/** Fixed reference severity swatches for the map legend (theme-independent status hues). */
+const SEV_SEVERE = "#d9534f";
+const SEV_WARNING = "#d9882f";
+
+/** Append a 2-digit alpha to a 6-digit hex; pass others through unchanged. */
+function withAlpha(hex: string, a: number): string {
+  const h = hex.replace("#", "");
+  if (h.length !== 6) return hex;
+  return `#${h}${Math.round(a * 255).toString(16).padStart(2, "0")}`;
+}
 
 export function makeSignalDetail(source: SignalSource) {
   // Permanent-infrastructure layers (submarine cables, landing stations) render an
@@ -32,12 +48,17 @@ export function makeSignalDetail(source: SignalSource) {
   // Event layers (earthquakes, storms, …) keep the schema below unchanged.
   if (source.kind === "asset") return makeAssetDetail(source);
 
+  const metric = source.metric;
+  const hasMetric = !!metric;
+
   function SignalDetailView(_props: WidgetDetailProps) {
     const scope = useScope();
     const { features, status, updatedAt } = useSignalFeed(source.id, source.refreshMs);
     const [sortKey, setSortKey] = useState<SortKey>("magnitude");
     const [dir, setDir] = useState<1 | -1>(-1);
     const [open, setOpen] = useState<string | null>(null);
+    const [query, setQuery] = useState("");
+    const [minValue, setMinValue] = useState(0);
 
     const scoped = useMemo(() => features.filter((f) => withinScope(f.lat, f.lon, scope)), [features, scope]);
 
@@ -61,20 +82,55 @@ export function makeSignalDetail(source: SignalSource) {
     const spark: ChartPoint[] = useMemo(() => samples.map((s) => ({ x: s.t, y: s.n })), [samples]);
     const delta = useMemo(() => deltaOf(samples), [samples]);
 
-    const rows = useMemo(() => sortFeatures(scoped, sortKey, dir), [scoped, sortKey, dir]);
-    const dist = useMemo(() => distribution(scoped), [scoped]);
-    const tm = useMemo(() => timeModel(scoped), [scoped]);
+    // Largest resolved value across the scope → the min-value slider ceiling.
+    const maxValue = useMemo(() => {
+      let m = 0;
+      for (const f of scoped) { const v = rowValue(f, metric); if (v != null && v > m) m = v; }
+      return m;
+    }, [scoped]);
+    const sliderMax = Math.max(1, Math.ceil(maxValue));
+
+    // Filter (title search + min value) feeds EVERYTHING downstream: map, panels,
+    // table, KPIs and export — one honest, shared view of the data.
+    const filtered = useMemo(
+      () => filterDetailFeatures(scoped, { query, min: minValue }, metric),
+      [scoped, query, minValue],
+    );
+
+    const rows = useMemo(() => sortFeatures(filtered, sortKey, dir, metric), [filtered, sortKey, dir]);
+    const dist = useMemo(() => distribution(filtered), [filtered]);
+    const tm = useMemo(() => timeModel(filtered), [filtered]);
     const now = Date.now();
+    const kpis = useMemo(() => detailKpis(filtered, samples, metric), [filtered, samples]);
 
-    const distPoints: ChartPoint[] = dist.bins.map((b, i) => ({ x: i, y: b.count }));
+    // Min/max resolved value across the filtered set → gradient legend labels.
+    const valueRange = useMemo(() => {
+      let lo = Infinity, hi = -Infinity;
+      for (const f of filtered) { const v = rowValue(f, metric); if (v == null) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
+      return Number.isFinite(lo) ? { min: lo, max: hi } : null;
+    }, [filtered]);
+
+    const distMax = Math.max(1, ...dist.bins.map((b) => b.count));
     const timePoints: ChartPoint[] = timeBins(tm.values, 60 * 60_000, now, 24 * 60 * 60_000).map((b) => ({ x: b.start, y: b.count }));
-    const mapPoints: InsetPoint[] = scoped.map((f) => ({ lat: f.lat, lon: f.lon, id: f.id, color: f.color ?? source.color, props: { title: f.title } }));
+    const timeMax = Math.max(0, ...timePoints.map((p) => p.y));
+    const mapPoints: InsetPoint[] = filtered.map((f) => ({ lat: f.lat, lon: f.lon, id: f.id, color: f.color ?? source.color, props: { title: f.title } }));
     const freshAge = updatedAt ? `${Math.max(0, Math.round((now - updatedAt) / 60000))}m ago` : "—";
+    const filterActive = query.trim() !== "" || minValue > 0;
 
-    const exportRows = rows.map((f) => ({ id: f.id, title: f.title, magnitude: f.props?.magnitude ?? "", lat: f.lat, lon: f.lon, ts: f.ts ?? "", link: f.link ?? "" }));
+    const exportRows = rows.map((f) => ({ id: f.id, title: f.title, magnitude: f.props?.magnitude ?? "", value: rowValue(f, metric) ?? "", lat: f.lat, lon: f.lon, ts: f.ts ?? "", link: f.link ?? "" }));
     const exportGeo = rows.map((f) => ({ lat: f.lat, lon: f.lon, properties: { id: f.id, title: f.title, ...(f.props ?? {}) } }));
 
     const showOnMap = () => { signalsStore.set(source.id, true); shellLayoutStore.unfocus(); };
+
+    // Value column: metric label (with unit) when the source declares one, else the
+    // plain props.magnitude, else a dash. Coloured by the feature's severity ramp.
+    const valueLabel = (f: (typeof rows)[number]): string => {
+      const rm = metric ? rowMetric(f, metric) : undefined;
+      if (rm) return rm.label;
+      const v = rowValue(f, undefined);
+      return v != null ? String(v) : "—";
+    };
+    const changeCls = kpis.change24h.startsWith("+") ? "up" : kpis.change24h.startsWith("-") ? "down" : "";
 
     return (
       <div className="tn-sd">
@@ -86,45 +142,124 @@ export function makeSignalDetail(source: SignalSource) {
           {spark.length >= 2 && <div className="tn-sd-spark"><Chart points={spark} height={40} up={null} /></div>}
         </header>
 
-        {status === "loading" && scoped.length === 0 && <p className="tn-w-empty">Loading {source.label}…</p>}
-        {status !== "loading" && scoped.length === 0 && <p className="tn-w-empty">Nothing in {scope.label}.</p>}
-
         {scoped.length > 0 && (
-          <div className="tn-sd-panels">
-            <div className="tn-sd-panel">
-              <h3>Locations</h3>
-              {mapPoints.length > 0 ? <InsetMap points={mapPoints} height={200} onSelect={(id) => setOpen(id)} />
-                : <p className="tn-w-empty">No mappable features.</p>}
+          <div className="tn-sd-kpis">
+            <div className="tn-sd-kpi">
+              <div className="tn-sd-kpi-label">In view</div>
+              <div className="tn-sd-kpi-value">{kpis.inView}</div>
+              <div className="tn-sd-kpi-sub">{filterActive ? `of ${scoped.length} in scope` : "in scope"}</div>
             </div>
-            <div className="tn-sd-panel">
-              <h3>{dist.kind === "magnitude" ? "Magnitude distribution" : dist.kind === "severity" ? "Severity" : "Distribution"}</h3>
-              {dist.kind !== "none" ? (
-                <>
-                  <div className="tn-sd-bars">
-                    {dist.bins.map((b, i) => {
-                      const max = Math.max(1, ...dist.bins.map((x) => x.count));
-                      return <div key={i} className="tn-sd-bar" style={{ height: `${(b.count / max) * 100}%` }} title={`${b.label}: ${b.count}`} />;
-                    })}
-                  </div>
-                  <div style={{ display: "flex", gap: 4 }}>{dist.bins.map((b, i) => <span key={i} className="tn-sd-bar-label" style={{ flex: 1 }}>{b.label}</span>)}</div>
-                </>
-              ) : <p className="tn-w-empty">This source declares no magnitude or severity.</p>}
+            <div className="tn-sd-kpi">
+              <div className="tn-sd-kpi-label">Peak</div>
+              <div className="tn-sd-kpi-value">{kpis.peak ? kpis.peak.label : "—"}</div>
+              <div className="tn-sd-kpi-sub">{hasMetric ? "metric max" : kpis.peak ? "magnitude" : "no scale"}</div>
             </div>
-            <div className="tn-sd-panel">
-              <h3>Over the last 24h {tm.undated > 0 && <span className="tn-sd-bar-label">· {tm.undated} undated</span>}</h3>
-              {timePoints.some((p) => p.y > 0) ? <Chart points={timePoints} height={120} up={null} />
-                : <p className="tn-w-empty">No timestamped features in the window.</p>}
+            <div className="tn-sd-kpi">
+              <div className="tn-sd-kpi-label">24h Δ</div>
+              <div className={`tn-sd-kpi-value ${changeCls}`}>{kpis.change24h}</div>
+              <div className="tn-sd-kpi-sub">count vs ≤24h ago</div>
             </div>
           </div>
         )}
 
         {scoped.length > 0 && (
+          <div className="tn-sd-filter">
+            <input
+              type="text"
+              value={query}
+              placeholder={`Search ${source.label.toLowerCase()}…`}
+              aria-label="Filter by title"
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {maxValue > 0 && (
+              <label className="tn-sd-range">
+                <span>{hasMetric ? "Min value" : "Min mag"}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={sliderMax}
+                  step={sliderMax <= 12 ? 0.1 : 1}
+                  value={Math.min(minValue, sliderMax)}
+                  aria-label="Minimum value"
+                  onChange={(e) => setMinValue(Number(e.target.value))}
+                />
+                <b>{minValue > 0 ? minValue : "0"}</b>
+              </label>
+            )}
+            {filterActive && (
+              <button className="tn-sd-filter-clear" onClick={() => { setQuery(""); setMinValue(0); }}>Clear</button>
+            )}
+          </div>
+        )}
+
+        {status === "loading" && scoped.length === 0 && <p className="tn-w-empty">Loading {source.label}…</p>}
+        {status !== "loading" && scoped.length === 0 && <p className="tn-w-empty">Nothing in {scope.label}.</p>}
+        {scoped.length > 0 && filtered.length === 0 && <p className="tn-w-empty">No features match the filter.</p>}
+
+        {filtered.length > 0 && (
+          <div className="tn-sd-panels">
+            <div className="tn-sd-panel">
+              <h3>Locations</h3>
+              {mapPoints.length > 0 ? <InsetMap points={mapPoints} height={200} onSelect={(id) => setOpen(id)} />
+                : <p className="tn-w-empty">No mappable features.</p>}
+              {(dist.kind === "severity" || valueRange) && (
+                <div className="tn-sd-legend">
+                  {dist.kind === "severity" ? (
+                    <>
+                      <span className="tn-sd-legend-item"><i className="tn-sd-swatch" style={{ background: SEV_SEVERE }} />Severe</span>
+                      <span className="tn-sd-legend-item"><i className="tn-sd-swatch" style={{ background: SEV_WARNING }} />Warning</span>
+                      <span className="tn-sd-legend-item"><i className="tn-sd-swatch tn-sd-swatch-other" />Other</span>
+                    </>
+                  ) : valueRange ? (
+                    <div className="tn-sd-legend-grad">
+                      <span className="tn-sd-bar-label">{valueRange.min}</span>
+                      <span className="tn-sd-gradbar" style={{ background: `linear-gradient(90deg, ${withAlpha(source.color, 0.15)}, ${source.color})` }} />
+                      <span className="tn-sd-bar-label">{valueRange.max}{metric?.unit ?? ""}</span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+            <div className="tn-sd-panel">
+              <h3>{dist.kind === "magnitude" ? "Magnitude distribution" : dist.kind === "severity" ? "Severity" : "Distribution"}</h3>
+              {dist.kind !== "none" ? (
+                <>
+                  <div className="tn-sd-plot">
+                    <div className="tn-sd-yaxis"><span>{distMax}</span><span>0</span></div>
+                    <div className="tn-sd-plot-body">
+                      <div className="tn-sd-bars">
+                        {dist.bins.map((b, i) => (
+                          <div key={i} className="tn-sd-bar" style={{ height: `${(b.count / distMax) * 100}%` }} title={`${b.label}: ${b.count}`} />
+                        ))}
+                      </div>
+                      <div className="tn-sd-binlabels">{dist.bins.map((b, i) => <span key={i} className="tn-sd-bar-label" style={{ flex: 1 }}>{b.label}</span>)}</div>
+                    </div>
+                  </div>
+                </>
+              ) : <p className="tn-w-empty">This source declares no magnitude or severity.</p>}
+            </div>
+            <div className="tn-sd-panel">
+              <h3>Over the last 24h {tm.undated > 0 && <span className="tn-sd-bar-label">· {tm.undated} undated</span>}</h3>
+              {timePoints.some((p) => p.y > 0) ? (
+                <div className="tn-sd-plot">
+                  <div className="tn-sd-yaxis"><span>{timeMax}</span><span>0</span></div>
+                  <div className="tn-sd-plot-body">
+                    <Chart points={timePoints} height={120} up={null} />
+                    <div className="tn-sd-xaxis"><span>−24h</span><span>−12h</span><span>now</span></div>
+                  </div>
+                </div>
+              ) : <p className="tn-w-empty">No timestamped features in the window.</p>}
+            </div>
+          </div>
+        )}
+
+        {filtered.length > 0 && (
           <table className="tn-sd-table">
             <thead>
               <tr>
                 {(["magnitude", "title", "recency"] as SortKey[]).map((k) => (
                   <th key={k} onClick={() => { if (sortKey === k) setDir((d) => (d === 1 ? -1 : 1)); else { setSortKey(k); setDir(-1); } }}>
-                    {k === "recency" ? "When" : humaniseKey(k)}{sortKey === k ? (dir === -1 ? " ↓" : " ↑") : ""}
+                    {k === "recency" ? "When" : k === "magnitude" ? (hasMetric ? "Value" : "Magnitude") : humaniseKey(k)}{sortKey === k ? (dir === -1 ? " ↓" : " ↑") : ""}
                   </th>
                 ))}
               </tr>
@@ -133,12 +268,18 @@ export function makeSignalDetail(source: SignalSource) {
               {rows.map((f) => {
                 const entries = Object.entries(f.props ?? {}).filter(([, v]) => v != null && v !== "");
                 const isOpen = open === f.id;
+                const age = relativeAge(f.ts, now);
                 return (
                   <Fragment key={f.id}>
                     <tr className="tn-sd-row" onClick={() => setOpen(isOpen ? null : f.id)}>
-                      <td>{typeof f.props?.magnitude === "number" ? (f.props.magnitude as number) : "—"}</td>
+                      <td>
+                        <span className="tn-sd-val">
+                          <i className="tn-sd-dot" style={{ background: f.color ?? source.color }} />
+                          {valueLabel(f)}
+                        </span>
+                      </td>
                       <td>{f.title}</td>
-                      <td>{f.ts ? new Date(f.ts).toISOString().slice(0, 16).replace("T", " ") : "—"}</td>
+                      <td title={f.ts ?? undefined}>{age || "—"}</td>
                     </tr>
                     {isOpen && (
                       <tr className="tn-sd-drill">
