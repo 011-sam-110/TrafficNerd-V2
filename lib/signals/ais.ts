@@ -177,6 +177,7 @@ export const AIS_SOURCE: SignalSource = {
   color: "#0d9488",
   refreshMs: 60_000, // re-open the socket at most ~once a minute
   attribution: AISSTREAM_ATTRIBUTION,
+  sourceUrl: "https://aisstream.io/", // real-time AIS stream (dossier source)
   async fetch() {
     const key = (process.env.AISSTREAM_API_KEY ?? "").trim();
     if (!key) return []; // dormant until the free key is set

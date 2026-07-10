@@ -1,23 +1,26 @@
 "use client";
 // In-overlay body for a clicked country.
 //
-// The country layer is a base reference today: borders + names + a click target.
-// This dossier shows the identity we already know (flag, ISO, region, rough
-// population). The "Instability index" slot is now LIVE — it reads the per-country
-// Composite Instability Index (CII) we already compute and shows the score, its
-// top drivers and the factor breakdown, presented honestly as a composite estimate
-// (not an official government figure). "Travel advisory" and "Active events" stay
-// clearly-labelled "coming soon" slots rather than faking numbers.
+// The country layer is a base reference (borders + names + a click target), but the
+// dossier is the traveler / security-desk / analyst entry point for a place. It now
+// shows three LIVE, sourced sections beneath the identity facts:
+//   • Travel advisory — an aggregate 0–5 government-advisory score (travel-advisory.info)
+//     with a clickable deep link. Dormant-safe: a labelled placeholder on any miss.
+//   • Instability index — the composite Country Instability Index we already compute,
+//     honestly flagged as a derived estimate, with every contributing source linked.
+//   • Active signals — the live country-coded layers (ransomware / connectivity /
+//     displacement / food) that fall inside this country, each with a clickable
+//     source, plus a deep link to the country's live ReliefWeb feed.
+// No unsourced claims: every number carries a link to the upstream it came from.
 
 import type { CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import type { WorldObject } from "@/lib/world";
-import { useSignalFeatures } from "@/lib/widgets/useSignalFeatures";
+import { useSignalFeatures, type SignalFeed } from "@/lib/widgets/useSignalFeatures";
 import { resolveCountryInstability } from "@/lib/geo/countryInstability";
-
-const COMING_SOON: { title: string; note: string }[] = [
-  { title: "Travel advisory", note: "Government advisory level + summary" },
-  { title: "Active events", note: "Live signals currently inside this country" },
-];
+import { resolveSignalSources } from "@/lib/signals/sourceLink";
+import type { AdvisoryView } from "@/lib/geo/travelAdvisory";
+import { matchCountryFeature, activeEventLine, reliefwebCountryUrl } from "@/lib/geo/countryActive";
 
 // Shared card + chip styling (matches the existing reserved-slot look, theme vars only).
 const CARD_STYLE: CSSProperties = {
@@ -37,42 +40,23 @@ const CHIP_STYLE: CSSProperties = {
   padding: "2px 7px",
   whiteSpace: "nowrap",
 };
+const SRC_LINK_STYLE: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 600,
+  color: "var(--tn-accent-strong)",
+  textDecoration: "none",
+  border: "1px solid var(--tn-border)",
+  borderRadius: 999,
+  padding: "2px 8px",
+  whiteSpace: "nowrap",
+};
 
-/** An inert "coming soon" reserved slot (Travel advisory / Active events). */
-function ComingSoonSlot({ title, note }: { title: string; note: string }) {
+/** A single-line status slot (loading / unavailable / placeholder). */
+function StatusSlot({ title, note, chip, chipColor }: { title: string; note: string; chip: string; chipColor: string }) {
   return (
-    <div
-      style={{
-        ...CARD_STYLE,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-      }}
-    >
+    <div style={{ ...CARD_STYLE, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
       <div>
         <div style={SLOT_TITLE_STYLE}>{title}</div>
-        <div style={SLOT_NOTE_STYLE}>{note}</div>
-      </div>
-      <span style={{ ...CHIP_STYLE, color: "var(--tn-text-faint)" }}>Coming soon</span>
-    </div>
-  );
-}
-
-/** A single-line instability slot (loading / below-threshold / dormant / error). */
-function InstabilityStatusSlot({ note, chip, chipColor }: { note: string; chip: string; chipColor: string }) {
-  return (
-    <div
-      style={{
-        ...CARD_STYLE,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-      }}
-    >
-      <div>
-        <div style={SLOT_TITLE_STYLE}>Instability index</div>
         <div style={SLOT_NOTE_STYLE}>{note}</div>
       </div>
       <span style={{ ...CHIP_STYLE, color: chipColor }}>{chip}</span>
@@ -80,30 +64,88 @@ function InstabilityStatusSlot({ note, chip, chipColor }: { note: string; chip: 
   );
 }
 
+// ── Travel advisory ─────────────────────────────────────────────────────────
+/** LIVE aggregate travel-advisory slot for the clicked country (keyless). */
+function TravelAdvisorySlot({ iso2 }: { iso2?: string }) {
+  const [state, setState] = useState<{ kind: "loading" | "none" | "ok"; view?: AdvisoryView }>({ kind: "loading" });
+
+  useEffect(() => {
+    if (!iso2) {
+      setState({ kind: "none" });
+      return;
+    }
+    let alive = true;
+    setState({ kind: "loading" });
+    fetch(`/api/advisory?iso2=${encodeURIComponent(iso2)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!alive) return;
+        const v = (d?.advisory as AdvisoryView | null) ?? null;
+        setState(v ? { kind: "ok", view: v } : { kind: "none" });
+      })
+      .catch(() => alive && setState({ kind: "none" }));
+    return () => {
+      alive = false;
+    };
+  }, [iso2]);
+
+  if (state.kind === "loading")
+    return <StatusSlot title="Travel advisory" note="Checking government advisories…" chip="Loading" chipColor="var(--tn-text-faint)" />;
+  if (state.kind === "none")
+    return <StatusSlot title="Travel advisory" note="No aggregate advisory available right now." chip="No data" chipColor="var(--tn-text-faint)" />;
+
+  const v = state.view!;
+  return (
+    <div style={{ ...CARD_STYLE, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <div>
+          <div style={SLOT_TITLE_STYLE}>Travel advisory</div>
+          <div style={{ ...SLOT_NOTE_STYLE, color: v.color, fontWeight: 700 }}>{v.label}</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 2, color: v.color }}>
+          <span className="tn-num" style={{ fontSize: 22, fontWeight: 700, lineHeight: 1 }}>{v.score}</span>
+          <span style={{ fontSize: 11, color: "var(--tn-text-muted)" }}>/5</span>
+        </div>
+      </div>
+      {v.message && (
+        <div style={{ fontSize: 12, color: "var(--tn-text)", lineHeight: 1.45 }}>{v.message}</div>
+      )}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 10, color: "var(--tn-text-faint)" }}>
+          Aggregate score{v.updated ? ` · updated ${v.updated}` : ""} — not one government&apos;s figure
+        </span>
+        <a href={v.source} target="_blank" rel="noreferrer noopener" style={SRC_LINK_STYLE}>
+          travel-advisory.info ↗
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ── Instability index ───────────────────────────────────────────────────────
 /** LIVE Country Instability Index slot for the clicked country. */
 function InstabilitySlot({ iso3, label }: { iso3: string | undefined; label: string }) {
   const { features, status } = useSignalFeatures("instability", true);
   const state = resolveCountryInstability(features, status, iso3, label);
 
   if (state.kind === "loading")
-    return <InstabilityStatusSlot note="Assessing instability…" chip="Loading" chipColor="var(--tn-text-faint)" />;
+    return <StatusSlot title="Instability index" note="Assessing instability…" chip="Loading" chipColor="var(--tn-text-faint)" />;
   if (state.kind === "error")
-    return <InstabilityStatusSlot note="Instability data is unavailable right now." chip="Unavailable" chipColor="var(--tn-text-faint)" />;
+    return <StatusSlot title="Instability index" note="Instability data is unavailable right now." chip="Unavailable" chipColor="var(--tn-text-faint)" />;
   if (state.kind === "empty")
-    return <InstabilityStatusSlot note="Monitoring inputs are dormant right now." chip="No data" chipColor="var(--tn-text-faint)" />;
+    return <StatusSlot title="Instability index" note="Monitoring inputs are dormant right now." chip="No data" chipColor="var(--tn-text-faint)" />;
   if (state.kind === "below")
-    return <InstabilityStatusSlot note="Stable — below the monitoring threshold." chip="Stable" chipColor="var(--tn-live)" />;
+    return <StatusSlot title="Instability index" note="Stable — below the monitoring threshold." chip="Stable" chipColor="var(--tn-live)" />;
 
   const { view } = state;
+  const sources = resolveSignalSources({ signalId: "instability" });
   return (
     <div style={{ ...CARD_STYLE, display: "flex", flexDirection: "column", gap: 10 }}>
       {/* Title + score */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div>
           <div style={SLOT_TITLE_STYLE}>Instability index</div>
-          <div style={SLOT_NOTE_STYLE}>
-            Composite estimate{view.coverage ? ` · ${view.coverage}` : ""}
-          </div>
+          <div style={SLOT_NOTE_STYLE}>Composite estimate{view.coverage ? ` · ${view.coverage}` : ""}</div>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 2, color: view.color }}>
           <span className="tn-num" style={{ fontSize: 22, fontWeight: 700, lineHeight: 1 }}>{view.score}</span>
@@ -144,22 +186,91 @@ function InstabilitySlot({ iso3, label }: { iso3: string | undefined; label: str
                 <span className="tn-num" style={{ color: "var(--tn-text)" }}>{f.value}</span>
               </div>
               <div style={{ height: 5, borderRadius: 999, background: "var(--tn-border)", overflow: "hidden" }}>
-                <div
-                  style={{
-                    height: "100%",
-                    width: `${Math.min(100, Math.max(0, f.pct))}%`,
-                    background: view.color,
-                    borderRadius: 999,
-                  }}
-                />
+                <div style={{ height: "100%", width: `${Math.min(100, Math.max(0, f.pct))}%`, background: view.color, borderRadius: 999 }} />
               </div>
             </div>
           ))}
         </div>
       )}
 
+      {/* Contributing sources — clickable, honest about being a derived estimate. */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 10, color: "var(--tn-text-faint)" }}>Sources (derived):</span>
+        {sources.map((s) => (
+          <a key={s.href} href={s.href} target="_blank" rel="noreferrer noopener" style={SRC_LINK_STYLE}>
+            {s.label} ↗
+          </a>
+        ))}
+      </div>
       <div style={{ fontSize: 10, color: "var(--tn-text-faint)", lineHeight: 1.4 }}>
-        Composite estimate from ACLED · WFP · UNHCR · IODA — not an official government figure.
+        Composite estimate — not an official government figure.
+      </div>
+    </div>
+  );
+}
+
+// ── Active signals ──────────────────────────────────────────────────────────
+const ACTIVE_LAYERS: { id: string; label: string; color: string }[] = [
+  { id: "cyber-ransomware", label: "Ransomware", color: "#9333ea" },
+  { id: "internet-outages", label: "Connectivity", color: "#b91c1c" },
+  { id: "displacement", label: "Displacement", color: "#ea580c" },
+  { id: "food-security", label: "Food security", color: "#dc2626" },
+];
+
+/** Live country-coded signals that fall inside the clicked country + a ReliefWeb feed. */
+function ActiveSignalsSlot({ iso2, iso3, name }: { iso2?: string; iso3?: string; name: string }) {
+  // One feed per country-coded layer (fixed order → hook-safe).
+  const feeds: SignalFeed[] = [
+    useSignalFeatures(ACTIVE_LAYERS[0].id, true),
+    useSignalFeatures(ACTIVE_LAYERS[1].id, true),
+    useSignalFeatures(ACTIVE_LAYERS[2].id, true),
+    useSignalFeatures(ACTIVE_LAYERS[3].id, true),
+  ];
+  const country = { iso2, iso3, name };
+  const rows = ACTIVE_LAYERS.map((layer, i) => {
+    const match = matchCountryFeature(feeds[i].features, country);
+    if (!match) return null;
+    const src = resolveSignalSources({ signalId: layer.id })[0];
+    return { layer, line: activeEventLine(layer.id, match), src };
+  }).filter((r): r is NonNullable<typeof r> => r !== null);
+
+  const loading = rows.length === 0 && feeds.some((f) => f.status === "loading");
+  const reliefweb = reliefwebCountryUrl(iso3);
+
+  return (
+    <div style={{ ...CARD_STYLE, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={SLOT_TITLE_STYLE}>Active signals</div>
+
+      {rows.length > 0 ? (
+        <div style={{ display: "grid", gap: 6 }}>
+          {rows.map(({ layer, line, src }) => (
+            <div key={layer.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", background: layer.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: "var(--tn-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ color: "var(--tn-text-muted)" }}>{layer.label}:</span> {line}
+                </span>
+              </div>
+              {src && (
+                <a href={src.href} target="_blank" rel="noreferrer noopener" style={SRC_LINK_STYLE}>
+                  {src.label} ↗
+                </a>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={SLOT_NOTE_STYLE}>
+          {loading ? "Checking active signals…" : "No flagged country-level signals right now."}
+        </div>
+      )}
+
+      {/* Always a live, sourced situation feed for the country. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap", borderTop: "1px solid var(--tn-border)", paddingTop: 8 }}>
+        <span style={{ fontSize: 10, color: "var(--tn-text-faint)" }}>Live situation reports for {name}</span>
+        <a href={reliefweb} target="_blank" rel="noreferrer noopener" style={SRC_LINK_STYLE}>
+          ReliefWeb ↗
+        </a>
       </div>
     </div>
   );
@@ -180,8 +291,6 @@ export default function CountryDetail({ object }: { object: WorldObject }) {
   if (continent && continent !== region) facts.push(["Continent", continent]);
   if (population) facts.push(["Population", `≈ ${population.toLocaleString("en-US")}`]);
 
-  const [travelAdvisory, activeEvents] = COMING_SOON;
-
   return (
     <div style={{ color: "var(--tn-text)", fontFamily: "var(--tn-sans)" }}>
       {/* ── Header ── */}
@@ -197,15 +306,7 @@ export default function CountryDetail({ object }: { object: WorldObject }) {
 
       {/* ── Known identity facts ── */}
       {facts.length > 0 && (
-        <dl
-          style={{
-            display: "grid",
-            gridTemplateColumns: "auto 1fr",
-            gap: "6px 14px",
-            margin: 0,
-            fontSize: 13,
-          }}
-        >
+        <dl style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", margin: 0, fontSize: 13 }}>
           {facts.map(([k, v]) => (
             <div key={k} style={{ display: "contents" }}>
               <dt
@@ -226,19 +327,11 @@ export default function CountryDetail({ object }: { object: WorldObject }) {
         </dl>
       )}
 
-      {/* ── Live + reserved data slots ── */}
-      <div
-        style={{
-          marginTop: 16,
-          borderTop: "1px solid var(--tn-border)",
-          paddingTop: 12,
-          display: "grid",
-          gap: 8,
-        }}
-      >
-        <ComingSoonSlot title={travelAdvisory.title} note={travelAdvisory.note} />
+      {/* ── Live, sourced data slots ── */}
+      <div style={{ marginTop: 16, borderTop: "1px solid var(--tn-border)", paddingTop: 12, display: "grid", gap: 8 }}>
+        <TravelAdvisorySlot iso2={iso2} />
         <InstabilitySlot iso3={iso3} label={object.label} />
-        <ComingSoonSlot title={activeEvents.title} note={activeEvents.note} />
+        <ActiveSignalsSlot iso2={iso2} iso3={iso3} name={object.label} />
       </div>
 
       <div style={{ marginTop: 12, fontSize: 12, color: "var(--tn-text-muted)" }}>

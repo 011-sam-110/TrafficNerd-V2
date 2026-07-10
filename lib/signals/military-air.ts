@@ -85,6 +85,7 @@ export const MILITARY_AIR_SOURCE: SignalSource = {
   color: "#3f6212",
   refreshMs: 20_000, // live aircraft — a short cache keeps positions current
   attribution: ADSB_MIL_ATTRIBUTION,
+  sourceUrl: "https://adsb.lol/", // community military ADS-B feed (dossier source)
   // Barometric altitude is the real per-aircraft scalar: 0 (on ground) → ~45k ft ceiling.
   metric: { field: "altitudeFt", domain: [0, 45000], unit: " ft" },
   async fetch() {

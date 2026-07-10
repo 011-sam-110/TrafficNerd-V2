@@ -71,6 +71,8 @@ export const INTERNET_OUTAGES_SOURCE: SignalSource = {
   color: "#b91c1c",
   refreshMs: 15 * 60 * 1000,
   attribution: IODA_ATTRIBUTION,
+  sourceUrl: "https://ioda.inetintel.cc.gatech.edu/", // IODA dashboard (dossier source)
+
   // Real scalar: IODA's aggregate outage-severity score (scores.overall, stored as
   // the finite `outageScore` prop). Calm = 0 (fully connected); extreme = 100k, the
   // adapter's own "severe" band, so a national-scale shutdown fills the bar.
