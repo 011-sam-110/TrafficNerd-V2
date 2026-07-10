@@ -4,7 +4,7 @@
 // basemap, or fly to a covered region. Open/close is owned by ConsoleShell.
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { layersStore, LAYER_PRESETS, ACTIVE_LAYERS, presetState, useLayers, type LayerKey } from "@/lib/layers";
+import { layersStore, ACTIVE_LAYERS, useLayers, type LayerKey } from "@/lib/layers";
 import { mapViewStore, useMapView } from "@/lib/mapView";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { CAMERA_REGIONS } from "@/lib/icons/svg";
@@ -28,7 +28,6 @@ import {
   columnize,
   orderGroups,
   decorate,
-  matchingSetId,
   assignWidgetSection,
   POPULAR_WIDGET_IDS,
   type Command,
@@ -159,20 +158,6 @@ function buildCommands(close: () => void): Command[] {
     });
   }
 
-  // ── Layer sets: apply a curated bundle of layers ────────────────────────
-  for (const p of LAYER_PRESETS) {
-    cmds.push({
-      id: `preset-${p.id}`,
-      label: `${p.label}`,
-      hint: "layer set",
-      group: "Layer sets",
-      run: () => {
-        layersStore.applyPreset(p.id);
-        close();
-      },
-    });
-  }
-
   // ── Basemap: swap the underlying map style ──────────────────────────────
   for (const k of Object.keys(BASEMAPS) as BasemapKey[]) {
     cmds.push({
@@ -227,10 +212,6 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
   const variant = useVariant();
   const layout = useShellLayout();
   const layerState = useLayers();
-  const activeLayerSet = useMemo(
-    () => matchingSetId(layerState as unknown as Record<string, boolean>, LAYER_PRESETS.map((p) => ({ id: p.id, state: presetState(p.id) as unknown as Record<string, boolean> }))),
-    [layerState],
-  );
   const snapshot = useMemo<PaletteSnapshot>(() => ({
     basemap: mapView.basemap,
     stage: layout.stage,
@@ -239,8 +220,8 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     layers: layerState as unknown as Record<string, boolean>,
     activePresetId: activePreset,
     activeVariantId: variant.activeId,
-    activeLayerSet,
-  }), [mapView.basemap, layout.stage, ui.theme, lang, layerState, activePreset, variant.activeId, activeLayerSet]);
+    activeLayerSet: null, // Layer sets were removed from the palette — nothing to mark active.
+  }), [mapView.basemap, layout.stage, ui.theme, lang, layerState, activePreset, variant.activeId]);
 
   // Stamp active/ON/OFF/current-choice onto each command from the live snapshot.
   const decorated = useMemo(() => decorate(commands, snapshot), [commands, snapshot]);
