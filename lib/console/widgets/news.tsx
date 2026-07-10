@@ -59,5 +59,9 @@ function NewsBody({ instanceId, config }: WidgetBodyProps) {
 export const NEWS_WIDGET = {
   id: "news", title: "Live News", icon: "📺", category: "News",
   defaultHeight: 240, defaultConfig: { providerId: "aljazeera" }, component: NewsBody, detail: NewsDetail,
+  help: {
+    what: "A live 24/7 news video stream you can switch between channels — a running backdrop while you watch the map.",
+    source: "Public live-stream channels (Al Jazeera, Sky News, DW & more)",
+  },
 };
 registerWidget(NEWS_WIDGET);

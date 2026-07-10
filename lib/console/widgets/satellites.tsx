@@ -50,6 +50,10 @@ export const SATELLITES_WIDGET = {
   defaultConfig: { group: "visual" },
   component: SatellitesBody,
   detail: SatellitesDetail,
+  help: {
+    what: "Satellites overhead, propagated locally from public orbital elements and listed by altitude — the ISS, Starlink and more, in near-real time.",
+    source: "CelesTrak TLE sets, propagated with satellite.js (keyless)",
+  },
   capabilities: { filter: true, sort: true },
 };
 registerWidget(SATELLITES_WIDGET);

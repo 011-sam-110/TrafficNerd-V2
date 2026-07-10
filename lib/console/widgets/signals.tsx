@@ -16,6 +16,7 @@ import { registerWidget, type WidgetBodyProps } from "@/lib/console/registry";
 import { useWidgetReport } from "@/components/console/WidgetFrame";
 import { useScope } from "@/lib/shell/scope";
 import { projectSignal } from "@/lib/console/signals/signalCard";
+import { signalHelp } from "@/lib/console/help";
 import { useSignalFeed } from "@/lib/console/signals/useSignalFeed";
 import { MetricBar } from "@/components/MetricBar";
 import { makeSignalDetail } from "./signals.detail";
@@ -125,5 +126,6 @@ for (const source of SIGNALS) {
     defaultConfig: {},
     component: makeSignalBody(source),
     detail: makeSignalDetail(source),
+    help: signalHelp(source),
   });
 }

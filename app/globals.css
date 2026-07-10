@@ -2226,3 +2226,79 @@ a { color: var(--tn-accent); }
 .tn-pinmenu-add:hover { background: var(--tn-surface-2); color: var(--tn-accent); }
 .tn-pinmenu-coord { font-size: 10px; color: var(--tn-text-faint); padding: 0 10px 4px; }
 @media (max-width: 640px) { .tn-mapsearch { width: min(70vw, 320px); } }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Onboarding chrome — Ko-fi support button, widget "?" help popover, and the
+   first-visit guided tour. All additive, token-driven (light + dark), calm.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Ko-fi "Support" button (StatusBar) — present but not shouty ──────── */
+.tn-kofi {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 11px; border-radius: 8px;
+  font: inherit; font-size: 12px; font-weight: 600; text-decoration: none;
+  color: var(--tn-accent-strong); background: var(--tn-accent-soft);
+  border: 1px solid transparent;
+  transition: background .15s ease, color .15s ease;
+}
+.tn-kofi:hover { background: var(--tn-accent); color: #fff; }
+.tn-kofi-icon { font-size: 13px; line-height: 1; }
+@media (max-width: 720px) { .tn-kofi-label { display: none; } .tn-kofi { padding: 0 8px; } }
+
+/* ── Widget "?" help affordance (WidgetFrame header + inline popover) ─── */
+.tn-cw-help {
+  border: 0; background: none; cursor: pointer; color: var(--tn-text-faint);
+  font-size: 11px; font-weight: 800; line-height: 1; padding: 0;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 0 0 1px var(--tn-border);
+}
+.tn-cw-help:hover, .tn-cw-help.is-on { color: var(--tn-accent); box-shadow: inset 0 0 0 1px var(--tn-accent); }
+.tn-cw-help-pop {
+  display: flex; flex-direction: column; gap: 6px; padding: 9px 11px;
+  border-bottom: 1px solid var(--tn-border); background: var(--tn-surface-solid); color: var(--tn-text);
+}
+.tn-cw-help-head { display: flex; align-items: center; gap: 8px; }
+.tn-cw-help-title { font-size: 12px; font-weight: 700; flex: 1; }
+.tn-cw-help-x { border: 0; background: none; cursor: pointer; color: var(--tn-text-faint); font-size: 12px; line-height: 1; padding: 2px; }
+.tn-cw-help-x:hover { color: var(--tn-text); }
+.tn-cw-help-what { font-size: 11.5px; line-height: 1.5; color: var(--tn-text-muted); margin: 0; }
+.tn-cw-help-src { font-size: 11px; line-height: 1.45; color: var(--tn-text-faint); margin: 0; }
+.tn-cw-help-src-k { font-weight: 700; color: var(--tn-text-muted); text-transform: uppercase; letter-spacing: .05em; font-size: 9px; margin-right: 5px; }
+
+/* ── Guided tour — spotlight veil + ring + coach-mark card ────────────── */
+.tn-tour { position: fixed; inset: 0; z-index: 1000; }
+.tn-tour-veil { position: fixed; inset: 0; background: transparent; }
+.tn-tour-veil.is-plain { background: rgba(15, 23, 42, .55); }
+.tn-tour-ring {
+  position: fixed; border-radius: 10px; pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, .55);
+  outline: 2px solid var(--tn-accent); outline-offset: 0;
+  transition: left .2s ease, top .2s ease, width .2s ease, height .2s ease;
+}
+.tn-tour-card {
+  position: fixed; width: min(340px, calc(100vw - 24px));
+  background: var(--tn-surface-solid); color: var(--tn-text);
+  border: 1px solid var(--tn-border); border-radius: 14px; box-shadow: var(--tn-shadow);
+  padding: 15px 16px 14px; display: flex; flex-direction: column; gap: 8px;
+  animation: tn-fade-in .16s ease;
+}
+.tn-tour-meta { display: flex; align-items: center; justify-content: space-between; }
+.tn-tour-count { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--tn-text-faint); font-weight: 700; }
+.tn-tour-skip { border: 0; background: none; cursor: pointer; color: var(--tn-text-faint); font-size: 11.5px; padding: 2px 4px; }
+.tn-tour-skip:hover { color: var(--tn-text-muted); text-decoration: underline; }
+.tn-tour-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--tn-text); }
+.tn-tour-body { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--tn-text-muted); }
+.tn-tour-dots { display: flex; gap: 5px; padding: 3px 0 1px; }
+.tn-tour-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tn-toggle-off); transition: background .15s ease; }
+.tn-tour-dot.is-on { background: var(--tn-accent); }
+.tn-tour-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 2px; }
+.tn-tour-btn {
+  font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--tn-border); background: var(--tn-surface-2); color: var(--tn-text);
+  border-radius: 8px; padding: 6px 15px;
+}
+.tn-tour-btn:hover:not(:disabled) { border-color: var(--tn-border-strong); }
+.tn-tour-btn:disabled { opacity: .4; cursor: default; }
+.tn-tour-btn.is-primary { background: var(--tn-accent); color: #fff; border-color: transparent; }
+.tn-tour-btn.is-primary:hover { background: var(--tn-accent-strong); }

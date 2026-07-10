@@ -118,5 +118,9 @@ export const MARKETS_WIDGET = {
   defaultConfig: {},
   component: MarketsBody,
   detail: MarketsDetail,
+  help: {
+    what: "Live prices for commodities, crypto, FX and major equities, flagging any big daily mover as an alert. Sparklines build up as it polls.",
+    source: "Yahoo Finance + CoinGecko + ECB (keyless); more with a key",
+  },
 };
 registerWidget(MARKETS_WIDGET);

@@ -80,5 +80,9 @@ export const HEADLINES_WIDGET = {
   defaultConfig: {},
   component: HeadlinesBody,
   detail: HeadlinesDetail,
+  help: {
+    what: "The latest world headlines, clustered so the same story from several outlets reads as one line. Each links out to the original.",
+    source: "BBC, Al Jazeera, NPR & Guardian world RSS (keyless)",
+  },
 };
 registerWidget(HEADLINES_WIDGET);
