@@ -18,6 +18,7 @@ import type { StageId } from "@/lib/console/types";
 import { listPresets, applyPreset, saveCustomPreset, DEFAULT_PRESET_ID } from "@/lib/console/presets";
 import { useActivePreset } from "@/lib/console/activePreset";
 import { encodeLayout } from "@/lib/console/share";
+import { tourStore } from "@/lib/shell/tour";
 import { uiStore, useUI } from "@/lib/shell/ui";
 import { langStore, useLang } from "@/lib/i18n/store";
 import { LANGS } from "@/lib/i18n/catalog";
