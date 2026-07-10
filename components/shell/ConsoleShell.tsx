@@ -17,6 +17,8 @@ import { variantStore } from "@/lib/variants/store";
 import StatusBar from "@/components/shell/StatusBar";
 import CommandPalette from "@/components/shell/CommandPalette";
 import BreakingBanner from "@/components/shell/BreakingBanner";
+import TourOverlay from "@/components/shell/TourOverlay";
+import { tourStore } from "@/lib/shell/tour";
 import { FeedOverlay } from "@/components/FeedOverlay";
 import { CinematicDive } from "@/components/CinematicDive";
 import { scopeStore } from "@/lib/shell/scope";
@@ -65,6 +67,13 @@ export default function ConsoleShell() {
     if (c) { const l = decodeLayout(c); if (l) shellLayoutStore.replace(l); }
     else if (shellLayoutStore.get().widgets.length === 0) applyPreset(DEFAULT_PRESET_ID); // first-run seed
     registerServiceWorker(); // production-only; a no-op under `next dev`
+
+    // First-visit guided tour: hydrate the persisted "seen" flag, then auto-open once
+    // the seeded widgets have painted (so the tour can spotlight a real widget frame).
+    // Gated so it never nags on return visits — see lib/shell/tour.ts.
+    tourStore.hydrate();
+    const tourTimer = setTimeout(() => tourStore.maybeAutoStart(), 900);
+    return () => clearTimeout(tourTimer);
   }, []);
 
   // Global ⌘K / Ctrl-K toggles the palette.
@@ -102,6 +111,7 @@ export default function ConsoleShell() {
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <FeedOverlay />
       <CinematicDive />
+      <TourOverlay />
       {toast && <div className="tn-toast" role="status" aria-live="polite">{toast}</div>}
     </div>
   );

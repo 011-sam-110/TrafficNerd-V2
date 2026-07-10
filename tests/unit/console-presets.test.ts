@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { BUILTIN_PRESETS, DEFAULT_PRESET_ID } from "@/lib/console/presets";
 import { SIGNALS, signalsByGroup } from "@/lib/signals/registry";
 
-const CORE_WIDGETS = new Set(["events", "news", "cameras", "aviation", "satellites", "markets", "headlines", "locate"]);
+const CORE_WIDGETS = new Set(["events", "news", "cameras", "aviation", "satellites", "markets", "headlines", "locate", "anomaly"]);
 const SIGNAL_WIDGETS = new Set(SIGNALS.map((s) => `signal:${s.id}`));
 // The OSINT "Tools" board's query→response recon widgets (not live signal layers).
 const RECON_WIDGETS = new Set(["recon:dns", "recon:whois", "recon:certs", "recon:bgp", "recon:ports", "recon:threat"]);

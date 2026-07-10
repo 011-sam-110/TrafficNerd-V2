@@ -157,6 +157,25 @@ const TERRAIN_MIN_ZOOM = 6; // 3D terrain only engages in the mercator regime (s
 
 const vis = (on: boolean): "visible" | "none" => (on ? "visible" : "none");
 
+// Run `fn` once the map's style is fully loaded. MapLibre's setProjection (and
+// other style ops) throw "Style is not done loading" if called mid-load — and
+// that throw, uncaught, crashes the whole app (React error boundary). On first
+// mount and during a basemap setStyle the style is briefly not ready, so any
+// caller that can fire at an arbitrary time (e.g. the view-mode → projection
+// sync) MUST defer through this guard instead of calling setProjection directly.
+function whenStyleReady(map: maplibregl.Map, fn: () => void): void {
+  if (map.isStyleLoaded()) {
+    fn();
+    return;
+  }
+  const onData = () => {
+    if (!map.isStyleLoaded()) return; // styledata fires repeatedly during load
+    map.off("styledata", onData);
+    fn();
+  };
+  map.on("styledata", onData);
+}
+
 export default function WorldMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -1317,13 +1336,25 @@ export default function WorldMap() {
     return () => mapViewStore.registerFlyToPoint(null);
   }, [flyToPoint]);
 
-  // Re-project live when the user toggles Console ⇄ Explore.
+  // Re-project live when the user toggles Console ⇄ Explore. Deferred through
+  // whenStyleReady: this can fire mid-mount or during a basemap swap, when the
+  // style isn't loaded yet — calling setProjection then throws "Style is not done
+  // loading" and crashes the app. The type is re-checked at apply time in case the
+  // mode changed again while we were waiting.
   useEffect(() => {
     return viewModeStore.subscribe(() => {
       const map = mapRef.current;
       if (!map) return;
-      const want = viewModeStore.get() === "explore" ? "globe" : "mercator";
-      if (map.getProjection?.()?.type !== want) map.setProjection({ type: want });
+      whenStyleReady(map, () => {
+        const want = viewModeStore.get() === "explore" ? "globe" : "mercator";
+        if (map.getProjection?.()?.type !== want) {
+          try {
+            map.setProjection({ type: want });
+          } catch {
+            /* style swapped out from under us mid-defer — the next style.load re-applies */
+          }
+        }
+      });
     });
   }, []);
 
@@ -1454,6 +1485,10 @@ function SignalFeed({
               attribution: source.attribution,
               sourceLabel: source.label,
               link: f.link,
+              // Provider dataset/home URL for the dossier's mandatory clickable
+              // source (used when a feature carries no deep record link). Optional
+              // on the adapter; SignalDetail falls back to the keyed provider table.
+              sourceUrl: source.sourceUrl,
               // ISO timestamp (when known) — the global time-window filter reads
               // this; untimed features have no ts and are always shown.
               ts: f.ts,

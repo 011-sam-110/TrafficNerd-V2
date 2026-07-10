@@ -160,5 +160,9 @@ export const LOCATE_WIDGET = {
   defaultConfig: {},
   component: LocateBody,
   detail: LocateDetail,
+  help: {
+    what: "Drop or link a photo and it estimates where on Earth it was taken, then flies the globe to the ranked candidates. Every hit is labelled an estimate with the model's own confidence.",
+    source: "Picarta image-geolocation model, via /api/geolocate",
+  },
 };
 registerWidget(LOCATE_WIDGET);

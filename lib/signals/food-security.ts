@@ -77,6 +77,8 @@ export const FOOD_SECURITY_SOURCE: SignalSource = {
   color: "#ea580c",
   refreshMs: 6 * 60 * 60 * 1000, // a daily-ish nowcast; 6-hour cache is ample
   attribution: HUNGERMAP_ATTRIBUTION,
+  sourceUrl: "https://hungermap.wfp.org/", // WFP HungerMap LIVE (dossier source)
+
   // Share of the population with insufficient food consumption (FCS). ~5% is an
   // unremarkable baseline; ≥50% (e.g. Afghanistan) is a full-blown food emergency.
   metric: { field: "prevalencePct", domain: [5, 50], unit: " %" },

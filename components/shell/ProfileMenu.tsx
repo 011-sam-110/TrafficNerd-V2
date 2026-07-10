@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { profileStore, useProfile, avatarInitial, avatarColor } from "@/lib/shell/profile";
+import { tourStore } from "@/lib/shell/tour";
 
 export default function ProfileMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
   const profile = useProfile();
@@ -63,6 +64,7 @@ export default function ProfileMenu({ onOpenSettings }: { onOpenSettings: () => 
                   placeholder="Add your name" onChange={(e) => profileStore.setName(e.target.value)} />
               </label>
               <button type="button" className="tn-profile-btn is-primary" onClick={() => setSignIn(true)}>Sign in</button>
+              <button type="button" className="tn-profile-btn" onClick={() => { setOpen(false); tourStore.start(); }}>🧭 Take the tour</button>
               <button type="button" className="tn-profile-btn" onClick={() => { setOpen(false); onOpenSettings(); }}>⚙ Settings</button>
             </>
           )}

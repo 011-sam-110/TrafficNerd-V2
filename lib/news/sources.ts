@@ -38,6 +38,10 @@ const TABLE: Record<string, Omit<SourceMeta, "name">> = {
   "al arabiya": { domain: "alarabiya.net", region: "Middle East", type: "Broadcaster" },
   "cbc": { domain: "cbc.ca", region: "North America", type: "Public broadcaster" },
   "sky news": { domain: "news.sky.com", region: "UK", type: "Broadcaster" },
+  // Open-source conflict monitor scraped from its keyless Telegram channel. Typed
+  // "OSINT monitor" — NOT a vetted newswire — so the badge is honest about the
+  // unverified, self-published provenance rather than implying wire-grade sourcing.
+  "liveuamap": { domain: "liveuamap.com", region: "International", type: "OSINT monitor" },
 };
 
 /** Pure: display name → its attribution metadata (never throws; degrades to "Other"). */

@@ -7,6 +7,7 @@
 
 import type { WorldObject } from "@/lib/world";
 import { humaniseKey } from "@/lib/text/humanise";
+import { resolveSignalSources, isCompositeSignal } from "@/lib/signals/sourceLink";
 
 /**
  * Curated [label, value] rows for the two cable ASSET kinds. Cables carry no
@@ -44,7 +45,16 @@ export default function SignalDetail({ object }: { object: WorldObject }) {
   const attribution = meta.attribution as string | undefined;
   const sourceLabel = meta.sourceLabel as string | undefined;
   const link = meta.link as string | undefined;
+  const signalId = meta.signalId as string | undefined;
+  const sourceUrl = meta.sourceUrl as string | undefined;
   const accent = object.color ?? "var(--tn-accent)";
+
+  // Mandatory, always-clickable provenance: the exact upstream record when the
+  // adapter deep-links one, else the provider's dataset page. A composite layer
+  // (the instability index) is DERIVED — it lists every contributing provider and
+  // is flagged as an estimate, never passed off as one authoritative source.
+  const sources = resolveSignalSources({ signalId, link, sourceUrl });
+  const derived = isCompositeSignal(signalId);
 
   const assetKind = typeof props.assetKind === "string" ? (props.assetKind as string) : undefined;
   const entries: [string, string][] = assetKind
@@ -106,24 +116,70 @@ export default function SignalDetail({ object }: { object: WorldObject }) {
         {object.lat.toFixed(3)}, {object.lon.toFixed(3)}
       </div>
 
-      {/* ── Source link ── */}
-      {link && (
-        <a
-          className="cam-open"
-          href={link}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ marginTop: 12 }}
-        >
-          View source ↗
-        </a>
+      {/* ── Source (mandatory, always a real clickable upstream) ── */}
+      {sources.length > 0 && (
+        <div style={{ marginTop: 14 }} data-testid="source-links">
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "var(--tn-accent)",
+              marginBottom: 6,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {derived ? "Sources (derived)" : "Source"}
+            {derived && (
+              <span
+                title="A composite estimate blended from the sources below — not one authoritative figure."
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "var(--tn-text-faint)",
+                  border: "1px solid var(--tn-border)",
+                  borderRadius: 999,
+                  padding: "1px 7px",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                estimate
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {sources.map((s) => (
+              <a
+                key={`${s.scope}:${s.href}`}
+                href={s.href}
+                target="_blank"
+                rel="noreferrer noopener"
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "var(--tn-accent-strong)",
+                  textDecoration: "none",
+                  border: "1px solid var(--tn-border)",
+                  borderRadius: 999,
+                  padding: "3px 10px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {s.scope === "record" ? `View record · ${s.label}` : s.label} ↗
+              </a>
+            ))}
+          </div>
+        </div>
       )}
 
-      {/* ── Attribution (mandatory) ── */}
+      {/* ── Attribution (mandatory credit line) ── */}
       {attribution && (
         <div
           style={{
-            marginTop: 14,
+            marginTop: 12,
             fontSize: 11,
             color: "var(--tn-text-faint)",
             borderTop: "1px solid var(--tn-border)",

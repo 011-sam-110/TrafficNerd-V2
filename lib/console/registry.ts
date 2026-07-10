@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { WidgetHelp } from "@/lib/console/help";
 
 export interface WidgetBodyProps { instanceId: string; config: Record<string, unknown> }
 
@@ -14,6 +15,8 @@ export interface WidgetType {
   component: ComponentType<WidgetBodyProps>;
   /** Optional rich "focus" view shown when the widget is expanded onto the center stage. */
   detail?: ComponentType<WidgetDetailProps>;
+  /** Concise, honest text for the frame's "?" help popover (what it shows + its data source). */
+  help?: WidgetHelp;
   capabilities?: { filter?: boolean; sort?: boolean };
 }
 

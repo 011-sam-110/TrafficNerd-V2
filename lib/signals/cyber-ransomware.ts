@@ -73,6 +73,8 @@ export const CYBER_RANSOMWARE_SOURCE: SignalSource = {
   color: "#9333ea",
   refreshMs: 1_800_000, // leak-site claims trickle in; 30 min is plenty
   attribution: RANSOMWARE_LIVE_ATTRIBUTION,
+  sourceUrl: "https://www.ransomware.live/", // provider dataset for the dossier's clickable source
+
   // Real scalar: recent ransomware victims claimed in that country (not the radius proxy).
   // Calm ≈ a single victim; extreme ≈ the ramp's top bucket (a country under a wave).
   metric: { field: "victims", domain: [1, 15] },

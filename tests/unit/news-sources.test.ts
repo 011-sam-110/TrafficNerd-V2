@@ -10,6 +10,12 @@ test("sourceMeta attributes known outlets with region + type", () => {
   expect(sourceMeta("Reuters").type).toBe("Newswire");
 });
 
+test("liveuamap is attributed honestly as an OSINT monitor (not a wire)", () => {
+  const m = sourceMeta("Liveuamap");
+  expect(m).toMatchObject({ domain: "liveuamap.com", region: "International", type: "OSINT monitor" });
+  expect(faviconUrl(m.domain)).toContain("liveuamap.com");
+});
+
 test("sourceMeta is case-insensitive on the display name", () => {
   expect(sourceMeta("bbc").domain).toBe("bbc.com");
   expect(sourceMeta("  the guardian ").domain).toBe("theguardian.com");

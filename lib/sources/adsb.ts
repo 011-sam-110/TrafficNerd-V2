@@ -4,16 +4,30 @@
 // `category` + type code, so planes are classified accurately (not guessed).
 //
 // COVERAGE: adsb.lol's endpoint is point+radius (max 250 nm), with no global
-// query. We sweep a coarse worldwide grid of ~25 busy-airspace centres and merge
-// the results, so cross-border / intercontinental flights show up. (Mid-ocean is
-// inherently sparse — these are ground-receiver feeds, not satellite ADS-B.)
+// query, AND it rate-limits (~1 req/s). The old sweep fired all ~50 cells 8-at-a-
+// time every refresh, which tripped 429/502 on most cells; because it served any
+// sweep where even a FEW cells survived, it silently degraded to a US-only snapshot
+// (the grid is North-America-first, so the survivors were always the US cells).
 //
-// STORE-AND-SERVE: the whole sweep runs inside Next's Data Cache
-// (`unstable_cache`), a store shared across every serverless instance. Upstream is
-// therefore hit at most once per REVALIDATE_S for the ENTIRE deployment, and every
-// visitor is served the same stored snapshot rather than triggering their own
-// live pull. The result is capped (MAX_AIRCRAFT) so the cached entry stays under
-// the Data Cache 2 MB limit and the client payload stays reasonable.
+// ROLLING-WINDOW SWEEP: instead of bursting the whole grid, each refresh fetches
+// only a small STRIDED WINDOW of ~6 cells — gently (sequential, ~1 req/s) so a
+// single window never trips the limiter — and merges it into a rolling PER-CELL
+// snapshot store. The served snapshot is the union of every cell whose data is
+// still within a freshness TTL, so full-globe coverage fills in over one rotation
+// (~2–3 min) and each cell's planes stay on the map until its next turn. A cell
+// that keeps failing simply ages out of the TTL (stale data is dropped, never shown
+// forever). The window is strided (not a contiguous NA-first block), so even a
+// single window — hence a cold start — spans every continent instead of being
+// US-biased. (Mid-ocean is still inherently sparse — these are ground-receiver
+// feeds, not satellite ADS-B.)
+//
+// STORE-AND-SERVE: the window refresh runs inside Next's Data Cache
+// (`unstable_cache`), so upstream is hit at most once per WINDOW_S for the ENTIRE
+// deployment (stale-while-revalidate: visitors are served the shared stored union,
+// never triggering their own live pull). The rolling per-cell store lives in module
+// state; see fetchAircraft for the deployment-topology tradeoff. The served union
+// is capped (MAX_AIRCRAFT) so the cached entry stays under the Data Cache 2 MB limit
+// and the client payload stays reasonable.
 
 import type { WorldObject } from "@/lib/world";
 import { classifyPlane, ADSB_CATEGORY } from "@/lib/planes/classify";
@@ -215,17 +229,26 @@ export function aircraftToWorldObject(a: Aircraft): WorldObject {
   };
 }
 
-// How long a stored global sweep is served before the next visitor triggers a
-// refresh. Planes move, but ~25 s staleness is invisible on a world map and keeps
-// upstream load predictable regardless of traffic.
-const REVALIDATE_S = 25;
 // Cap the served set so the cached entry stays under the Data Cache's 2 MB limit
 // and the client payload stays reasonable. Airborne aircraft are kept before ground.
 export const MAX_AIRCRAFT = 3000;
-// Grid cells fetched at once. With ~50 cells a batch of 8 keeps the whole sweep
-// well inside REVALIDATE_S while staying friendly to the community API (no herd —
-// the sweep runs once per deployment per window, not once per visitor).
-const CONCURRENCY = 8;
+
+// --- Rolling-window sweep tuning ---------------------------------------------
+// Cells fetched per refresh. Small enough that one window, fetched gently, never
+// trips adsb.lol's ~1 req/s limiter (the old bug: 8 concurrent × 7 batches did).
+export const WINDOW_SIZE = 6;
+// Gap between the sequential per-cell requests inside a window. Sequential + this
+// spacing keeps a window's handful of requests comfortably under the rate limit
+// (averaged over WINDOW_S the window is well below 1 req/s).
+const WINDOW_SPACING_MS = 700;
+// How long a served union is cached before the next visitor triggers ONE window
+// refresh. Over ~50 cells a full rotation is ceil(len / WINDOW_SIZE) windows; at
+// WINDOW_S = 15 that is ~2–2.5 min to first full-globe coverage.
+const WINDOW_S = 15;
+// A cell's planes stay on the map this long after they were last fetched. Set
+// comfortably LONGER than one full rotation so no cell ages out before its next
+// turn, but finite so a cell that keeps failing is honestly dropped, not frozen.
+const CELL_TTL_MS = 240_000;
 
 async function fetchRegion(r: AdsbRegion): Promise<RawAircraft[]> {
   const url = `https://api.adsb.lol/v2/lat/${r.lat}/lon/${r.lon}/dist/${r.distNm}`;
@@ -249,41 +272,128 @@ export function capAircraft(objects: WorldObject[], cap: number): WorldObject[] 
   return [...airborne, ...ground].slice(0, cap);
 }
 
-/**
- * Sweep the whole grid (batched by CONCURRENCY), dedupe by hex, and cap. Throws
- * only if EVERY cell fails — that way the Data Cache keeps serving the last good
- * snapshot instead of overwriting it with an empty one.
- */
-async function pullAircraft(): Promise<WorldObject[]> {
-  const rows: RawAircraft[] = [];
-  let ok = 0;
-  for (let i = 0; i < ADSB_GRID.length; i += CONCURRENCY) {
-    const settled = await Promise.allSettled(ADSB_GRID.slice(i, i + CONCURRENCY).map(fetchRegion));
-    for (const s of settled) {
-      if (s.status === "fulfilled") {
-        ok++;
-        rows.push(...s.value);
-      }
-    }
-  }
-  if (ok === 0) throw new Error("all adsb.lol grid cells failed");
+// A rolling snapshot of the most-recent SUCCESSFUL result per grid cell, each
+// stamped with when it landed. The served snapshot is the union of all cells still
+// within CELL_TTL_MS (see collectFresh); overlapping cells are deduped by hex.
+export interface CellSnapshot {
+  /** Epoch ms when this cell's data was last fetched. */
+  at: number;
+  aircraft: Aircraft[];
+}
+export type CellStore = Map<number, CellSnapshot>;
 
+/**
+ * Grid indices to fetch on rotation `step`. STRIDED (not a contiguous block): each
+ * window is spread across the whole grid, so a cold start or partial fill still
+ * shows planes on every continent instead of clustering in the North-America-first
+ * cells. Over `ceil(gridLen / windowSize)` steps every index is visited exactly
+ * once, then it wraps. Pure — the rotation/window logic is fully unit-testable.
+ */
+export function windowIndices(gridLen: number, windowSize: number, step: number): number[] {
+  if (gridLen <= 0 || windowSize <= 0) return [];
+  const numWindows = Math.ceil(gridLen / windowSize);
+  const start = ((step % numWindows) + numWindows) % numWindows; // safe for negative step
+  const out: number[] = [];
+  for (let i = start; i < gridLen; i += numWindows) out.push(i);
+  return out;
+}
+
+/**
+ * Merge a window's SUCCESSFUL cell results into the rolling store, stamped `at`.
+ * Failed cells are not passed in, so their previous snapshot is left untouched and
+ * keeps being served until CELL_TTL_MS prunes it. Mutates and returns `store`. Pure.
+ */
+export function applyWindow(
+  store: CellStore,
+  successes: { index: number; aircraft: Aircraft[] }[],
+  at: number,
+): CellStore {
+  for (const { index, aircraft } of successes) store.set(index, { at, aircraft });
+  return store;
+}
+
+/**
+ * Prune cells older than `ttlMs`, then return the deduped union of the survivors.
+ * Dedupe is by hex, preferring the FRESHEST cell so a plane seen by two overlapping
+ * cells uses its most recent position. Mutates `store` (drops expired cells). Pure.
+ */
+export function collectFresh(store: CellStore, now: number, ttlMs: number): Aircraft[] {
+  const live: CellSnapshot[] = [];
+  for (const [index, snap] of store) {
+    if (now - snap.at > ttlMs) store.delete(index);
+    else live.push(snap);
+  }
+  live.sort((a, b) => a.at - b.at); // oldest first → the freshest cell wins each hex slot
   const byHex = new Map<string, Aircraft>();
-  for (const a of parseAdsb(rows)) byHex.set(a.hex, a); // dedupe overlapping cells
-  const objects = [...byHex.values()].map(aircraftToWorldObject);
+  for (const snap of live) for (const a of snap.aircraft) byHex.set(a.hex, a);
+  return [...byHex.values()];
+}
+
+// --- Rolling module state (see fetchAircraft for the serverless tradeoff) ------
+const cellStore: CellStore = new Map();
+// Seed the rotation phase from wall-clock so a freshly-booted instance doesn't
+// always begin at window 0 — "rotate the start" so coverage is never US-biased,
+// belt-and-suspenders on top of the already-strided windows.
+let windowStep = Math.floor(Date.now() / (WINDOW_S * 1000));
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Fetch one window's cells sequentially and gently; silently skip any that fail. */
+async function fetchWindow(indices: number[]): Promise<{ index: number; aircraft: Aircraft[] }[]> {
+  const out: { index: number; aircraft: Aircraft[] }[] = [];
+  for (let k = 0; k < indices.length; k++) {
+    const index = indices[k];
+    try {
+      const rows = await fetchRegion(ADSB_GRID[index]);
+      out.push({ index, aircraft: parseAdsb(rows) });
+    } catch {
+      // Per-cell failure is fine: this cell keeps its last-good snapshot until the
+      // TTL prunes it; a whole-window failure just re-serves the still-fresh union.
+    }
+    if (k < indices.length - 1) await sleep(WINDOW_SPACING_MS);
+  }
+  return out;
+}
+
+/**
+ * Fetch the NEXT strided window, merge it into the rolling store, and return the
+ * capped union of all still-fresh cells. Never throws — a totally failed window
+ * just serves the previously-accumulated (TTL-bounded) union, or [] on a cold start
+ * with nothing yet, so the Data Cache never memoises a thrown error.
+ */
+async function refreshWindow(): Promise<WorldObject[]> {
+  const indices = windowIndices(ADSB_GRID.length, WINDOW_SIZE, windowStep);
+  windowStep++;
+  const successes = await fetchWindow(indices);
+  const now = Date.now();
+  applyWindow(cellStore, successes, now);
+  const fresh = collectFresh(cellStore, now, CELL_TTL_MS);
+  const objects = fresh.map(aircraftToWorldObject);
   return capAircraft(objects, MAX_AIRCRAFT);
 }
 
 /**
- * Live aircraft worldwide as WorldObjects. The sweep is wrapped in Next's Data
- * Cache, so upstream is polled at most once per REVALIDATE_S for the whole
- * deployment and every visitor is served the shared stored snapshot. Returns []
- * only on a cold total failure (or outside the Next runtime, e.g. unit tests).
+ * Live aircraft worldwide as WorldObjects. Each refresh advances the rolling window
+ * by one strided step and returns the union of all still-fresh cells. The refresh is
+ * wrapped in Next's Data Cache, so upstream is polled at most once per WINDOW_S for
+ * the whole deployment (stale-while-revalidate) and every visitor is served the
+ * shared stored union rather than triggering their own live pull. Returns [] only on
+ * a cold total failure (or outside the Next runtime, e.g. unit tests).
+ *
+ * TRADEOFF: the per-cell store (cellStore / windowStep) is MODULE state, so it
+ * accumulates per warm serverless instance. In the common single-instance case the
+ * served union is coherent and grows monotonically. With several warm instances each
+ * keeps its own rolling store, and the cached value is whatever instance last
+ * revalidated — so a revalidation that lands on a freshly-booted (still-filling)
+ * instance can briefly serve a sparser union until the next rotation re-fills it
+ * (self-heals within ~one rotation). We accept this over a heavier cross-instance
+ * store: it stays keyless, dormant-safe, and gentle on adsb.lol, and it never
+ * fabricates or freezes data — stale cells are always TTL-pruned.
  */
 export async function fetchAircraft(): Promise<WorldObject[]> {
   try {
     const { unstable_cache } = await import("next/cache");
-    return await unstable_cache(pullAircraft, ["aircraft-global-v1"], { revalidate: REVALIDATE_S })();
+    return await unstable_cache(refreshWindow, ["aircraft-window-v2"], { revalidate: WINDOW_S })();
   } catch {
     return [];
   }

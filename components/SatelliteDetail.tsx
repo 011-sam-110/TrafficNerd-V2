@@ -39,10 +39,29 @@ const styles: Record<string, React.CSSProperties> = {
   note: { margin: 0, fontSize: 12, color: "var(--tn-text-muted)", lineHeight: 1.5 },
 };
 
+const srcLink: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 600,
+  color: "var(--tn-sat)",
+  textDecoration: "none",
+  border: "1px solid rgba(124,58,237,0.35)",
+  borderRadius: 999,
+  padding: "3px 10px",
+  whiteSpace: "nowrap",
+};
+
 export default function SatelliteDetail({ object }: { object: WorldObject }) {
   const m = (object.meta ?? {}) as SatMeta;
   const altKm = m.altKm ?? object.altKm ?? 0;
   const img = esriImagery(object.lat, object.lon);
+  const norad = m.noradId?.trim();
+  // Deep links to the exact object when we know its catalogue number, else the
+  // provider home pages. CelesTrak = the orbital-element source; N2YO = a live
+  // ground-track tracker satellite watchers actually use.
+  const celestrak = norad
+    ? `https://celestrak.org/satcat/table-satcat.php?CATNR=${encodeURIComponent(norad)}`
+    : "https://celestrak.org/";
+  const n2yo = norad ? `https://www.n2yo.com/satellite/?s=${encodeURIComponent(norad)}` : "https://www.n2yo.com/";
 
   return (
     <div style={styles.wrap}>
@@ -53,7 +72,17 @@ export default function SatelliteDetail({ object }: { object: WorldObject }) {
       <figure style={styles.figure}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img style={styles.img} src={img} alt={`Satellite imagery of the ground beneath ${object.label}`} loading="lazy" />
-        <figcaption style={styles.cap}>Ground beneath · Imagery © Esri, Maxar</figcaption>
+        <figcaption style={styles.cap}>
+          Ground beneath ·{" "}
+          <a
+            href="https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9"
+            target="_blank"
+            rel="noreferrer noopener"
+            style={{ color: "inherit", textDecoration: "underline" }}
+          >
+            Imagery © Esri, Maxar
+          </a>
+        </figcaption>
       </figure>
       <dl style={styles.stats}>
         <div style={styles.row}><dt style={styles.dt}>NORAD ID</dt><dd style={styles.dd}>{m.noradId ?? "—"}</dd></div>
@@ -63,8 +92,33 @@ export default function SatelliteDetail({ object }: { object: WorldObject }) {
         <div style={styles.row}><dt style={styles.dt}>Sub-point</dt><dd style={styles.dd}>{object.lat.toFixed(2)}, {object.lon.toFixed(2)}</dd></div>
       </dl>
       <p style={styles.note}>
-        Real satellite imagery of the Earth directly beneath {object.label} at the moment you clicked. Data from CelesTrak · propagated with SGP4.
+        Real satellite imagery of the Earth directly beneath {object.label} at the moment you clicked.
+        Orbit propagated locally with SGP4 from CelesTrak elements.
       </p>
+
+      {/* ── Source (clickable upstream) ── */}
+      <div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--tn-sat)",
+            marginBottom: 6,
+          }}
+        >
+          Source
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <a href={celestrak} target="_blank" rel="noreferrer noopener" style={srcLink}>
+            {norad ? "CelesTrak record" : "CelesTrak"} ↗
+          </a>
+          <a href={n2yo} target="_blank" rel="noreferrer noopener" style={srcLink}>
+            {norad ? "Track on N2YO" : "N2YO"} ↗
+          </a>
+        </div>
+      </div>
     </div>
   );
 }

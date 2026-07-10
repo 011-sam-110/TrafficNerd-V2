@@ -5,6 +5,7 @@ import type { WidgetInstance } from "@/lib/console/types";
 import { shellLayoutStore } from "@/lib/console/store";
 import { spanFromPointer } from "@/lib/console/resize";
 import { getWidgetType } from "@/lib/console/registry";
+import { resolveWidgetHelp } from "@/lib/console/help";
 import { topSeverity, type Alert } from "@/lib/console/alerts";
 import { WidgetErrorBoundary } from "@/components/console/WidgetErrorBoundary";
 import { toCsv, toGeoJson, downloadText, exportFilename, type GeoPoint } from "@/lib/export";
@@ -29,6 +30,8 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
   const [report, setReport] = useState<Report>({ alerts: [] });
   const [menuOpen, setMenuOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpBtnRef = useRef<HTMLButtonElement>(null);
   const onReport = useCallback((r: Report) => setReport(r), []);
 
   // Per-widget notification rule (keyed by TYPE) + the creds that gate each channel.
@@ -58,6 +61,7 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
 
   if (!type) return null;
   const Body = type.component;
+  const help = resolveWidgetHelp(type); // ? popover text — what it shows + its data source
   const sev = topSeverity(report.alerts);
   const cfg = instance.config ?? {};
   const alertStyle = (cfg.alertStyle as string) ?? "top"; // "top" | "feed"
@@ -127,11 +131,27 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
         <span className="tn-cw-sp" />
         {report.alerts.length > 0 && <span className={`tn-cw-badge tn-sev-${sev}`}>{report.alerts.length}</span>}
         {report.freshLabel && <span className="tn-cw-fresh">{report.freshLabel}</span>}
+        <button ref={helpBtnRef} className={`tn-cw-help${helpOpen ? " is-on" : ""}`} aria-label={`What is ${type.title}?`}
+          aria-haspopup="dialog" aria-expanded={helpOpen} title="What is this?"
+          onClick={() => { setHelpOpen((o) => !o); setMenuOpen(false); setBellOpen(false); }}>?</button>
         <button className={`tn-cw-bell${rule.enabled ? " is-on" : ""}`} aria-label="Notifications" aria-pressed={rule.enabled}
-          title={rule.enabled ? "Notifications on" : "Notify me"} onClick={() => { setBellOpen((o) => !o); setMenuOpen(false); }}>🔔</button>
+          title={rule.enabled ? "Notifications on" : "Notify me"} onClick={() => { setBellOpen((o) => !o); setMenuOpen(false); setHelpOpen(false); }}>🔔</button>
         <button className="tn-cw-expand" aria-label="Expand widget" title="Expand to main window" onClick={() => shellLayoutStore.focus(instance.id)}>⤢</button>
-        <button className="tn-cw-menu" aria-label="Widget menu" onClick={() => { setMenuOpen((o) => !o); setBellOpen(false); }}>⋯</button>
+        <button className="tn-cw-menu" aria-label="Widget menu" onClick={() => { setMenuOpen((o) => !o); setBellOpen(false); setHelpOpen(false); }}>⋯</button>
       </header>
+
+      {helpOpen && (
+        <div className="tn-cw-help-pop" role="dialog" aria-label={`About ${type.title}`}
+          onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setHelpOpen(false); helpBtnRef.current?.focus(); } }}>
+          <div className="tn-cw-help-head">
+            <span className="tn-cw-help-title">{help.title}</span>
+            <button className="tn-cw-help-x" aria-label="Close help" autoFocus
+              onClick={() => { setHelpOpen(false); helpBtnRef.current?.focus(); }}>✕</button>
+          </div>
+          <p className="tn-cw-help-what">{help.what}</p>
+          {help.source && <p className="tn-cw-help-src"><span className="tn-cw-help-src-k">Source</span> {help.source}</p>}
+        </div>
+      )}
 
       {bellOpen && (
         <div className="tn-cw-notify-pop" role="dialog" aria-label="Notifications">
