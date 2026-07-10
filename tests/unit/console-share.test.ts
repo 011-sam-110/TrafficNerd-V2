@@ -4,7 +4,7 @@ import { BUILTIN_PRESETS } from "@/lib/console/presets";
 import { createDefaultLayout, type ShellLayout } from "@/lib/console/types";
 
 test("encode→decode round-trips a layout", () => {
-  const l = BUILTIN_PRESETS.find((p) => p.id === "emergency")!.build();
+  const l = BUILTIN_PRESETS.find((p) => p.id === "earth")!.build();
   const round = decodeLayout(encodeLayout(l));
   expect(round?.stage).toBe(l.stage);
   expect(round?.widgets.map((w) => w.type)).toEqual(l.widgets.map((w) => w.type));
