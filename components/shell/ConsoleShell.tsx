@@ -27,6 +27,7 @@ import ConsoleWorkspace from "@/components/console/ConsoleWorkspace";
 import { shellLayoutStore } from "@/lib/console/store";
 import { activePresetStore } from "@/lib/console/activePreset";
 import { profileStore } from "@/lib/shell/profile";
+import { telegramStore } from "@/lib/shell/telegram";
 import { applyPreset, DEFAULT_PRESET_ID } from "@/lib/console/presets";
 import { decodeLayout } from "@/lib/console/share";
 import "@/lib/console/widgets";
@@ -53,6 +54,7 @@ export default function ConsoleShell() {
     shellLayoutStore.hydrate();
     activePresetStore.hydrate();
     profileStore.hydrate();
+    telegramStore.hydrate();
     const c = new URLSearchParams(window.location.search).get("c");
     if (c) { const l = decodeLayout(c); if (l) shellLayoutStore.replace(l); }
     else if (shellLayoutStore.get().widgets.length === 0) applyPreset(DEFAULT_PRESET_ID); // first-run seed

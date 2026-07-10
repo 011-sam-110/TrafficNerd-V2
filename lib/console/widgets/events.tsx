@@ -38,6 +38,7 @@ import { readGroupBy, readCollapsed, isCollapsed, toggleCollapsed, type GroupBy 
 import { readFilters, applyEventFilters } from "@/lib/events/filters";
 import { useAssets, assessThreats, type Threat } from "@/lib/events/assets";
 import { useAlerting, alertingStore, matchAlerts, fireBrowserNotification, postWebhook } from "@/lib/events/alerting";
+import { sendTelegramIfEnabled } from "@/lib/shell/telegram";
 import { openEvent } from "@/lib/events/openEvent";
 import EventsDetail from "@/lib/console/widgets/events.detail";
 
@@ -139,6 +140,8 @@ function EventsBody({ instanceId, config }: WidgetBodyProps) {
     for (const h of hits) {
       if (alerting.notify) fireBrowserNotification(h);
       if (alerting.webhookUrl) void postWebhook(alerting.webhookUrl, h);
+      // Optional Telegram channel (configured in Settings; no-op unless enabled).
+      sendTelegramIfEnabled(`⚠ ${h.tier} ${h.type}: ${h.title} — ${Math.round(h.distanceKm)} km from ${h.assetName}`);
     }
     alertingStore.markFired(hits.map((h) => h.eventId));
   }, [projected.rows, assets, alerting]);
