@@ -1614,6 +1614,28 @@ a { color: var(--tn-accent); }
 .tn-av-actions { display: flex; gap: 8px; }
 .tn-av-actions button { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--tn-text); cursor: pointer; }
 .tn-av-actions button:disabled { opacity: .4; cursor: default; }
+/* aviation — search + private-jet + track affordances */
+.tn-av-search {
+  flex: 1 1 200px; min-width: 140px; font-size: 12px; padding: 4px 9px; border-radius: 8px;
+  background: var(--tn-surface); border: 1px solid var(--tn-border); color: var(--tn-text);
+}
+.tn-av-search:focus { outline: none; border-color: var(--tn-accent); }
+.tn-av-search::placeholder { color: var(--tn-text-faint); }
+.tn-av-fclear { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: transparent; border: 1px solid var(--tn-border); color: var(--tn-text-muted); cursor: pointer; }
+.tn-av-fclear:hover { color: var(--tn-accent); border-color: var(--tn-accent); }
+.tn-av-chip-jet { color: var(--tn-accent); border-color: var(--tn-accent); }
+.tn-av-jet-tag { color: var(--tn-accent); margin-right: 4px; font-weight: 700; }
+.tn-av-owner { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 600; color: var(--tn-accent); background: var(--tn-chip-bg, var(--tn-surface-2)); border: 1px solid var(--tn-border); border-radius: 6px; padding: 0 5px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.tn-av-track-btn { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 7px; background: var(--tn-surface-2); border: 1px solid var(--tn-border); color: var(--tn-text-muted); cursor: pointer; white-space: nowrap; }
+.tn-av-track-btn:hover { border-color: var(--tn-accent); color: var(--tn-accent); }
+.tn-av-track-btn.is-on { background: var(--tn-accent); border-color: var(--tn-accent); color: var(--tn-surface-solid); }
+.tn-av-row.is-tracked { background: color-mix(in srgb, var(--tn-accent) 12%, transparent); }
+.tn-av-row.is-tracked:hover { background: color-mix(in srgb, var(--tn-accent) 18%, transparent); }
+/* aviation — private-jet surge alert control */
+.tn-av-surge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--tn-text-muted); }
+.tn-av-surge input { width: 58px; font-size: 12px; padding: 3px 6px; border-radius: 7px; background: var(--tn-surface); border: 1px solid var(--tn-border); color: var(--tn-text); text-align: center; }
+.tn-av-surge input:focus { outline: none; border-color: var(--tn-accent); }
+.tn-av-surge-hint { font-size: 11px; color: var(--tn-text-faint); }
 
 /* ── Cameras focus view (W5) — mirrors the .tn-av / .tn-sd visual language ── */
 .tn-cm { display: flex; flex-direction: column; gap: 14px; height: 100%; overflow: auto; padding: 4px 2px; color: var(--tn-text); }
@@ -1935,3 +1957,35 @@ a { color: var(--tn-accent); }
 /* The clock is decorative chrome — drop it on tight viewports where the ribbon would
    crowd the map-view controls / breaking banner. */
 @media (max-width: 900px) { .tn-worldclock { display: none; } }
+
+/* ── Plane-tracking chip (top-left of the map; see WorldMap + lib/planes/track) ── */
+.tn-track-chip {
+  position: absolute; top: 10px; left: 10px; z-index: 6;
+  display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 11px;
+  border-radius: 12px; background: var(--tn-surface); border: 1px solid var(--tn-border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .18); color: var(--tn-text);
+  font-size: 12px; line-height: 1.2; pointer-events: auto; max-width: min(70vw, 320px);
+}
+.tn-track-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: var(--tn-accent); flex: 0 0 auto;
+  box-shadow: 0 0 0 0 rgba(14, 125, 151, .5); animation: tn-track-pulse 1.8s ease-out infinite;
+}
+@keyframes tn-track-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(14, 125, 151, .45); }
+  70% { box-shadow: 0 0 0 7px rgba(14, 125, 151, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 125, 151, 0); }
+}
+.tn-track-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tn-track-label b { font-weight: 700; }
+.tn-track-lost { color: var(--tn-down); font-weight: 600; }
+.tn-track-recenter {
+  font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 8px;
+  border: 1px solid var(--tn-border); background: var(--tn-surface-2); color: var(--tn-text); cursor: pointer;
+}
+.tn-track-recenter:hover { border-color: var(--tn-accent); color: var(--tn-accent); }
+.tn-track-stop {
+  font-size: 12px; line-height: 1; width: 22px; height: 22px; flex: 0 0 auto; border-radius: 7px;
+  border: 1px solid var(--tn-border); background: var(--tn-surface-2); color: var(--tn-text-muted); cursor: pointer;
+}
+.tn-track-stop:hover { border-color: var(--tn-down); color: var(--tn-down); }
+@media (prefers-reduced-motion: reduce) { .tn-track-dot { animation: none; } }

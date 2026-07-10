@@ -3,6 +3,7 @@
 // re-classification or fetch is needed. Unit-tested; the .tsx is a dumb shell.
 import type { WorldObject } from "@/lib/world";
 import type { PlaneCategory } from "@/lib/planes/classify";
+import { isBizjet } from "@/lib/planes/bizjet";
 
 const CATEGORY_LABEL: Record<PlaneCategory, string> = {
   airliner: "Airliner", regional: "Regional", light: "Light", helicopter: "Helicopter", ground: "Ground",
@@ -18,26 +19,39 @@ function velocityOf(o: WorldObject): number | null {
   const v = meta(o).velocityMs;
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
+/** The ICAO type designator from a plane WorldObject's meta, upper-cased. */
+export function typeCodeOf(o: WorldObject): string {
+  const t = meta(o).typeCode;
+  return typeof t === "string" ? t.trim().toUpperCase() : "";
+}
+/** True when this plane is a business/private jet (by ICAO type designator). */
+export function isBizjetObject(o: WorldObject): boolean {
+  return isBizjet(typeCodeOf(o));
+}
 
 export interface OpsSummary {
   total: number; airborne: number; ground: number;
+  /** Business/private jets in view (any state) and the airborne subset. */
+  bizjets: number; bizjetsAirborne: number;
   byCategory: { category: PlaneCategory; label: string; count: number }[];
   maxAltKm: number; maxSpeedMs: number;
 }
 
 export function opsSummary(objects: WorldObject[]): OpsSummary {
-  let airborne = 0, ground = 0, maxAltKm = 0, maxSpeedMs = 0;
+  let airborne = 0, ground = 0, maxAltKm = 0, maxSpeedMs = 0, bizjets = 0, bizjetsAirborne = 0;
   const counts: Partial<Record<PlaneCategory, number>> = {};
   for (const o of objects) {
-    if (meta(o).onGround) ground++; else airborne++;
+    const onGround = !!meta(o).onGround;
+    if (onGround) ground++; else airborne++;
     const c = categoryOf(o);
     counts[c] = (counts[c] ?? 0) + 1;
+    if (isBizjetObject(o)) { bizjets++; if (!onGround) bizjetsAirborne++; }
     if (typeof o.altKm === "number" && o.altKm > maxAltKm) maxAltKm = o.altKm;
     const v = velocityOf(o);
     if (v != null && v > maxSpeedMs) maxSpeedMs = v;
   }
   const byCategory = CATEGORY_ORDER.filter((c) => counts[c]).map((c) => ({ category: c, label: CATEGORY_LABEL[c], count: counts[c]! }));
-  return { total: objects.length, airborne, ground, byCategory, maxAltKm, maxSpeedMs };
+  return { total: objects.length, airborne, ground, bizjets, bizjetsAirborne, byCategory, maxAltKm, maxSpeedMs };
 }
 
 export type AltBand = "ground" | "0–1 km" | "1–3 km" | "3–7 km" | "7–11 km" | "11+ km";
@@ -75,6 +89,43 @@ export function regionOf(lat: number, lon: number): string {
     if (lat >= b.latMin && lat <= b.latMax && lon >= b.lonMin && lon <= b.lonMax) return b.label;
   }
   return "—";
+}
+
+/** The ICAO 24-bit hex, recovered from the "plane:<hex>" WorldObject id. */
+export function planeHex(o: WorldObject): string {
+  return o.id.startsWith("plane:") ? o.id.slice(6) : o.id;
+}
+
+/** Case-insensitive match of a free-text query against callsign / registration /
+ *  type code / hex. Empty query matches everything. Pure + tested. */
+export function matchesFlightQuery(o: WorldObject, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const reg = (meta(o).registration as string) || "";
+  const type = typeCodeOf(o);
+  return (
+    o.label.toLowerCase().includes(q) ||
+    reg.toLowerCase().includes(q) ||
+    type.toLowerCase().includes(q) ||
+    planeHex(o).toLowerCase().includes(q)
+  );
+}
+
+export interface FlightFilter {
+  region: string | null;
+  band: AltBand | null;
+  query: string;
+  bizjetOnly: boolean;
+}
+export const EMPTY_FLIGHT_FILTER: FlightFilter = { region: null, band: null, query: "", bizjetOnly: false };
+
+/** Apply the region + altitude + text + business-jet filters together. Pure. */
+export function filterFlights(objects: WorldObject[], f: FlightFilter): WorldObject[] {
+  return objects.filter((o) =>
+    (!f.region || regionOf(o.lat, o.lon) === f.region) &&
+    (!f.band || altitudeBand(o) === f.band) &&
+    (!f.bizjetOnly || isBizjetObject(o)) &&
+    matchesFlightQuery(o, f.query));
 }
 
 export type FlightSortKey = "altitude" | "speed" | "callsign" | "region";

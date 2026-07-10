@@ -9,9 +9,14 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import type { WidgetDetailProps } from "@/lib/console/registry";
 import { usePlanes } from "@/lib/planes/usePlanes";
 import {
-  opsSummary, altitudeBand, regionOf, sortFlights, ALT_BANDS, REGION_LABELS,
+  opsSummary, altitudeBand, regionOf, sortFlights, filterFlights, isBizjetObject,
+  ALT_BANDS, REGION_LABELS,
   type AltBand, type FlightSortKey,
 } from "@/lib/planes/ops";
+import { ownerOf } from "@/lib/planes/bizjet";
+import { trackStore, useTrack } from "@/lib/planes/track";
+import { layersStore } from "@/lib/layers";
+import { shellLayoutStore } from "@/lib/console/store";
 import { recordSeries, seriesSamples } from "@/lib/series";
 import { deltaOf } from "@/lib/widgets/history";
 import { Chart, type ChartPoint } from "@/components/Chart";
@@ -31,9 +36,15 @@ function headingToCompass(deg: number): string {
   return dirs[Math.round(deg / 22.5) % 16];
 }
 
-export default function AviationDetail(_props: WidgetDetailProps) {
+export default function AviationDetail({ instanceId, config }: WidgetDetailProps) {
   const layer = usePlanes();
   const objects = layer.objects;
+
+  // Private-jet surge alert threshold, persisted on the widget config so the
+  // aviation alert rule (and the per-widget notification engine) honour it.
+  const jetSurgeMin = typeof config.jetSurgeMin === "number" ? config.jetSurgeMin : 0;
+  const setJetSurgeMin = (n: number) =>
+    shellLayoutStore.configure(instanceId, { jetSurgeMin: n > 0 ? n : undefined });
 
   const summary = useMemo(() => opsSummary(objects), [objects]);
   const total = summary.total;
@@ -42,9 +53,20 @@ export default function AviationDetail(_props: WidgetDetailProps) {
   // later tasks. Declared here as the skeleton so the component grows in place.
   const [region, setRegion] = useState<string | null>(null);
   const [band, setBand] = useState<AltBand | null>(null);
+  const [query, setQuery] = useState("");
+  const [bizjetOnly, setBizjetOnly] = useState(false);
   const [sortKey, setSortKey] = useState<FlightSortKey>("altitude");
   const [dir, setDir] = useState<1 | -1>(-1);
   const [openId, setOpenId] = useState<string | null>(null);
+  const track = useTrack();
+
+  // Start tracking a plane on the globe (and make sure the map's plane layer is on
+  // so the followed aircraft actually renders). The track lives in an external store,
+  // so it survives leaving this focus view — see lib/planes/track + WorldMap.
+  const startTrack = (id: string, label: string) => {
+    layersStore.set("planes", true);
+    trackStore.track(id, label);
+  };
 
   // usePlanes hands back a fresh objects array every poll (even when unchanged), so
   // its reference change is our per-poll clock — the stable timestamp the count
@@ -81,12 +103,11 @@ export default function AviationDetail(_props: WidgetDetailProps) {
     [objects],
   );
 
-  // Region + altitude filters. Every downstream panel/table reads `filtered`.
+  // Region + altitude + search + business-jet filters. Every downstream panel/table
+  // reads `filtered` (see filterFlights — pure + unit-tested).
   const filtered = useMemo(
-    () => objects.filter((o) =>
-      (!region || regionOf(o.lat, o.lon) === region) &&
-      (!band || altitudeBand(o) === band)),
-    [objects, region, band],
+    () => filterFlights(objects, { region, band, query, bizjetOnly }),
+    [objects, region, band, query, bizjetOnly],
   );
 
   const mapPoints: InsetPoint[] = useMemo(
@@ -144,11 +165,17 @@ export default function AviationDetail(_props: WidgetDetailProps) {
           )}
         </div>
         {spark.length >= 2 && <div className="tn-av-spark"><Chart points={spark} height={40} up={null} /></div>}
-        {summary.byCategory.length > 0 && (
+        {(summary.byCategory.length > 0 || summary.bizjets > 0) && (
           <div className="tn-av-ops">
             {summary.byCategory.map((c) => (
               <span key={c.category} className="tn-av-chip">{c.label} · {c.count}</span>
             ))}
+            {summary.bizjets > 0 && (
+              <span className="tn-av-chip tn-av-chip-jet" title="Business / private jets by ICAO type (airborne shown in ×)">
+                ✦ Private jets · {summary.bizjets}
+                {summary.bizjetsAirborne > 0 && ` (${summary.bizjetsAirborne} airborne)`}
+              </span>
+            )}
           </div>
         )}
       </header>
@@ -171,6 +198,26 @@ export default function AviationDetail(_props: WidgetDetailProps) {
       {objects.length > 0 && (
         <div className="tn-av-filters">
           <div className="tn-av-filter-row">
+            <span className="tn-av-filter-label">Search</span>
+            <input
+              className="tn-av-search"
+              type="search"
+              value={query}
+              placeholder="callsign, registration, type or hex…"
+              onChange={(e) => setQuery(e.target.value)}
+              spellCheck={false}
+              autoComplete="off"
+            />
+            <button
+              className={`tn-av-fchip ${bizjetOnly ? "active" : ""}`}
+              onClick={() => setBizjetOnly((v) => !v)}
+              title="Show only business / private jets"
+            >✦ Private jets</button>
+            {(query || bizjetOnly) && (
+              <button className="tn-av-fclear" onClick={() => { setQuery(""); setBizjetOnly(false); }}>Clear</button>
+            )}
+          </div>
+          <div className="tn-av-filter-row">
             <span className="tn-av-filter-label">Region</span>
             <button className={`tn-av-fchip ${region === null ? "active" : ""}`} onClick={() => setRegion(null)}>All</button>
             {REGION_LABELS.map((r) => (
@@ -183,6 +230,23 @@ export default function AviationDetail(_props: WidgetDetailProps) {
             {ALT_BANDS.map((b) => (
               <button key={b} className={`tn-av-fchip ${band === b ? "active" : ""}`} onClick={() => setBand(band === b ? null : b)}>{b}</button>
             ))}
+          </div>
+          <div className="tn-av-filter-row">
+            <span className="tn-av-filter-label">Alert</span>
+            <label className="tn-av-surge">
+              🔔 when ≥
+              <input
+                type="number" min={0} max={999} step={1} value={jetSurgeMin || ""}
+                placeholder="off"
+                onChange={(e) => setJetSurgeMin(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+              />
+              private jets airborne at once
+            </label>
+            <span className="tn-av-surge-hint">
+              {jetSurgeMin > 0
+                ? `armed · ${summary.bizjetsAirborne} airborne now`
+                : "choose channels with the 🔔 on the widget"}
+            </span>
           </div>
         </div>
       )}
@@ -226,6 +290,7 @@ export default function AviationDetail(_props: WidgetDetailProps) {
               <th>Reg</th>
               <th className="sortable" onClick={() => toggleSort("region")}>Region{sortMark("region")}</th>
               <th>Squawk</th>
+              <th>Track</th>
             </tr>
           </thead>
           <tbody>
@@ -240,11 +305,20 @@ export default function AviationDetail(_props: WidgetDetailProps) {
               const squawk = (meta.squawk as string) || "";
               const isEmergency = squawk in EMERGENCY_REASON;
               const isOpen = openId === o.id;
+              const isJet = isBizjetObject(o);
+              const owner = ownerOf(reg);
+              const isTracked = track.id === o.id;
               return (
                 <Fragment key={o.id}>
-                  <tr className="tn-av-row" onClick={() => setOpenId(isOpen ? null : o.id)}>
-                    <td className="tn-w-strong">{o.label}</td>
-                    <td className="tn-w-muted">{o.typeLabel ?? "—"}{typeCode ? ` · ${typeCode}` : ""}</td>
+                  <tr className={`tn-av-row ${isTracked ? "is-tracked" : ""}`} onClick={() => setOpenId(isOpen ? null : o.id)}>
+                    <td className="tn-w-strong">
+                      {o.label}
+                      {owner && <span className="tn-av-owner" title={owner.owner}>★ {owner.owner}</span>}
+                    </td>
+                    <td className="tn-w-muted">
+                      {isJet && <span className="tn-av-jet-tag" title="Business / private jet">✦</span>}
+                      {o.typeLabel ?? "—"}{typeCode ? ` · ${typeCode}` : ""}
+                    </td>
                     <td>{altKm != null ? `${altKm.toFixed(1)} km / ${(altKm / FT_TO_KM).toFixed(0)} ft` : "—"}</td>
                     <td>{velocityMs != null ? `${(velocityMs * MS_TO_KT).toFixed(0)} kt / ${(velocityMs * MS_TO_KMH).toFixed(0)} km/h` : "—"}</td>
                     <td>{Math.round(headingDeg)}° {headingToCompass(headingDeg)}</td>
@@ -252,10 +326,19 @@ export default function AviationDetail(_props: WidgetDetailProps) {
                     <td>{reg || "—"}</td>
                     <td>{regionOf(o.lat, o.lon)}</td>
                     <td className={isEmergency ? "tn-av-sq-emg" : ""}>{squawk || "—"}</td>
+                    <td>
+                      <button
+                        className={`tn-av-track-btn ${isTracked ? "is-on" : ""}`}
+                        onClick={(e) => { e.stopPropagation(); isTracked ? trackStore.stop() : startTrack(o.id, o.label); }}
+                        title={isTracked ? "Stop tracking on the globe" : "Track this plane on the globe"}
+                      >
+                        {isTracked ? "◉ Tracking" : "◎ Track"}
+                      </button>
+                    </td>
                   </tr>
                   {isOpen && (
                     <tr className="tn-av-drill">
-                      <td colSpan={9}><PlaneDetail object={o} /></td>
+                      <td colSpan={10}><PlaneDetail object={o} /></td>
                     </tr>
                   )}
                 </Fragment>

@@ -21,6 +21,7 @@ import { computeDive } from "@/lib/cinematic/dive";
 import { loadedCamerasStore } from "@/lib/cameras/loaded";
 import { useSatellites } from "@/lib/satellites/useSatellites";
 import { usePlanes, type PlaneTrail, type PlanesLayer } from "@/lib/planes/usePlanes";
+import { trackStore, useTrack, type TrackState } from "@/lib/planes/track";
 import { useLayers, layersStore, ACTIVE_LAYERS, type LayerState } from "@/lib/layers";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import { metricsStore } from "@/lib/metrics";
@@ -68,6 +69,10 @@ const PLANE_SRC = "planes";
 const PLANE_LAYER = "plane-markers";
 const TRAIL_SRC = "trails";
 const TRAIL_LAYER = "trail-lines";
+// A single-feature ring drawn under the tracked plane's icon (see trackStore). Its
+// own source so it updates independently of the plane layer and survives restyles.
+const TRACK_SRC = "track-highlight";
+const TRACK_RING_LAYER = "track-ring";
 const SAT_SRC = "satellites";
 const SAT_GLOW_LAYER = "satellite-glow";
 const SAT_LAYER = "satellite-core";
@@ -104,6 +109,15 @@ const COUNTRY_LABEL_LAYER = "country-labels";
 
 const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
+/** One point feature at the tracked plane's live position (empty when idle/lost). */
+function toTrackFC(o: WorldObject | null | undefined): GeoJSON.FeatureCollection {
+  if (!o) return EMPTY_FC;
+  return {
+    type: "FeatureCollection",
+    features: [{ type: "Feature", geometry: { type: "Point", coordinates: [o.lon, o.lat] }, properties: {} }],
+  };
+}
+
 // The Light (Positron) vector basemap ships its own country names; the Satellite
 // and Topographic rasters don't. Our name labels show only on the rasters.
 const isRasterBasemap = (b: BasemapKey): boolean => b !== "positron";
@@ -134,6 +148,13 @@ export default function WorldMap() {
   const rafRef = useRef(0);
   const interactUntilRef = useRef(0);
   const terrainRef = useRef(true);
+  // Plane-tracking (see lib/planes/track). trackingRef mirrors the store for the
+  // spin loop + input handlers (no re-render); trackedObjectRef holds the tracked
+  // plane's latest WorldObject so addAppLayers can re-seed the ring after a restyle;
+  // followMoveRef marks a programmatic follow easeTo so its moveend skips the URL write.
+  const trackingRef = useRef<TrackState>({ id: null, label: "", mode: "follow" });
+  const trackedObjectRef = useRef<WorldObject | null>(null);
+  const followMoveRef = useRef(false);
   // A deep-linked object id (?obj=) waiting to be resolved once its layer's data
   // has streamed in — see the restore effect below. Cleared after it opens.
   const pendingObjRef = useRef<string | null>(null);
@@ -161,6 +182,8 @@ export default function WorldMap() {
   const basemap = view.basemap;
   const terrainOn = view.terrain;
   const layers = useLayers();
+  const track = useTrack();
+  trackingRef.current = track; // keep the spin loop / input handlers current without a re-subscribe
   const camFilter = useCameraFilter();
   const signalsState = useSignals();
   // Global time-window filter (M-final): trims time-stamped signals by recency.
@@ -386,6 +409,7 @@ export default function WorldMap() {
       ensureGeoJSON(map, CAM_SRC, toCameraFC(camerasRef.current), CAMERA_CLUSTER);
       ensureGeoJSON(map, WEBCAM_SRC, toWebcamFC(webcamsRef.current), WEBCAM_CLUSTER);
       ensureGeoJSON(map, PLANE_SRC, toPlaneFC(planesRef.current));
+      ensureGeoJSON(map, TRACK_SRC, toTrackFC(trackedObjectRef.current));
       ensureGeoJSON(map, SIGNAL_FILL_SRC, toSignalFillFC(signalsRef.current));
       ensureGeoJSON(map, SIGNAL_LINE_SRC, toSignalLineFC(signalsRef.current));
       ensureGeoJSON(map, SIGNAL_SRC, toSignalFC(signalsRef.current));
@@ -649,6 +673,23 @@ export default function WorldMap() {
             visibility: vis(layersRef.current.webcams),
           },
           paint: { "text-color": "#ffffff" },
+        });
+      }
+      // Tracked-plane ring — a prominent stroked halo under the icon so the followed
+      // aircraft is unmistakable at any zoom. Empty source ⇒ invisible when idle.
+      if (!map.getLayer(TRACK_RING_LAYER)) {
+        map.addLayer({
+          id: TRACK_RING_LAYER,
+          type: "circle",
+          source: TRACK_SRC,
+          paint: {
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 2, 12, 6, 18, 11, 26, 15, 34],
+            "circle-color": "#0e7d97",
+            "circle-opacity": 0.14,
+            "circle-stroke-color": "#0e7d97",
+            "circle-stroke-width": 2.5,
+            "circle-stroke-opacity": 0.9,
+          },
         });
       }
       if (!map.getLayer(PLANE_LAYER)) {
@@ -977,6 +1018,10 @@ export default function WorldMap() {
     const el = map.getCanvasContainer();
     const markInteract = () => {
       interactUntilRef.current = performance.now() + IDLE_RESUME_MS;
+      // Grabbing the map "breaks" a live follow → drop to manual recenter so we stop
+      // chasing the plane out from under the user (a Recenter affordance re-arms it).
+      const t = trackingRef.current;
+      if (t.id && t.mode === "follow") trackStore.setMode("recenter");
     };
     const inputs: (keyof HTMLElementEventMap)[] = ["mousedown", "wheel", "touchstart", "pointerdown"];
     for (const ev of inputs) el.addEventListener(ev, markInteract, { passive: true });
@@ -988,8 +1033,11 @@ export default function WorldMap() {
     const isAutoSpinning = () =>
       performance.now() > interactUntilRef.current &&
       !overlay.get().object &&
+      !trackingRef.current.id &&
       map.getZoom() < SPIN_MAX_ZOOM;
     const onMoveEnd = () => {
+      // Our own follow easeTo shouldn't churn the shareable URL every poll.
+      if (followMoveRef.current) { followMoveRef.current = false; return; }
       if (!isAutoSpinning()) scheduleUrlWrite(map);
     };
     map.on("moveend", onMoveEnd);
@@ -1005,6 +1053,7 @@ export default function WorldMap() {
       if (
         performance.now() > interactUntilRef.current &&
         !overlay.get().object &&
+        !trackingRef.current.id && // a tracked plane owns the camera; don't spin away from it
         map.getZoom() < SPIN_MAX_ZOOM
       ) {
         const c = map.getCenter();
@@ -1102,6 +1151,24 @@ export default function WorldMap() {
     (map.getSource(TRAIL_SRC) as GeoJSONSource | undefined)?.setData(toTrailFC(planesLayer.trails));
   }, [planesLayer]);
 
+  // Plane tracking: keep the highlight ring on the tracked plane's live position,
+  // and (in follow mode) gently re-centre the globe on it each poll. Re-runs when a
+  // new track is set OR when fresh plane positions arrive. If the plane is not in
+  // the current snapshot ("signal lost") the ring clears but the track is retained —
+  // the chip shows the lost state until the user stops it or it reappears.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    const found = track.id ? planesLayer.objects.find((o) => o.id === track.id) ?? null : null;
+    trackedObjectRef.current = found;
+    (map.getSource(TRACK_SRC) as GeoJSONSource | undefined)?.setData(toTrackFC(found));
+    if (found && track.mode === "follow") {
+      followMoveRef.current = true; // this camera move is ours, not the user's
+      const zoom = Math.max(map.getZoom(), 4.5); // ensure the plane is legible, never zoom out
+      map.easeTo({ center: [found.lon, found.lat], zoom, duration: 900, essential: true });
+    }
+  }, [track, planesLayer]);
+
   // Restore a deep-linked dossier (?obj=) once its layer's data has streamed in.
   // Planes/satellites stream after first paint, so this retries on each data tick
   // until the id resolves, then clears the pending marker. A stale id (a landed
@@ -1195,9 +1262,32 @@ export default function WorldMap() {
     return () => mapViewStore.registerDiveTo(null);
   }, [diveTo]);
 
+  const trackedFound = track.id ? planesLayer.objects.some((o) => o.id === track.id) : false;
+
   return (
     <div className="world-map">
       <div ref={containerRef} className="map-canvas" />
+
+      {/* Tracking chip — persists across board/widget changes because the track lives
+          in an external store; the map just reflects it. Recenter appears once the
+          user has grabbed the map (mode flipped to "recenter"). */}
+      {track.id && (
+        <div className="tn-track-chip" role="status" aria-live="polite">
+          <span className="tn-track-dot" aria-hidden />
+          <span className="tn-track-label">
+            Tracking <b>{track.label}</b>
+            {!trackedFound && <span className="tn-track-lost"> · signal lost</span>}
+          </span>
+          {track.mode === "recenter" && trackedFound && (
+            <button type="button" className="tn-track-recenter" onClick={() => trackStore.setMode("follow")}>
+              Recenter
+            </button>
+          )}
+          <button type="button" className="tn-track-stop" onClick={() => trackStore.stop()} aria-label="Stop tracking">
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Gating feeds: a layer's data hook is mounted only while it is visible,
           so a hidden layer does not fetch or tick. They render no DOM. */}

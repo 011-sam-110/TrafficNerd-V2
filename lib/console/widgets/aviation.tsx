@@ -5,6 +5,7 @@ import { registerWidget, type WidgetBodyProps } from "@/lib/console/registry";
 import { useWidgetReport } from "@/components/console/WidgetFrame";
 import { runAlertRule } from "@/lib/console/alerts";
 import { aviationAlerts, type PlaneLite } from "@/lib/console/widgets/aviation.rules";
+import { isBizjet } from "@/lib/planes/bizjet";
 import AviationDetail from "./aviation.detail";
 
 /**
@@ -27,10 +28,16 @@ function AviationBody({ config }: WidgetBodyProps) {
   const layer = usePlanes();
   const planes = layer.objects;
 
-  // Map to PlaneLite for alert rules. squawk is now threaded from meta so
-  // emergency-squawk alerts fire; isMilitary stays unavailable (see notes above).
+  // Map to PlaneLite for alert rules. squawk is threaded from meta so emergency-squawk
+  // alerts fire; isBizjet/onGround feed the private-jet surge rule; isMilitary stays
+  // unavailable (see notes above).
   const lite: PlaneLite[] = useMemo(
-    () => planes.map((p) => ({ callsign: p.label, squawk: (p.meta?.squawk as string) || undefined })),
+    () => planes.map((p) => ({
+      callsign: p.label,
+      squawk: (p.meta?.squawk as string) || undefined,
+      isBizjet: isBizjet((p.meta?.typeCode as string) || undefined),
+      onGround: Boolean(p.meta?.onGround),
+    })),
     [planes],
   );
 
