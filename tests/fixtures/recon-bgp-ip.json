@@ -1,0 +1,20 @@
+{
+  "status": "ok",
+  "data": {
+    "ip": "1.1.1.1",
+    "ptr_record": "one.one.one.one",
+    "prefixes": [
+      {
+        "prefix": "1.1.1.0/24",
+        "ip": "1.1.1.0",
+        "cidr": 24,
+        "asn": { "asn": 13335, "name": "CLOUDFLARENET", "description": "Cloudflare, Inc.", "country_code": "US" },
+        "name": "APNIC-LABS",
+        "description": "APNIC and Cloudflare DNS Resolver",
+        "country_code": "AU"
+      }
+    ],
+    "rir_allocation": { "rir_name": "APNIC", "country_code": "AU", "prefix": "1.1.1.0/24", "date_allocated": "2011-08-11 00:00:00" },
+    "iana_assignment": { "assignment_status": "allocated" }
+  }
+}

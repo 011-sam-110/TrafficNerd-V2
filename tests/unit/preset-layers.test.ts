@@ -52,6 +52,14 @@ test("list-only widgets (events/markets/headlines/locate) imply no map layer", (
   expect(empty.onSignals).toEqual([]);
 });
 
+test("Tools board → cyber backdrop signals ON (recon widgets imply no layer), no core", () => {
+  const { onSignals, onCore } = onLayers(buildById("tools"));
+  // recon:* widgets are query→response tools, not map layers, so they light nothing;
+  // the three cyber/infra signal widgets provide the live backdrop.
+  expect(onSignals).toEqual(["cyber-c2", "cyber-ransomware", "internet-outages"]);
+  expect(onCore).toEqual([]);
+});
+
 test("every built-in persona lights up at least one data layer (no blank-map board)", () => {
   for (const p of BUILTIN_PRESETS) {
     const { onCore, onSignals } = onLayers(p.build());

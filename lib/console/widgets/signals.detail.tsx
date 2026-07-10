@@ -29,6 +29,7 @@ import { rowMetric } from "@/lib/console/signals/signalCard";
 import { makeAssetDetail } from "./cables.detail";
 import { makeScheduleDetail } from "./schedule.detail";
 import { makeForecastDetail } from "./forecast.detail";
+import { makeAisDetail } from "./ais.detail";
 
 // Sources whose upstream needs a key that may be unset — surface an honest dormant note.
 const KEYED = new Set(["acled", "firms", "aisstream", "openaq", "reliefweb", "entsoe"]);
@@ -53,6 +54,9 @@ export function makeSignalDetail(source: SignalSource) {
   if (source.kind === "asset") return makeAssetDetail(source);
   if (source.kind === "schedule") return makeScheduleDetail(source);
   if (source.kind === "forecast") return makeForecastDetail(source);
+  // Real-time AIS is neither an event nor an asset directory — it's a live
+  // congestion picture, so it gets a bespoke per-chokepoint status board.
+  if (source.id === "ais") return makeAisDetail(source);
 
   const metric = source.metric;
   const hasMetric = !!metric;

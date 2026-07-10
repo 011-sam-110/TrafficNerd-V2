@@ -1,0 +1,7 @@
+{
+  "A": {"Status":0,"Answer":[{"name":"example.com.","type":1,"TTL":297,"data":"104.20.23.154"},{"name":"example.com.","type":1,"TTL":297,"data":"172.66.147.243"}]},
+  "MX": {"Status":0,"Answer":[{"name":"example.com.","type":15,"TTL":166,"data":"0 ."}]},
+  "NS": {"Status":0,"Answer":[{"name":"example.com.","type":2,"TTL":3600,"data":"a.iana-servers.net."},{"name":"example.com.","type":2,"TTL":3600,"data":"b.iana-servers.net."}]},
+  "TXT": {"Status":0,"Answer":[{"name":"example.com.","type":16,"TTL":300,"data":"\"v=spf1 -all\""}]},
+  "AAAA": {"Status":0,"Answer":[]}
+}

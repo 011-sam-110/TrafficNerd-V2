@@ -70,6 +70,14 @@ export const BUILTIN_PRESETS: ConsolePreset[] = [
       { type: "markets", segment: "left" }, { type: "headlines", segment: "left" }, { type: "signal:internet-outages", segment: "left" },
       { type: "signal:cyber-c2", segment: "right" }, { type: "signal:cyber-ransomware", segment: "right" }, { type: "signal:grid-load", segment: "right" },
   ]) },
+
+  // ── Tools — passive OSINT recon (domain & IP intel), over a live cyber backdrop ──
+  { id: "tools", title: "Tools", icon: "🔎", blurb: "domain & IP intel", build: () => compose("map2d", [
+      { type: "recon:dns", segment: "left" }, { type: "recon:whois", segment: "left" }, { type: "recon:certs", segment: "left" },
+      { type: "recon:ports", segment: "right" }, { type: "recon:threat", segment: "right" }, { type: "recon:bgp", segment: "right" },
+      { type: "signal:cyber-ransomware", segment: "right" }, { type: "signal:internet-outages", segment: "right" },
+      { type: "signal:cyber-c2", segment: "bottom" },
+  ]) },
 ];
 
 const KEY = "tn.console.presets.v1";
