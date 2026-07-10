@@ -56,15 +56,19 @@ Appended as the 6th entry in `BUILTIN_PRESETS` (`lib/console/presets.ts`):
 { id: "tools", title: "Tools", icon: "🔎", blurb: "domain & IP intel", build: () => compose("map2d", [
     { type: "recon:dns",    segment: "left"  }, { type: "recon:whois", segment: "left"  }, { type: "recon:certs", segment: "left"  },
     { type: "recon:ports",  segment: "right" }, { type: "recon:threat", segment: "right" }, { type: "recon:bgp",   segment: "right" },
+    { type: "signal:cyber-ransomware", segment: "right" }, { type: "signal:internet-outages", segment: "right" },
     { type: "signal:cyber-c2", segment: "bottom" },
 ]) }
 ```
 
 - Order in `BUILTIN_PRESETS` = order in every surface (list is data-driven), so appending
   after `markets` puts "Tools" directly under "Markets & Cyber".
-- `signal:cyber-c2` on the bottom segment → `layersForLayout` lights the cyber-C2 map layer →
-  the map behind the tools reads as a live cyber-threat backdrop, and the M12 blank-map guard
-  passes naturally.
+- Left = the three domain-centric lookups; right = the three IP-centric lookups **plus two
+  live cyber-context feeds** (`signal:cyber-ransomware`, `signal:internet-outages`) so the
+  right column carries live data alongside the recon forms, not just inputs.
+- The three cyber/infra signal widgets light `cyber-c2` + `cyber-ransomware` +
+  `internet-outages` map layers → the map behind the tools reads as a live cyber-threat
+  backdrop, and the M12 "no blank-map board" guard passes naturally (no exemption needed).
 
 ### Shared target (type once, all six resolve)
 - New tiny store `lib/recon/targetStore.ts`: `{ target: string, kind: 'domain'|'ip'|'asn'|'empty' }`.
@@ -90,8 +94,13 @@ generic widget registration**.
 | `recon:whois` | Registration / ownership | RDAP `rdap.org/domain/<d>`, `rdap.org/ip/<ip>` | domain or ip |
 | `recon:certs` | Cert transparency + subdomain enumeration | crt.sh `?q=<d>&output=json` | domain |
 | `recon:bgp` | ASN / prefixes / peers | BGPView `api.bgpview.io/{ip,asn}/<t>` | ip or asn |
-| `recon:ports` | Passive port intel (ports/CPEs/CVEs) | Shodan InternetDB `internetdb.shodan.io/<ip>` | ip (resolve domain first) |
-| `recon:threat` | Threat intel / IP reputation | Shodan InternetDB (tags/vulns) + abuse.ch URLhaus `urlhaus-api.abuse.ch/v1/host/`; +🔒 VirusTotal / AbuseIPDB when keyed | domain or ip |
+| `recon:ports` | Passive port intel (ports/CPEs/CVEs) | Shodan InternetDB `internetdb.shodan.io/<ip>` (keyless); + keyed providers | ip (resolve domain first) |
+| `recon:threat` | Threat intel / IP reputation | Shodan InternetDB tags/vulns (keyless baseline); + a registry of keyed providers | domain or ip |
+
+**Keyless baseline is real:** every tool works with zero keys — DoH, RDAP, crt.sh, BGPView,
+and Shodan InternetDB are all no-auth. Note: abuse.ch (URLhaus/ThreatFox) moved to requiring a
+free auth key in late 2024, so it is a **keyed** provider slot, not part of the keyless
+baseline.
 
 Why server-proxied: these APIs are CORS-blocked in the browser and staying keyless-first means
 proxying and short-caching them server-side (same rationale as the existing `app/api/*`
@@ -118,22 +127,72 @@ route caches briefly (Next `revalidate`) to protect the upstreams.
   fetch-on-target-change variant).
 - `lib/console/widgets/index.ts` — add `import "@/lib/console/widgets/recon";`.
 
-### `recon:threat` keyed upgrades
-- Keyless by default: merges Shodan InternetDB `tags`/`vulns` + abuse.ch URLhaus host verdict
-  into a simple reputation summary.
-- Dormant sections rendered with a 🔒 "needs key" note (never hidden), matching the M4/M5
-  dormant-section pattern: **VirusTotal** (`VIRUSTOTAL_API_KEY`) and **AbuseIPDB**
-  (`ABUSEIPDB_API_KEY`). When the env key is present the route enriches the verdict; when
-  absent the section shows the locked note. No fabricated scores.
+### Keyed-provider registry (all providers)
+Rather than bespoke wiring per provider, keyed upgrades are a **data-driven registry** —
+same idea as the signals registry. Each provider is a tiny uniform adapter:
+
+```
+interface ReconProvider {
+  id: string;              // "virustotal"
+  label: string;           // "VirusTotal"
+  envKey: string;          // "VIRUSTOTAL_API_KEY"
+  tool: "threat" | "ports" | "bgp" | "dns" | "whois" | "certs";
+  supports: TargetKind[];  // ["ip","domain"]
+  enrich(target, kind, key): Promise<ProviderResult>;   // pure-ish fetch+map
+}
+```
+
+- `lib/recon/providers/` holds one small module per provider; `providers/registry.ts`
+  collects them.
+- Each tool's route walks the providers registered for it: if `process.env[envKey]` is set →
+  `enrich()` and attach the result; if absent → emit `{ locked: true, label, envKey }`.
+- The widget renders each provider as a section: a real verdict when keyed, or a 🔒
+  "needs key — set `ENV_NAME`" note when dormant (never hidden, matching the M4/M5 pattern).
+  Keyless baseline (InternetDB etc.) always renders. **No fabricated scores** — a dormant or
+  failed provider shows the locked/empty note, never invented data.
+- Adding a provider = one ~15-line adapter + one registry line + one fixture test. The full
+  set the owner wants (13 providers) is enumerated in the "API keys (.env)" section below.
+
+Build order: keyless baseline first (all six tools working with zero keys), then the provider
+adapters in registry order. Each provider is independent, so they can land incrementally
+without blocking the baseline.
+
+## API keys (.env)
+
+All optional — every tool works keyless. Add any subset to `.env.local` (dev) or Vercel
+project env (prod); each unlocks its provider's dormant section. Naming follows the repo
+convention (`<PROVIDER>_API_KEY` / `_TOKEN`, like the existing `FINNHUB_API_KEY`).
+Free-tier limits are approximate and set by the vendor.
+
+| Provider | Enriches | Where to get the key | .env name | Free tier |
+|---|---|---|---|---|
+| VirusTotal | threat | https://www.virustotal.com/gui/join-us → profile → API key | `VIRUSTOTAL_API_KEY` | ~500/day, 4/min |
+| AbuseIPDB | threat | https://www.abuseipdb.com/register → account → API | `ABUSEIPDB_API_KEY` | 1,000 checks/day |
+| GreyNoise | threat | https://www.greynoise.io → sign up → Community API key | `GREYNOISE_API_KEY` | Community lookups |
+| AlienVault OTX | threat | https://otx.alienvault.com → sign up → Settings → OTX Key | `OTX_API_KEY` | Free |
+| Pulsedive | threat | https://pulsedive.com → register → Account → API Key | `PULSEDIVE_API_KEY` | Free tier |
+| IPQualityScore | threat | https://www.ipqualityscore.com/create-account → Settings | `IPQUALITYSCORE_API_KEY` | 5,000/mo |
+| abuse.ch (URLhaus/ThreatFox) | threat | https://auth.abuse.ch → sign in → Auth-Key | `ABUSECH_API_KEY` | Free (auth required) |
+| Shodan (full API) | ports | https://account.shodan.io/register → Account → API Key | `SHODAN_API_KEY` | Free/one-time membership |
+| Censys | ports | https://censys.io → account → API credentials | `CENSYS_API_ID` + `CENSYS_API_SECRET` | Free tier |
+| BinaryEdge | ports | https://www.binaryedge.io → sign up → Account → API | `BINARYEDGE_API_KEY` | 250/mo |
+| IPinfo | bgp/threat | https://ipinfo.io/signup → dashboard → Token | `IPINFO_TOKEN` | 50,000/mo |
+| SecurityTrails | dns | https://securitytrails.com → sign up → API Keys | `SECURITYTRAILS_API_KEY` | 50/mo |
+| WhoisXML API | whois | https://whoisxmlapi.com → sign up → My Products → API key | `WHOISXML_API_KEY` | 500/mo |
+
+Notes: Shodan **InternetDB** (the keyless port/threat baseline) needs no key and is separate
+from the full **Shodan** API key above. Censys is the one two-part credential (ID + secret).
 
 ## Files
 
-**New (~15, zero conflict with the parallel agent):**
+**New (zero conflict with the parallel agent):**
 - `lib/recon/target.ts`, `lib/recon/targetStore.ts`
 - `lib/recon/{dns,whois,certs,bgp,ports,threat}.ts`
+- `lib/recon/providers/*` (one adapter per keyed provider) + `lib/recon/providers/registry.ts`
 - `app/api/recon/{dns,whois,certs,bgp,ports,threat}/route.ts`
 - `lib/console/widgets/recon.tsx`
-- `tests/unit/recon-{dns,whois,certs,bgp,ports,threat}.test.ts` (+ `recon-target.test.ts`)
+- `tests/unit/recon-{dns,whois,certs,bgp,ports,threat}.test.ts` (+ `recon-target.test.ts`,
+  + one fixture test per keyed provider adapter)
 
 **Modified (small, surgical):**
 - `lib/console/presets.ts` — +1 preset entry.
@@ -157,10 +216,13 @@ Build gate: `npx tsc --noEmit && npm test` green.
 - [ ] `detectKind()` unit-tested across domain / IPv4 / `AS####` / numeric-ASN / junk.
 - [ ] `console-presets.test.ts` updated and green: 6 boards, `tools` present, `recon:*` widget
       types recognised.
-- [ ] `preset-layers.test.ts`: Tools board → `cyber-c2` signal ON, no core layers; blank-map
-      guard still green for all 6 presets.
+- [ ] `preset-layers.test.ts`: Tools board → `cyber-c2` + `cyber-ransomware` +
+      `internet-outages` signals ON, no core layers; blank-map guard still green for all 6.
 - [ ] Every API route returns HTTP 200 with a labelled empty payload on upstream failure
       (never a 5xx, never fabricated data).
+- [ ] Each keyed provider adapter: a fixture test (sample response → mapped result) and a
+      "returns `{ locked }` when its env key is absent" assertion. No key set → keyless
+      baseline still renders and no provider fabricates a verdict.
 - [ ] UI evidence: Playwright screenshot of the Tools preset with a real lookup
       (e.g. `example.com`) to `persona-shots/`.
 
