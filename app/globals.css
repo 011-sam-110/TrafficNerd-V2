@@ -1150,8 +1150,6 @@ a { color: var(--tn-accent); }
 /* ===========================================================================
    StageHost + WorldClock + StageSwitch — Task 8
    =========================================================================== */
-.tn-clock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:32px;background:radial-gradient(circle at 50% 40%,#26323d,#141c24)}
-.tn-clock-time{font-size:34px;font-weight:800;color:#fff;letter-spacing:1px}.tn-clock-zone{font-size:11px;color:#9fb0bf;letter-spacing:1px;text-align:center}
 .tn-stage-switch{display:inline-flex;gap:2px;background:#fff;border:1px solid #d7dee6;border-radius:7px;padding:2px}
 .tn-stage-switch button{border:0;background:none;font-size:11px;font-weight:700;color:#5a6470;padding:2px 8px;border-radius:5px;cursor:pointer}
 .tn-stage-switch button.is-on{background:#27313b;color:#fff}
@@ -1808,3 +1806,116 @@ a { color: var(--tn-accent); }
 .tn-mk-actions { display: flex; gap: 8px; }
 .tn-mk-actions button { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--tn-text); cursor: pointer; }
 .tn-mk-actions button:disabled { opacity: .4; cursor: default; }
+
+/* ===========================================================================
+   Navbar / OpenData overhaul (M2) — central board pill · profile · settings drawer
+   · floated map-view controls
+   =========================================================================== */
+
+/* ── Central board pill (absolutely centred over the top bar) ────────────── */
+.tn-preset-pill { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; }
+.tn-preset-pill-btn {
+  display: inline-flex; align-items: center; gap: 8px; font: inherit; font-size: 13px;
+  font-weight: 650; color: var(--tn-text); background: var(--tn-chip-bg);
+  border: 1px solid var(--tn-border); border-radius: 999px; padding: 6px 14px;
+  cursor: pointer; box-shadow: var(--tn-shadow-sm);
+  transition: border-color .15s ease, background .15s ease;
+}
+.tn-preset-pill-btn:hover { border-color: var(--tn-border-strong); }
+.tn-preset-pill-btn[aria-expanded="true"] { border-color: var(--tn-accent); background: var(--tn-accent-soft); }
+.tn-preset-pill-icon { font-size: 14px; line-height: 1; }
+.tn-preset-pill-title { white-space: nowrap; }
+.tn-preset-pill-caret { font-size: 10px; color: var(--tn-text-faint); }
+.tn-preset-menu {
+  position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  width: 288px; max-height: 72vh; overflow-y: auto; z-index: 40; padding: 6px;
+  background: var(--tn-surface-solid); border: 1px solid var(--tn-border);
+  border-radius: 14px; box-shadow: var(--tn-shadow);
+}
+.tn-preset-menu-head { margin: 6px 8px 4px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tn-text-faint); }
+.tn-preset-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; font: inherit; background: none; border: 0; border-radius: 10px; padding: 8px 10px; cursor: pointer; color: var(--tn-text); }
+.tn-preset-menu-item:hover { background: var(--tn-surface-2); }
+.tn-preset-menu-item.is-active { background: var(--tn-accent-soft); }
+.tn-preset-menu-icon { font-size: 18px; width: 22px; text-align: center; flex: none; }
+.tn-preset-menu-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.tn-preset-menu-title { font-size: 13px; font-weight: 600; }
+.tn-preset-menu-blurb { font-size: 11px; color: var(--tn-text-faint); }
+@media (max-width: 720px) { .tn-preset-pill { display: none; } }
+
+/* ── Profile avatar + popover ─────────────────────────────────────────────── */
+.tn-profile { position: relative; display: inline-flex; }
+.tn-profile-avatar { width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer; color: #fff; font-size: 13px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; box-shadow: var(--tn-shadow-sm); }
+.tn-profile-avatar:hover { filter: brightness(1.07); }
+.tn-profile-menu { position: absolute; top: calc(100% + 8px); right: 0; width: 262px; z-index: 40; padding: 12px; background: var(--tn-surface-solid); border: 1px solid var(--tn-border); border-radius: 14px; box-shadow: var(--tn-shadow); display: flex; flex-direction: column; gap: 10px; }
+.tn-profile-id { display: flex; align-items: center; gap: 10px; }
+.tn-profile-id-avatar { width: 36px; height: 36px; border-radius: 50%; color: #fff; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.tn-profile-id-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.tn-profile-id-name { font-size: 14px; font-weight: 650; color: var(--tn-text); overflow: hidden; text-overflow: ellipsis; }
+.tn-profile-id-sub { font-size: 11px; color: var(--tn-text-faint); }
+.tn-profile-field { display: flex; flex-direction: column; gap: 4px; }
+.tn-profile-field-label { font-size: 11px; font-weight: 600; color: var(--tn-text-muted); }
+.tn-profile-input { font: inherit; font-size: 13px; color: var(--tn-text); background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 8px; padding: 7px 9px; width: 100%; }
+.tn-profile-input:focus { outline: none; border-color: var(--tn-accent); }
+.tn-profile-input:disabled { opacity: .6; }
+.tn-profile-btn { font: inherit; font-size: 13px; font-weight: 600; color: var(--tn-text); background: var(--tn-chip-bg); border: 1px solid var(--tn-border); border-radius: 9px; padding: 8px 10px; cursor: pointer; text-align: center; }
+.tn-profile-btn:hover:not(:disabled) { border-color: var(--tn-border-strong); }
+.tn-profile-btn.is-primary { color: #fff; background: var(--tn-accent); border-color: transparent; }
+.tn-profile-btn.is-primary:hover:not(:disabled) { background: var(--tn-accent-strong); }
+.tn-profile-btn:disabled { opacity: .5; cursor: not-allowed; }
+.tn-profile-signin { display: flex; flex-direction: column; gap: 8px; }
+.tn-profile-signin-note { margin: 0; font-size: 12px; color: var(--tn-text-muted); line-height: 1.4; }
+.tn-profile-link { font: inherit; font-size: 12px; color: var(--tn-accent); background: none; border: 0; cursor: pointer; text-align: left; padding: 2px; }
+
+/* ── Settings drawer ──────────────────────────────────────────────────────── */
+.tn-settings-scrim { position: fixed; inset: 0; z-index: 60; background: rgba(15, 23, 42, .28); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); display: flex; justify-content: flex-end; animation: tn-fade-in .15s ease; }
+.tn-settings { width: min(384px, 92vw); height: 100%; background: var(--tn-surface-solid); border-left: 1px solid var(--tn-border); box-shadow: var(--tn-shadow); display: flex; flex-direction: column; animation: tn-slide-in .2s ease; }
+@keyframes tn-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tn-slide-in { from { transform: translateX(28px); opacity: .5; } to { transform: translateX(0); opacity: 1; } }
+.tn-settings-head { display: flex; align-items: center; justify-content: space-between; padding: 15px 18px; border-bottom: 1px solid var(--tn-border); flex: none; }
+.tn-settings-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--tn-text); }
+.tn-settings-close { font: inherit; font-size: 14px; color: var(--tn-text-muted); background: var(--tn-chip-bg); border: 1px solid var(--tn-border); border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }
+.tn-settings-close:hover { color: var(--tn-text); }
+.tn-settings-body { padding: 6px 18px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; }
+.tn-settings-sec { display: flex; flex-direction: column; gap: 10px; }
+.tn-settings-sec-title { margin: 12px 0 0; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tn-text-faint); }
+.tn-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tn-settings-label { font-size: 13px; color: var(--tn-text); }
+.tn-settings-hint { margin: -2px 0 2px; font-size: 12px; color: var(--tn-text-faint); line-height: 1.4; }
+.tn-settings-seg { display: inline-flex; gap: 2px; background: var(--tn-chip-bg); border-radius: 9px; padding: 2px; }
+.tn-settings-seg-btn { font: inherit; font-size: 12.5px; font-weight: 600; color: var(--tn-text-muted); background: transparent; border: 0; border-radius: 7px; padding: 6px 12px; cursor: pointer; }
+.tn-settings-seg-btn[aria-pressed="true"] { background: var(--tn-surface-solid); color: var(--tn-accent); box-shadow: var(--tn-shadow-sm); }
+.tn-settings-boards { display: flex; flex-direction: column; gap: 6px; }
+.tn-settings-board { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; font: inherit; background: var(--tn-surface-2); border: 1px solid transparent; border-radius: 11px; padding: 10px 12px; cursor: pointer; color: var(--tn-text); }
+.tn-settings-board:hover { border-color: var(--tn-border); }
+.tn-settings-board.is-active { border-color: var(--tn-accent); background: var(--tn-accent-soft); }
+.tn-settings-board-icon { font-size: 20px; width: 24px; text-align: center; flex: none; }
+.tn-settings-board-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.tn-settings-board-title { font-size: 13.5px; font-weight: 600; }
+.tn-settings-board-blurb { font-size: 11.5px; color: var(--tn-text-faint); }
+.tn-settings-share { font: inherit; font-size: 13px; font-weight: 600; color: #fff; background: var(--tn-accent); border: 0; border-radius: 10px; padding: 11px 14px; cursor: pointer; }
+.tn-settings-share:hover { background: var(--tn-accent-strong); }
+.tn-settings-share.is-copied { background: var(--tn-live); }
+
+/* ── Floated map-view controls (top-right of the centre stage) ────────────── */
+.tn-map-controls { position: absolute; top: 10px; right: 10px; z-index: 5; display: flex; align-items: center; gap: 8px; }
+
+/* ── Cinematic world clock (ambient ribbon over the map, top-centre) ──────── */
+.tn-worldclock {
+  position: absolute; bottom: 46px; left: 50%; transform: translateX(-50%); z-index: 4;
+  display: flex; align-items: stretch; padding: 5px 6px; border-radius: 14px;
+  background: linear-gradient(100deg, rgba(13, 21, 38, .74), rgba(34, 46, 66, .70));
+  border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 10px 34px rgba(0, 0, 0, .34);
+  backdrop-filter: blur(12px) saturate(1.15); -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  color: #fff; pointer-events: none; user-select: none;
+}
+.tn-wc-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 3px 14px; min-width: 60px; position: relative; }
+.tn-wc-cell + .tn-wc-cell::before { content: ""; position: absolute; left: 0; top: 22%; bottom: 22%; width: 1px; background: rgba(255, 255, 255, .12); }
+.tn-wc-glyph { font-size: 11px; line-height: 1.1; }
+.tn-wc-cell.is-day .tn-wc-glyph { color: #fbbf24; text-shadow: 0 0 8px rgba(251, 191, 36, .55); }
+.tn-wc-cell.is-night .tn-wc-glyph { color: #93c5fd; text-shadow: 0 0 8px rgba(147, 197, 253, .5); }
+.tn-wc-time { font-size: 15px; font-weight: 700; letter-spacing: .5px; line-height: 1.2; }
+.tn-wc-cell.is-night .tn-wc-time { color: #d5deea; }
+.tn-wc-city { font-size: 9px; font-weight: 600; letter-spacing: .13em; color: rgba(255, 255, 255, .58); }
+/* The clock is decorative chrome — drop it on tight viewports where the ribbon would
+   crowd the map-view controls / breaking banner. */
+@media (max-width: 900px) { .tn-worldclock { display: none; } }

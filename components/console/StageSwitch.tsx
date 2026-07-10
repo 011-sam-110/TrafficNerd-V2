@@ -2,10 +2,12 @@
 import { useShellLayout, shellLayoutStore } from "@/lib/console/store";
 import type { StageId } from "@/lib/console/types";
 
+// The centre stage is either the globe (3D) or the flat map (2D). The old "clock"
+// stage is retired — the world clock is now an ambient overlay on the map, not a
+// full-screen stage — so only the two map projections remain switchable here.
 const OPTS: { id: StageId; label: string }[] = [
   { id: "map3d", label: "3D" },
   { id: "map2d", label: "2D" },
-  { id: "clock", label: "🕐" },
 ];
 
 export default function StageSwitch() {

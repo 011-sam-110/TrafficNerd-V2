@@ -22,22 +22,22 @@ function onLayers(layout: ReturnType<typeof createDefaultLayout>) {
   return { core, signals, onSignals, onCore };
 }
 
-test("Intelligence persona → conflict/instability signals ON, all core layers OFF", () => {
-  const { onSignals, onCore, core } = onLayers(buildById("intelligence"));
-  expect(onSignals).toEqual(["acled", "conflict", "instability", "military-air", "protests"]);
+test("Situation Room board → conflict/intel signals ON, all core layers OFF", () => {
+  const { onSignals, onCore, core } = onLayers(buildById("situation"));
+  expect(onSignals).toEqual(["acled", "conflict", "displacement", "instability", "military-air", "protests"]);
   expect(onCore).toEqual([]); // no planes/cameras/satellites on an analyst board
   expect(core.countries).toBe(true); // base geography is never stripped
 });
 
-test("Aviation persona → planes+cameras core layers ON plus its signal layers", () => {
-  const { onSignals, onCore } = onLayers(buildById("aviation-ops"));
-  expect(onCore).toEqual(["cameras", "planes"]); // aviation widget → planes, cameras widget → cameras
-  expect(onSignals).toEqual(["airports", "gpsJamming", "military-air"]);
+test("Air·Sea·Space board → planes+satellites core layers ON plus its signal layers", () => {
+  const { onSignals, onCore } = onLayers(buildById("mobility"));
+  expect(onCore).toEqual(["planes", "satellites"]); // aviation widget → planes, satellites widget → satellites
+  expect(onSignals).toEqual(["ais", "aurora", "cables", "launches", "ports"]);
 });
 
 test("list-only widgets (events/markets/headlines) imply no map layer", () => {
   // World Overview mixes a cameras widget + list widgets: only cameras should light up.
-  const { onCore, onSignals } = onLayers(buildById("world"));
+  const { onCore, onSignals } = onLayers(buildById("overview"));
   expect(onCore).toEqual(["cameras"]);
   expect(onSignals).toEqual(["instability"]);
 

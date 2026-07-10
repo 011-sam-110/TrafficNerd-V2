@@ -1,0 +1,131 @@
+"use client";
+// The Settings slide-over (opened from the top-right gear). Consolidates the chrome
+// controls that used to clutter the top bar — language, dark mode, and layout sharing
+// — and adds a "load board" list. A right drawer over a dismiss scrim; Esc or a scrim
+// click closes it. All controls drive the existing stores, so nothing here owns state
+// beyond the transient "copied" flash.
+
+import { useEffect, useRef, useState } from "react";
+import { LANGS } from "@/lib/i18n/catalog";
+import { useLang, langStore } from "@/lib/i18n/store";
+import { uiStore, useUI } from "@/lib/shell/ui";
+import { buildShareUrl } from "@/lib/share/deepLink";
+import { encodeLayout } from "@/lib/console/share";
+import { shellLayoutStore } from "@/lib/console/store";
+import { BUILTIN_PRESETS, applyPreset } from "@/lib/console/presets";
+import { useActivePreset } from "@/lib/console/activePreset";
+
+/** A shareable URL that carries BOTH the map view state and the widget layout (?c=). */
+async function copyLayoutLink(): Promise<boolean> {
+  const base = buildShareUrl();
+  const c = encodeLayout(shellLayoutStore.get());
+  const url = `${base}${base.includes("?") ? "&" : "?"}c=${c}`;
+  try {
+    if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(url); return true; }
+  } catch { /* fall through */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = url; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch { return false; }
+}
+
+export default function SettingsPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const ui = useUI();
+  const lang = useLang();
+  const activeId = useActivePreset();
+  const [copied, setCopied] = useState(false);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  useEffect(() => () => { if (copyTimer.current) clearTimeout(copyTimer.current); }, []);
+
+  if (!open) return null;
+
+  const onShare = async () => {
+    const ok = await copyLayoutLink();
+    if (!ok) return;
+    setCopied(true);
+    if (copyTimer.current) clearTimeout(copyTimer.current);
+    copyTimer.current = setTimeout(() => setCopied(false), 1800);
+  };
+
+  return (
+    <div className="tn-settings-scrim" onClick={onClose}>
+      <aside className="tn-settings" role="dialog" aria-modal="true" aria-label="Settings"
+        onClick={(e) => e.stopPropagation()}>
+        <header className="tn-settings-head">
+          <h2 className="tn-settings-title">Settings</h2>
+          <button type="button" className="tn-settings-close" onClick={onClose} aria-label="Close settings">✕</button>
+        </header>
+
+        <div className="tn-settings-body">
+          {/* Appearance ------------------------------------------------------ */}
+          <section className="tn-settings-sec">
+            <h3 className="tn-settings-sec-title">Appearance</h3>
+            <div className="tn-settings-row">
+              <span className="tn-settings-label">Theme</span>
+              <div className="tn-settings-seg" role="group" aria-label="Theme">
+                <button type="button" className="tn-settings-seg-btn" aria-pressed={ui.theme === "light"}
+                  onClick={() => uiStore.setTheme("light")}>☀ Light</button>
+                <button type="button" className="tn-settings-seg-btn" aria-pressed={ui.theme === "dark"}
+                  onClick={() => uiStore.setTheme("dark")}>☾ Dark</button>
+              </div>
+            </div>
+          </section>
+
+          {/* Language -------------------------------------------------------- */}
+          <section className="tn-settings-sec">
+            <h3 className="tn-settings-sec-title">Language</h3>
+            <div className="tn-settings-row">
+              <span className="tn-settings-label">Interface</span>
+              <div className="tn-settings-seg" role="group" aria-label="Interface language">
+                {LANGS.map((l) => (
+                  <button key={l.code} type="button" className="tn-settings-seg-btn" title={l.name}
+                    aria-pressed={lang === l.code} onClick={() => langStore.set(l.code)}>{l.label}</button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Boards ---------------------------------------------------------- */}
+          <section className="tn-settings-sec">
+            <h3 className="tn-settings-sec-title">Load a board</h3>
+            <p className="tn-settings-hint">Swaps the widgets and the map overlays together.</p>
+            <div className="tn-settings-boards">
+              {BUILTIN_PRESETS.map((p) => (
+                <button key={p.id} type="button"
+                  className={`tn-settings-board${p.id === activeId ? " is-active" : ""}`}
+                  aria-pressed={p.id === activeId} onClick={() => applyPreset(p.id)}>
+                  <span className="tn-settings-board-icon" aria-hidden>{p.icon}</span>
+                  <span className="tn-settings-board-text">
+                    <span className="tn-settings-board-title">{p.title}</span>
+                    <span className="tn-settings-board-blurb">{p.blurb}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Share ----------------------------------------------------------- */}
+          <section className="tn-settings-sec">
+            <h3 className="tn-settings-sec-title">Share</h3>
+            <p className="tn-settings-hint">Copy a link that reopens this exact board and view.</p>
+            <button type="button" className={`tn-settings-share${copied ? " is-copied" : ""}`} onClick={onShare}>
+              {copied ? "✓ Link copied" : "Share this layout"}
+            </button>
+          </section>
+        </div>
+      </aside>
+    </div>
+  );
+}
