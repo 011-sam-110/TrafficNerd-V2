@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import fixture from "@/tests/fixtures/launches.json";
-import { normalizeLaunches, launchStatusColor } from "@/lib/signals/launches";
+import { normalizeLaunches, launchStatusColor, LAUNCHES_SOURCE } from "@/lib/signals/launches";
 
 test("normalizes LL2 launches to pad points, skipping pad-less ones", () => {
   const out = normalizeLaunches(fixture as never);
@@ -26,4 +26,8 @@ test("status colour ramp: go=green, tbd=violet", () => {
   expect(launchStatusColor("Go for Launch")).toBe("#22c55e");
   expect(launchStatusColor("To Be Determined")).toBe("#a855f7");
   expect(launchStatusColor("Launch Failure")).toBe("#ef4444");
+});
+
+test("registers as a schedule so it renders the countdown agenda, not the event view", () => {
+  expect(LAUNCHES_SOURCE.kind).toBe("schedule");
 });

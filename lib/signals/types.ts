@@ -95,18 +95,54 @@ export interface DirectorySpec {
   detailLabel?: string;
 }
 
+/** A qualitative band on a forecast index — the highest band whose `min` a value clears. */
+export interface ForecastBand {
+  min: number;
+  label: string;
+  /** Status hue (theme-independent, like the map severity swatches). */
+  color: string;
+}
+
+/**
+ * Presentation hints for the forecast/index focus view (kind:"forecast"). The
+ * headline reads the source's `metric` (peak value across features); this spec
+ * supplies the qualitative bands, the quiet threshold below which the feed reads
+ * as "all-clear", the plain-language quiet note, and — for index feeds — which
+ * props to surface as secondary scale chips.
+ */
+export interface ForecastSpec {
+  /** Ascending bands mapping the index value → a label + status colour. */
+  bands: ForecastBand[];
+  /** Peak metric below this ⇒ render the compact all-clear card. Omit ⇒ quiet only when empty. */
+  quietBelow?: number;
+  /** Plain-language line for the all-clear state (e.g. "No visible aurora right now."). */
+  quietNote: string;
+  /** True for a spatial FIELD (aurora grid) → show the where/hemisphere summary + map. */
+  spatial?: boolean;
+  /** Noun for the active-cell count on a spatial field (e.g. "cells ≥50% likely"). */
+  activeNoun?: string;
+  /** props keys shown as secondary scale chips on an index feed (e.g. G/R/S storm scales). */
+  scaleKeys?: string[];
+}
+
 /** A registered signal layer: metadata + a pure-ish fetch that yields points. */
 export interface SignalSource {
   /** Stable id; also the dynamic route segment (/api/signals/<id>) + store key. */
   id: string;
   /**
-   * Semantic layer kind. Most sources are transient EVENTS (earthquakes, storms,
-   * news) whose focus view renders magnitude/severity + a time window. Some are
-   * permanent ASSETS (submarine cables, landing stations) with no magnitude, no
-   * severity and no "when" — for those the focus view renders an asset schema
-   * (attributes + filters) instead of the event schema. Absent ⇒ "event".
+   * Semantic layer kind, selecting the focus-view archetype:
+   *   • "event" (default) — transient occurrences (earthquakes, storms, news):
+   *     magnitude/severity + a "last N hours" time window.
+   *   • "asset" — permanent infrastructure (cables, ports, airports, plants):
+   *     a ranked/browsable directory, no magnitude/severity/"when".
+   *   • "schedule" — forward-looking, time-anchored items (rocket launches):
+   *     a countdown-ordered agenda grouped by day with a "next up" hero, driven
+   *     off each feature's `ts` (the scheduled time). No map-blob, no severity.
+   *   • "forecast" — an index / forecast field (space-weather Kp, aurora): a
+   *     headline gauge with qualitative bands and a compact "all-clear" state when
+   *     the feed is quiet, plus a spatial "where" summary for field forecasts.
    */
-  kind?: "event" | "asset";
+  kind?: "event" | "asset" | "schedule" | "forecast";
   /** Human label shown in the rail. */
   label: string;
   /** Rail grouping, e.g. "Natural hazards" / "Space weather". */
@@ -121,6 +157,8 @@ export interface SignalSource {
   metric?: SignalMetric;
   /** Optional: presentation hints for the asset-directory focus view (kind:"asset"). */
   directory?: DirectorySpec;
+  /** Optional: bands + all-clear copy for the forecast/index focus view (kind:"forecast"). */
+  forecast?: ForecastSpec;
   /** Fetch + normalise upstream into points. MUST resolve (never reject) to []. */
   fetch(): Promise<SignalFeature[]>;
 }

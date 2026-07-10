@@ -103,6 +103,7 @@ export const LAUNCHES_SOURCE: SignalSource = {
   color: "#a855f7",
   refreshMs: CACHE_TTL_MS,
   attribution: LAUNCHES_ATTRIBUTION,
+  kind: "schedule", // forward-looking, time-anchored → the countdown-agenda focus view
   async fetch() {
     if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.features;
     try {
