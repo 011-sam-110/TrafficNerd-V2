@@ -24,6 +24,7 @@ export default function InsetMap({
   onSelect,
   onMapClick,
   track,
+  selectedId,
 }: {
   points: InsetPoint[];
   height?: number;
@@ -32,6 +33,8 @@ export default function InsetMap({
   onMapClick?: (lat: number, lon: number) => void;
   /** Optional ground-track polyline: [lon,lat] segments (already antimeridian-split). */
   track?: [number, number][][];
+  /** Highlights the matching point (enlarged, accent ring) — kept in sync with a row selection. */
+  selectedId?: string;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -107,6 +110,17 @@ export default function InsetMap({
       if (key !== fitKeyRef.current) { fit(map, points, track); fitKeyRef.current = key; }
     }
   }, [points, track]);
+
+  // Highlight the selected point (enlarged + accent ring) whenever the selection changes.
+  // Data-driven paint keyed off the feature id; an empty id matches nothing → all default.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded() || !map.getLayer(LAYER)) return;
+    const sel = selectedId ?? "";
+    map.setPaintProperty(LAYER, "circle-radius", ["case", ["==", ["get", "id"], sel], 9, 6]);
+    map.setPaintProperty(LAYER, "circle-stroke-color", ["case", ["==", ["get", "id"], sel], "#0e7d97", "#0b1220"]);
+    map.setPaintProperty(LAYER, "circle-stroke-width", ["case", ["==", ["get", "id"], sel], 3, 1]);
+  }, [selectedId, points]);
 
   return <div ref={boxRef} className="tn-inset-map" style={{ width: "100%", height }} />;
 }

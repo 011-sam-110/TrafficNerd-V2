@@ -1572,7 +1572,18 @@ a { color: var(--tn-accent); }
 .tn-sd-stat { font-size: 12px; color: var(--tn-text-muted); }
 .tn-sd-delta.up { color: #16a34a; } .tn-sd-delta.down { color: #dc2626; }
 .tn-sd-spark { max-width: 320px; }
-.tn-sd-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+/* Honest feed-freshness badge — the provenance signal every pro user demanded. */
+.tn-sd-fresh { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; background: var(--tn-chip-bg); }
+.tn-sd-fresh-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tn-unknown); }
+.tn-sd-fresh.is-live { color: var(--tn-live); } .tn-sd-fresh.is-live .tn-sd-fresh-dot { background: var(--tn-live); }
+.tn-sd-fresh.is-lagging { color: var(--tn-lagging); } .tn-sd-fresh.is-lagging .tn-sd-fresh-dot { background: var(--tn-lagging); }
+.tn-sd-fresh.is-stale { color: var(--tn-down); } .tn-sd-fresh.is-stale .tn-sd-fresh-dot { background: var(--tn-down); }
+.tn-sd-fresh.is-none { color: var(--tn-text-faint); }
+/* The location map gets its own full-width row (clickable dots ↔ rows). */
+.tn-sd-mappanel { display: flex; flex-direction: column; gap: 6px; }
+.tn-sd-mappanel > h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--tn-text-faint); margin: 0; }
+.tn-sd-maphint { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--tn-text-faint); }
+.tn-sd-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
 @media (max-width: 720px) { .tn-sd-panels { grid-template-columns: 1fr; } }
 .tn-sd-panel h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--tn-text-faint); margin: 0 0 6px; }
 .tn-sd-bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
@@ -1583,6 +1594,7 @@ a { color: var(--tn-accent); }
 .tn-sd-table td { padding: 5px 8px; border-bottom: 1px solid var(--tn-border); }
 .tn-sd-row { cursor: pointer; }
 .tn-sd-row:hover { background: var(--tn-surface-2); }
+.tn-sd-row.is-selected { background: var(--tn-accent-soft); box-shadow: inset 3px 0 0 var(--tn-accent); }
 .tn-sd-drill { background: var(--tn-surface-2); }
 .tn-sd-drill dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 6px 0; }
 .tn-sd-drill dt { color: var(--tn-accent); text-transform: uppercase; font-size: 10px; letter-spacing: .06em; font-weight: 600; }
@@ -1594,7 +1606,7 @@ a { color: var(--tn-accent); }
 .tn-sd-actions button:disabled { opacity: .4; cursor: default; }
 
 /* ── Signals FOCUS overhaul — KPI cards, filter bar, chart axes, map legend, value chips ── */
-.tn-sd-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tn-sd-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .tn-sd-kpi { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 8px; padding: 8px 10px; }
 .tn-sd-kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--tn-text-faint); }
 .tn-sd-kpi-value { font-size: 18px; font-weight: 700; color: var(--tn-text); line-height: 1.2; }

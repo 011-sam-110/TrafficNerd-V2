@@ -23,7 +23,7 @@ import { openSignalFeature } from "@/lib/widgets/openSignal";
 import { humaniseKey } from "@/lib/text/humanise";
 import {
   distribution, timeModel, sortFeatures, relativeAge, filterDetailFeatures, detailKpis, rowValue,
-  type SortKey,
+  freshness, type SortKey,
 } from "@/lib/console/signals/signalDetail";
 import { rowMetric } from "@/lib/console/signals/signalCard";
 import { makeAssetDetail } from "./cables.detail";
@@ -114,8 +114,23 @@ export function makeSignalDetail(source: SignalSource) {
     const timePoints: ChartPoint[] = timeBins(tm.values, 60 * 60_000, now, 24 * 60 * 60_000).map((b) => ({ x: b.start, y: b.count }));
     const timeMax = Math.max(0, ...timePoints.map((p) => p.y));
     const mapPoints: InsetPoint[] = filtered.map((f) => ({ lat: f.lat, lon: f.lon, id: f.id, color: f.color ?? source.color, props: { title: f.title } }));
-    const freshAge = updatedAt ? `${Math.max(0, Math.round((now - updatedAt) / 60000))}m ago` : "—";
     const filterActive = query.trim() !== "" || minValue > 0;
+    const fresh = freshness(updatedAt, source.refreshMs, now);
+    // Which analytics panels carry a real signal for THIS source — dead panels
+    // ("declares no magnitude or severity", "no timestamped features") are hidden,
+    // not shown empty, so the layout matches what the data can actually say.
+    const showDist = dist.kind !== "none";
+    const showTime = timePoints.some((p) => p.y > 0);
+
+    // Click a map dot → select its row, scroll it into view and open its drill-down
+    // (bidirectional with the selected-dot highlight). This is what makes the dots feel
+    // clickable instead of inert.
+    const selectFromMap = (id: string) => {
+      setOpen(id);
+      if (typeof document !== "undefined") {
+        requestAnimationFrame(() => document.getElementById(`sdrow-${id}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+      }
+    };
 
     const exportRows = rows.map((f) => ({ id: f.id, title: f.title, magnitude: f.props?.magnitude ?? "", value: rowValue(f, metric) ?? "", lat: f.lat, lon: f.lon, ts: f.ts ?? "", link: f.link ?? "" }));
     const exportGeo = rows.map((f) => ({ lat: f.lat, lon: f.lon, properties: { id: f.id, title: f.title, ...(f.props ?? {}) } }));
@@ -136,7 +151,8 @@ export function makeSignalDetail(source: SignalSource) {
       <div className="tn-sd">
         <header className="tn-sd-head">
           <div className="tn-sd-title">{source.label}</div>
-          <div className="tn-sd-stat"><b>{scoped.length}</b> of {features.length} in {scope.label} · updated {freshAge}
+          <div className="tn-sd-stat"><b>{scoped.length}</b> of {features.length} in {scope.label}
+            <span className={`tn-sd-fresh is-${fresh.state}`} title={`Feed cadence ${Math.round(source.refreshMs / 60000)}m`}><i className="tn-sd-fresh-dot" />{fresh.state === "live" ? "live" : fresh.label}</span>
             {delta !== 0 && <span className={`tn-sd-delta ${delta > 0 ? "up" : "down"}`}> {delta > 0 ? "▲" : "▼"}{Math.abs(delta)}</span>}
           </div>
           {spark.length >= 2 && <div className="tn-sd-spark"><Chart points={spark} height={40} up={null} /></div>}
@@ -149,16 +165,20 @@ export function makeSignalDetail(source: SignalSource) {
               <div className="tn-sd-kpi-value">{kpis.inView}</div>
               <div className="tn-sd-kpi-sub">{filterActive ? `of ${scoped.length} in scope` : "in scope"}</div>
             </div>
-            <div className="tn-sd-kpi">
-              <div className="tn-sd-kpi-label">Peak</div>
-              <div className="tn-sd-kpi-value">{kpis.peak ? kpis.peak.label : "—"}</div>
-              <div className="tn-sd-kpi-sub">{hasMetric ? "metric max" : kpis.peak ? "magnitude" : "no scale"}</div>
-            </div>
-            <div className="tn-sd-kpi">
-              <div className="tn-sd-kpi-label">24h Δ</div>
-              <div className={`tn-sd-kpi-value ${changeCls}`}>{kpis.change24h}</div>
-              <div className="tn-sd-kpi-sub">count vs ≤24h ago</div>
-            </div>
+            {kpis.peak && (
+              <div className="tn-sd-kpi">
+                <div className="tn-sd-kpi-label">Peak</div>
+                <div className="tn-sd-kpi-value">{kpis.peak.label}</div>
+                <div className="tn-sd-kpi-sub">{hasMetric ? "metric max" : "magnitude"}</div>
+              </div>
+            )}
+            {kpis.change24h !== "—" && (
+              <div className="tn-sd-kpi">
+                <div className="tn-sd-kpi-label">24h Δ</div>
+                <div className={`tn-sd-kpi-value ${changeCls}`}>{kpis.change24h}</div>
+                <div className="tn-sd-kpi-sub">count vs ≤24h ago</div>
+              </div>
+            )}
           </div>
         )}
 
@@ -196,51 +216,51 @@ export function makeSignalDetail(source: SignalSource) {
         {status !== "loading" && scoped.length === 0 && <p className="tn-w-empty">Nothing in {scope.label}.</p>}
         {scoped.length > 0 && filtered.length === 0 && <p className="tn-w-empty">No features match the filter.</p>}
 
-        {filtered.length > 0 && (
-          <div className="tn-sd-panels">
-            <div className="tn-sd-panel">
-              <h3>Locations</h3>
-              {mapPoints.length > 0 ? <InsetMap points={mapPoints} height={200} onSelect={(id) => setOpen(id)} />
-                : <p className="tn-w-empty">No mappable features.</p>}
-              {(dist.kind === "severity" || valueRange) && (
-                <div className="tn-sd-legend">
-                  {dist.kind === "severity" ? (
-                    <>
-                      <span className="tn-sd-legend-item"><i className="tn-sd-swatch" style={{ background: SEV_SEVERE }} />Severe</span>
-                      <span className="tn-sd-legend-item"><i className="tn-sd-swatch" style={{ background: SEV_WARNING }} />Warning</span>
-                      <span className="tn-sd-legend-item"><i className="tn-sd-swatch tn-sd-swatch-other" />Other</span>
-                    </>
-                  ) : valueRange ? (
-                    <div className="tn-sd-legend-grad">
-                      <span className="tn-sd-bar-label">{valueRange.min}</span>
-                      <span className="tn-sd-gradbar" style={{ background: `linear-gradient(90deg, ${withAlpha(source.color, 0.15)}, ${source.color})` }} />
-                      <span className="tn-sd-bar-label">{valueRange.max}{metric?.unit ?? ""}</span>
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </div>
-            <div className="tn-sd-panel">
-              <h3>{dist.kind === "magnitude" ? "Magnitude distribution" : dist.kind === "severity" ? "Severity" : "Distribution"}</h3>
-              {dist.kind !== "none" ? (
-                <>
-                  <div className="tn-sd-plot">
-                    <div className="tn-sd-yaxis"><span>{distMax}</span><span>0</span></div>
-                    <div className="tn-sd-plot-body">
-                      <div className="tn-sd-bars">
-                        {dist.bins.map((b, i) => (
-                          <div key={i} className="tn-sd-bar" style={{ height: `${(b.count / distMax) * 100}%` }} title={`${b.label}: ${b.count}`} />
-                        ))}
-                      </div>
-                      <div className="tn-sd-binlabels">{dist.bins.map((b, i) => <span key={i} className="tn-sd-bar-label" style={{ flex: 1 }}>{b.label}</span>)}</div>
-                    </div>
+        {filtered.length > 0 && mapPoints.length > 0 && (
+          <div className="tn-sd-mappanel">
+            <h3>Locations <span className="tn-sd-maphint">· click a dot to find its row</span></h3>
+            <InsetMap points={mapPoints} height={220} selectedId={open ?? undefined} onSelect={selectFromMap} />
+            {(dist.kind === "severity" || valueRange) && (
+              <div className="tn-sd-legend">
+                {dist.kind === "severity" ? (
+                  <>
+                    <span className="tn-sd-legend-item"><i className="tn-sd-swatch" style={{ background: SEV_SEVERE }} />Severe</span>
+                    <span className="tn-sd-legend-item"><i className="tn-sd-swatch" style={{ background: SEV_WARNING }} />Warning</span>
+                    <span className="tn-sd-legend-item"><i className="tn-sd-swatch tn-sd-swatch-other" />Other</span>
+                  </>
+                ) : valueRange ? (
+                  <div className="tn-sd-legend-grad">
+                    <span className="tn-sd-bar-label">{valueRange.min}</span>
+                    <span className="tn-sd-gradbar" style={{ background: `linear-gradient(90deg, ${withAlpha(source.color, 0.15)}, ${source.color})` }} />
+                    <span className="tn-sd-bar-label">{valueRange.max}{metric?.unit ?? ""}</span>
                   </div>
-                </>
-              ) : <p className="tn-w-empty">This source declares no magnitude or severity.</p>}
-            </div>
-            <div className="tn-sd-panel">
-              <h3>Over the last 24h {tm.undated > 0 && <span className="tn-sd-bar-label">· {tm.undated} undated</span>}</h3>
-              {timePoints.some((p) => p.y > 0) ? (
+                ) : null}
+              </div>
+            )}
+          </div>
+        )}
+
+        {filtered.length > 0 && (showDist || showTime) && (
+          <div className="tn-sd-panels">
+            {showDist && (
+              <div className="tn-sd-panel">
+                <h3>{dist.kind === "magnitude" ? "Magnitude distribution" : "Severity"}</h3>
+                <div className="tn-sd-plot">
+                  <div className="tn-sd-yaxis"><span>{distMax}</span><span>0</span></div>
+                  <div className="tn-sd-plot-body">
+                    <div className="tn-sd-bars">
+                      {dist.bins.map((b, i) => (
+                        <div key={i} className="tn-sd-bar" style={{ height: `${(b.count / distMax) * 100}%` }} title={`${b.label}: ${b.count}`} />
+                      ))}
+                    </div>
+                    <div className="tn-sd-binlabels">{dist.bins.map((b, i) => <span key={i} className="tn-sd-bar-label" style={{ flex: 1 }}>{b.label}</span>)}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {showTime && (
+              <div className="tn-sd-panel">
+                <h3>Over the last 24h {tm.undated > 0 && <span className="tn-sd-bar-label">· {tm.undated} undated</span>}</h3>
                 <div className="tn-sd-plot">
                   <div className="tn-sd-yaxis"><span>{timeMax}</span><span>0</span></div>
                   <div className="tn-sd-plot-body">
@@ -248,8 +268,8 @@ export function makeSignalDetail(source: SignalSource) {
                     <div className="tn-sd-xaxis"><span>−24h</span><span>−12h</span><span>now</span></div>
                   </div>
                 </div>
-              ) : <p className="tn-w-empty">No timestamped features in the window.</p>}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -271,7 +291,7 @@ export function makeSignalDetail(source: SignalSource) {
                 const age = relativeAge(f.ts, now);
                 return (
                   <Fragment key={f.id}>
-                    <tr className="tn-sd-row" onClick={() => setOpen(isOpen ? null : f.id)}>
+                    <tr id={`sdrow-${f.id}`} className={`tn-sd-row${isOpen ? " is-selected" : ""}`} onClick={() => setOpen(isOpen ? null : f.id)}>
                       <td>
                         <span className="tn-sd-val">
                           <i className="tn-sd-dot" style={{ background: f.color ?? source.color }} />

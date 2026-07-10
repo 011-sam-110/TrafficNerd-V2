@@ -63,7 +63,10 @@ export function distribution(features: SignalFeature[]): Distribution {
     else if (s === "warn") warn++;
     else other++;
   }
-  if (critical > 0 || warn > 0) {
+  // A severity BAR is only informative when a non-trivial share is actually graded —
+  // otherwise a single false-positive keyword match (e.g. a vessel nav-status) turns
+  // the whole panel into a meaningless all-"Other" chart. Require ≥2 graded features.
+  if (critical + warn >= 2) {
     return { kind: "severity", bins: [
       { label: "Severe", count: critical },
       { label: "Warning", count: warn },
@@ -135,6 +138,26 @@ export function relativeAge(ts: string | undefined, now: number): string {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h`;
   return `${Math.floor(h / 24)}d`;
+}
+
+export type FreshnessState = "live" | "lagging" | "stale" | "none";
+
+/**
+ * Honest feed freshness for the provenance badge: compares the last successful
+ * poll against the source's own refresh cadence. "live" within ~1.5× the cadence,
+ * "lagging" up to ~4×, "stale" beyond, "none" when never fetched. Lets the header
+ * say WHY a quiet map is quiet — a fresh calm vs a dead feed — which every pro user
+ * said was make-or-break for trust.
+ */
+export function freshness(updatedAt: number | null | undefined, refreshMs: number, now: number): { state: FreshnessState; label: string } {
+  if (!updatedAt) return { state: "none", label: "no data yet" };
+  const ageMs = Math.max(0, now - updatedAt);
+  const mins = Math.round(ageMs / 60_000);
+  const label = mins < 1 ? "updated just now" : `updated ${mins}m ago`;
+  const cadence = Number.isFinite(refreshMs) && refreshMs > 0 ? refreshMs : 300_000;
+  if (ageMs <= cadence * 1.5) return { state: "live", label };
+  if (ageMs <= cadence * 4) return { state: "lagging", label };
+  return { state: "stale", label };
 }
 
 export interface DetailFilter {
