@@ -4,8 +4,8 @@
 // basemap, or fly to a covered region. Open/close is owned by ConsoleShell.
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { layersStore, LAYER_PRESETS, ACTIVE_LAYERS, type LayerKey } from "@/lib/layers";
-import { mapViewStore } from "@/lib/mapView";
+import { layersStore, LAYER_PRESETS, ACTIVE_LAYERS, presetState, useLayers, type LayerKey } from "@/lib/layers";
+import { mapViewStore, useMapView } from "@/lib/mapView";
 import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
 import { CAMERA_REGIONS } from "@/lib/icons/svg";
 import { cinematic } from "@/lib/cinematic/store";
@@ -13,16 +13,27 @@ import { pickLiveCamera } from "@/lib/cinematic/livePick";
 import { loadedCamerasStore } from "@/lib/cameras/loaded";
 import "@/lib/console/widgets";
 import { widgetsByCategory, getWidgetType } from "@/lib/console/registry";
-import { shellLayoutStore } from "@/lib/console/store";
+import { shellLayoutStore, useShellLayout } from "@/lib/console/store";
 import type { StageId } from "@/lib/console/types";
 import { listPresets, applyPreset, saveCustomPreset, DEFAULT_PRESET_ID } from "@/lib/console/presets";
+import { useActivePreset } from "@/lib/console/activePreset";
 import { encodeLayout } from "@/lib/console/share";
-import { uiStore } from "@/lib/shell/ui";
-import { langStore } from "@/lib/i18n/store";
+import { uiStore, useUI } from "@/lib/shell/ui";
+import { langStore, useLang } from "@/lib/i18n/store";
 import { LANGS } from "@/lib/i18n/catalog";
-import { variantStore } from "@/lib/variants/store";
+import { variantStore, useVariant } from "@/lib/variants/store";
 import { BUILTIN_VARIANTS } from "@/lib/variants/builtins";
-import { groupCommands, columnize, GROUP_ORDER, type Command } from "@/lib/console/paletteGroups";
+import {
+  groupCommands,
+  columnize,
+  orderGroups,
+  decorate,
+  matchingSetId,
+  assignWidgetSection,
+  POPULAR_WIDGET_IDS,
+  type Command,
+  type PaletteSnapshot,
+} from "@/lib/console/paletteGroups";
 import type { GeocodeResult } from "@/lib/geo/geocode";
 
 // Pick a fly-to zoom from a geocode result's extent (wider areas frame out).
@@ -94,19 +105,28 @@ function buildCommands(close: () => void): Command[] {
     },
   });
 
-  // ── Add widget: one command per registered type (hint = its category) ───
-  for (const group of widgetsByCategory()) {
-    for (const t of group.types) {
-      const openCount = shellLayoutStore.get().widgets.filter((w) => w.type === t.id).length;
-      cmds.push({
-        id: `add-${t.id}`,
-        label: `Add ${t.title}${openCount ? ` (${openCount} open)` : ""}`,
-        hint: group.category.toLowerCase(),
-        group: "Add widget",
-        run: () => { const r = shellLayoutStore.add(t.id, { config: { ...t.defaultConfig }, height: t.defaultHeight }); if (!r.ok) alertCapacity(); close(); },
-      });
-    }
-  }
+  // ── Add widget: a cross-category "Popular widgets" fast-path, then the rest of
+  //    the catalogue split into per-category sections (was ONE 40-item flat wall).
+  //    Section = POPULAR_WIDGET_IDS ? "Popular widgets" : the widget's category, so
+  //    each widget appears exactly once and command ids stay `add-<type>` (unchanged
+  //    → deep links / presets / ?c= share unaffected). Which widgets float up and how
+  //    categories order is data-driven in lib/console/paletteGroups.ts.
+  const catalog = widgetsByCategory();
+  const byWidgetId = new Map<string, { title: string; category: string; defaultConfig: Record<string, unknown>; defaultHeight: number }>();
+  for (const g of catalog) for (const t of g.types) byWidgetId.set(t.id, { title: t.title, category: g.category, defaultConfig: t.defaultConfig, defaultHeight: t.defaultHeight });
+  const addWidgetCmd = (id: string, meta: { title: string; category: string; defaultConfig: Record<string, unknown>; defaultHeight: number }) => {
+    const openCount = shellLayoutStore.get().widgets.filter((w) => w.type === id).length;
+    cmds.push({
+      id: `add-${id}`,
+      label: `Add ${meta.title}${openCount ? ` (${openCount} open)` : ""}`,
+      hint: meta.category.toLowerCase(),
+      group: assignWidgetSection({ id, category: meta.category }, POPULAR_WIDGET_IDS),
+      run: () => { const r = shellLayoutStore.add(id, { config: { ...meta.defaultConfig }, height: meta.defaultHeight }); if (!r.ok) alertCapacity(); close(); },
+    });
+  };
+  // Popular first, in the curated order; then everything else in category order.
+  for (const id of POPULAR_WIDGET_IDS) { const m = byWidgetId.get(id); if (m) addWidgetCmd(id, m); }
+  for (const g of catalog) for (const t of g.types) { if (POPULAR_WIDGET_IDS.includes(t.id)) continue; addWidgetCmd(t.id, { title: t.title, category: g.category, defaultConfig: t.defaultConfig, defaultHeight: t.defaultHeight }); }
 
   // ── Open widgets: jump focus to a card that's already on the workspace ──
   const openWidgets = shellLayoutStore.get().widgets;
@@ -194,6 +214,36 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
 
   const commands = useMemo(() => buildCommands(onClose), [onClose]);
 
+  // ── Live active-state snapshot ──────────────────────────────────────────────
+  // Every stateful choice the palette can reflect, read reactively so the ✓/ON/OFF
+  // pills always show what's currently live. The palette closes on any action, so a
+  // fresh snapshot per open is enough — but subscribing keeps it correct if state
+  // changes underneath (e.g. a variant flips theme while the palette is open).
+  const mapView = useMapView();
+  const ui = useUI();
+  const lang = useLang();
+  const activePreset = useActivePreset();
+  const variant = useVariant();
+  const layout = useShellLayout();
+  const layerState = useLayers();
+  const activeLayerSet = useMemo(
+    () => matchingSetId(layerState as unknown as Record<string, boolean>, LAYER_PRESETS.map((p) => ({ id: p.id, state: presetState(p.id) as unknown as Record<string, boolean> }))),
+    [layerState],
+  );
+  const snapshot = useMemo<PaletteSnapshot>(() => ({
+    basemap: mapView.basemap,
+    stage: layout.stage,
+    theme: ui.theme,
+    lang,
+    layers: layerState as unknown as Record<string, boolean>,
+    activePresetId: activePreset,
+    activeVariantId: variant.activeId,
+    activeLayerSet,
+  }), [mapView.basemap, layout.stage, ui.theme, lang, layerState, activePreset, variant.activeId, activeLayerSet]);
+
+  // Stamp active/ON/OFF/current-choice onto each command from the live snapshot.
+  const decorated = useMemo(() => decorate(commands, snapshot), [commands, snapshot]);
+
   // Column count for the mega-menu layout — sections sit side by side, more of
   // them the wider the viewport. Tracked in state so a resize reflows the palette.
   useEffect(() => {
@@ -232,17 +282,16 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
     run: () => { mapViewStore.flyToPoint({ lat: r.lat, lon: r.lon, zoom: zoomForResult(r) }); onClose(); },
   })), [geo, onClose]);
 
-  // Grouped, query-filtered sections in the fixed GROUP_ORDER; live geocode
-  // results fold into "Go to" (added even when the static Go-to group filtered empty).
+  // Grouped, query-filtered sections in data-driven priority order; live geocode
+  // results fold into "Go to" (added even when the static Go-to group filtered empty),
+  // then the whole set is re-ordered by section priority.
   const grouped = useMemo(() => {
-    const base = groupCommands(commands, query);
+    const base = groupCommands(decorated, query);
     if (geoCmds.length === 0) return base;
     const byGroup = new Map(base.map((g) => [g.group, g.commands]));
     byGroup.set("Go to", [...(byGroup.get("Go to") ?? []), ...geoCmds]);
-    return GROUP_ORDER
-      .filter((g) => (byGroup.get(g)?.length ?? 0) > 0)
-      .map((g) => ({ group: g, commands: byGroup.get(g)! }));
-  }, [commands, query, geoCmds]);
+    return orderGroups([...byGroup].map(([group, cmds]) => ({ group, commands: cmds })));
+  }, [decorated, query, geoCmds]);
 
   // Sections laid out into side-by-side columns (the mega-menu). The flat index
   // space is column-major — down a column, then on to the next — so ↑/↓ walk a
@@ -335,17 +384,21 @@ export default function CommandPalette({ open, onClose }: { open: boolean; onClo
                     <ul className="tn-palette-seclist" role="presentation">
                       {g.commands.map((c) => {
                         const i = indexById.get(c.id)!;
+                        const off = c.state === "OFF";
                         return (
                           <li
                             key={c.id}
                             ref={i === active ? activeRef : undefined}
                             role="option"
                             aria-selected={i === active}
-                            className={`tn-palette-item${i === active ? " is-active" : ""}`}
+                            aria-checked={c.active ? true : undefined}
+                            className={`tn-palette-item${i === active ? " is-active" : ""}${c.active ? " is-on" : ""}`}
                             onMouseEnter={() => setActive(i)}
                             onClick={() => c.run()}
                           >
+                            <span className="tn-palette-check" aria-hidden="true">{c.active ? "✓" : ""}</span>
                             <span className="tn-palette-label">{c.label}</span>
+                            {c.state && <span className={`tn-palette-state${c.active ? " on" : off ? " off" : ""}`}>{c.state}</span>}
                             <span className="tn-palette-hint">{c.hint}</span>
                           </li>
                         );
