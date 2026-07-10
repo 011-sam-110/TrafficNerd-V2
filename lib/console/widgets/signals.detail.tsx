@@ -28,6 +28,7 @@ import {
 import { rowMetric } from "@/lib/console/signals/signalCard";
 import { makeAssetDetail } from "./cables.detail";
 import { makeScheduleDetail } from "./schedule.detail";
+import { makeForecastDetail } from "./forecast.detail";
 
 // Sources whose upstream needs a key that may be unset — surface an honest dormant note.
 const KEYED = new Set(["acled", "firms", "aisstream", "openaq", "reliefweb", "entsoe"]);
@@ -51,6 +52,7 @@ export function makeSignalDetail(source: SignalSource) {
   // schema below unchanged.
   if (source.kind === "asset") return makeAssetDetail(source);
   if (source.kind === "schedule") return makeScheduleDetail(source);
+  if (source.kind === "forecast") return makeForecastDetail(source);
 
   const metric = source.metric;
   const hasMetric = !!metric;

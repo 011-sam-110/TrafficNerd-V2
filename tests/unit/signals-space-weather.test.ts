@@ -28,6 +28,13 @@ test("source metric resolves the real Kp index over the 0–9 domain", () => {
   expect(m).toEqual({ value: 2, domain: [0, 9], label: "2" });
 });
 
+test("registers as a forecast index with Kp bands + storm-scale chips", () => {
+  expect(SPACE_WEATHER_SOURCE.kind).toBe("forecast");
+  expect(SPACE_WEATHER_SOURCE.forecast?.quietBelow).toBe(4); // Kp < 4 ⇒ compact all-clear
+  expect(SPACE_WEATHER_SOURCE.forecast?.scaleKeys).toEqual(["geomagneticStorm", "radioBlackout", "solarRadiation"]);
+  expect(SPACE_WEATHER_SOURCE.forecast?.bands?.some((b) => b.label.includes("G1"))).toBe(true);
+});
+
 test("empty Kp series yields no feature; G-scale colours escalate", () => {
   expect(normalizeSpaceWeather({ kp: [], scales0: undefined })).toHaveLength(0);
   expect(gScaleColor(0)).toBe("#16a34a");

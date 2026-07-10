@@ -92,9 +92,22 @@ export const SPACE_WEATHER_SOURCE: SignalSource = {
   color: "#16a34a",
   refreshMs: 15 * 60 * 1000,
   attribution: SWPC_ATTRIBUTION,
+  kind: "forecast", // a single geomagnetic INDEX → the forecast focus view (gauge + scales)
   // Real scalar: the planetary K-index (geomagnetic activity), 0 (quiet) → 9 (max
   // storm) — not the rescaled `magnitude` radius proxy.
   metric: { field: "kp", domain: [0, 9] },
+  forecast: {
+    quietBelow: 4, // Kp < 4 = quiet → compact all-clear
+    quietNote: "Quiet — no geomagnetic storm. GPS, HF radio and power grids nominal; no aurora at mid-latitudes.",
+    scaleKeys: ["geomagneticStorm", "radioBlackout", "solarRadiation"],
+    bands: [
+      { min: 0, label: "Quiet", color: "#16a34a" },
+      { min: 4, label: "Unsettled", color: "#eab308" },
+      { min: 5, label: "Minor storm (G1)", color: "#f59e0b" },
+      { min: 6, label: "Moderate storm (G2)", color: "#ea580c" },
+      { min: 7, label: "Strong storm (G3+)", color: "#dc2626" },
+    ],
+  },
   async fetch() {
     try {
       const [kpRes, scRes] = await Promise.all([

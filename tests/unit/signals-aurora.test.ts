@@ -52,3 +52,10 @@ test("source metric resolves to the real probability value + domain", () => {
   const m = rowMetric(top, AURORA_SOURCE.metric);
   expect(m).toEqual({ value: 90, domain: [0, 100], label: "90%" });
 });
+
+test("registers as a spatial forecast (peak + where + all-clear when empty)", () => {
+  expect(AURORA_SOURCE.kind).toBe("forecast");
+  expect(AURORA_SOURCE.forecast?.spatial).toBe(true);
+  expect(AURORA_SOURCE.forecast?.quietNote).toMatch(/aurora/i);
+  expect(AURORA_SOURCE.forecast?.bands?.[0].min).toBe(50);
+});

@@ -75,9 +75,20 @@ export const AURORA_SOURCE: SignalSource = {
   color: "#22c55e",
   refreshMs: 5 * 60 * 1000, // SWPC publishes a new grid every few minutes
   attribution: AURORA_ATTRIBUTION,
+  kind: "forecast", // a spatial visibility FIELD → the forecast focus view (peak + where)
   // Real OVATION visibility probability (0–100%); rendered cells are ≥50%, so the
   // bar fills across the meaningful half — 100% is a near-certain-aurora extreme.
   metric: { field: "probabilityPct", domain: [0, 100], unit: "%" },
+  forecast: {
+    spatial: true,
+    activeNoun: "cells ≥50% likely",
+    quietNote: "No visible aurora forecast right now — the OVATION grid has no high-probability cells.",
+    bands: [
+      { min: 50, label: "Visible", color: "#22c55e" },
+      { min: 75, label: "Strong", color: "#34d399" },
+      { min: 90, label: "Brilliant", color: "#10b981" },
+    ],
+  },
   async fetch() {
     try {
       const res = await fetch(ENDPOINT, {
