@@ -10,18 +10,36 @@ import type { SignalFeature, SignalSource } from "@/lib/signals/types";
 
 const WS_URL = "wss://stream.aisstream.io/v0/stream";
 
-/** Strategic maritime chokepoints (the intel-relevant water). [[swLat,swLon],[neLat,neLon]]. */
-const CHOKEPOINTS: number[][][] = [
-  [[24, 54], [27, 58]],     // Strait of Hormuz
-  [[12, 32], [31, 44]],     // Red Sea → Suez (incl. Bab-el-Mandeb)
-  [[48, -6], [52, 3]],      // English Channel
-  [[1, 98], [6, 105]],      // Strait of Malacca / Singapore
-  [[35.7, -6.2], [36.3, -5]], // Strait of Gibraltar
-  [[40.9, 28.8], [41.3, 29.2]], // Bosphorus
-  [[8, -80.5], [9.6, -79]], // Panama Canal approaches
-  [[21.5, 119], [25.5, 122]], // Taiwan Strait
-  [[55, 10], [58, 13]],     // Danish Straits (Baltic approaches)
+/** A named strategic maritime chokepoint + its bounding box [[swLat,swLon],[neLat,neLon]]. */
+export interface Chokepoint {
+  name: string;
+  bbox: [[number, number], [number, number]];
+}
+
+/** Strategic maritime chokepoints (the intel-relevant water) the AIS layer watches. */
+export const CHOKEPOINTS: Chokepoint[] = [
+  { name: "Strait of Hormuz", bbox: [[24, 54], [27, 58]] },
+  { name: "Red Sea – Bab-el-Mandeb", bbox: [[12, 32], [31, 44]] }, // → Suez
+  { name: "English Channel", bbox: [[48, -6], [52, 3]] },
+  { name: "Malacca – Singapore", bbox: [[1, 98], [6, 105]] },
+  { name: "Strait of Gibraltar", bbox: [[35.7, -6.2], [36.3, -5]] },
+  { name: "Bosphorus", bbox: [[40.9, 28.8], [41.3, 29.2]] },
+  { name: "Panama Canal", bbox: [[8, -80.5], [9.6, -79]] },
+  { name: "Taiwan Strait", bbox: [[21.5, 119], [25.5, 122]] },
+  { name: "Danish Straits", bbox: [[55, 10], [58, 13]] }, // Baltic approaches
 ];
+
+/** The bounding boxes in the raw [[swLat,swLon],[neLat,neLon]] shape AISStream subscribes to. */
+const CHOKEPOINT_BOXES: number[][][] = CHOKEPOINTS.map((c) => c.bbox);
+
+/** Pure: which chokepoint a position falls in (first match), or undefined for open water. */
+export function chokepointFor(lat: number, lon: number): string | undefined {
+  for (const c of CHOKEPOINTS) {
+    const [[swLat, swLon], [neLat, neLon]] = c.bbox;
+    if (lat >= swLat && lat <= neLat && lon >= swLon && lon <= neLon) return c.name;
+  }
+  return undefined;
+}
 
 /** Cap on vessels returned (keeps a busy snapshot legible). */
 export const AIS_CAP = 1200;
@@ -79,6 +97,7 @@ export function normalizeAis(vessels: AisVessel[]): SignalFeature[] {
     const name = (v.ShipName ?? "").trim() || `MMSI ${v.MMSI}`;
     const sog = typeof v.Sog === "number" ? v.Sog : null;
     const moving = sog != null && sog > 0.5;
+    const cp = chokepointFor(lat, lon);
     out.push({
       id: `ais:${v.MMSI}`,
       lat,
@@ -91,9 +110,12 @@ export function normalizeAis(vessels: AisVessel[]): SignalFeature[] {
         vessel: name,
         mmsi: v.MMSI,
         speed: sog != null ? `${sog.toFixed(1)} kt` : "—",
+        // Numeric sibling of `speed` so the chokepoint board can aggregate honestly.
+        ...(sog != null ? { speedKt: sog } : {}),
         course: typeof v.Cog === "number" ? `${Math.round(v.Cog)}°` : "—",
         heading: typeof v.TrueHeading === "number" && v.TrueHeading !== 511 ? `${v.TrueHeading}°` : "—",
         status: navStatusLabel(v.NavigationalStatus),
+        ...(cp ? { chokepoint: cp } : {}),
       },
     });
   }
@@ -122,7 +144,7 @@ async function collectAis(key: string, ms: number): Promise<AisVessel[]> {
     ws.binaryType = "arraybuffer";
     const timer = setTimeout(done, ms);
     ws.onopen = () => {
-      ws.send(JSON.stringify({ APIKey: key, BoundingBoxes: CHOKEPOINTS, FilterMessageTypes: ["PositionReport"] }));
+      ws.send(JSON.stringify({ APIKey: key, BoundingBoxes: CHOKEPOINT_BOXES, FilterMessageTypes: ["PositionReport"] }));
     };
     ws.onmessage = (e: MessageEvent) => {
       const txt = typeof e.data === "string" ? e.data : decoder.decode(e.data as ArrayBuffer);
