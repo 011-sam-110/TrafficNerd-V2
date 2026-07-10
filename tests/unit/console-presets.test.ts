@@ -4,10 +4,12 @@ import { SIGNALS, signalsByGroup } from "@/lib/signals/registry";
 
 const CORE_WIDGETS = new Set(["events", "news", "cameras", "aviation", "satellites", "markets", "headlines", "locate"]);
 const SIGNAL_WIDGETS = new Set(SIGNALS.map((s) => `signal:${s.id}`));
+// The OSINT "Tools" board's query→response recon widgets (not live signal layers).
+const RECON_WIDGETS = new Set(["recon:dns", "recon:whois", "recon:certs", "recon:bgp", "recon:ports", "recon:threat"]);
 
-// Deliberately FEW: five broad boards, one per navbar-pill slot. Ids are stable (used by
+// Deliberately FEW: six broad boards, one per navbar-pill slot. Ids are stable (used by
 // the first-run seed, the ⌘K Profiles section, the central preset pill, and shared URLs).
-const BOARD_IDS = ["overview", "situation", "earth", "mobility", "markets"];
+const BOARD_IDS = ["overview", "situation", "earth", "mobility", "markets", "tools"];
 
 // The seven core monitoring cards the union of boards must all surface (the "use all our
 // widgets" intent). `locate` is a utility card, not a monitoring board card, so it's exempt.
@@ -41,12 +43,19 @@ test("the mobility board puts an aviation widget on the canvas with a stage", ()
   expect(["map2d", "map3d", "clock"]).toContain(l.stage);
 });
 
-test("every preset references only real core widgets or registered signal widgets", () => {
+test("every preset references only real core widgets, signal widgets or recon tools", () => {
   for (const p of BUILTIN_PRESETS) {
     for (const w of p.build().widgets) {
-      const known = CORE_WIDGETS.has(w.type) || SIGNAL_WIDGETS.has(w.type);
+      const known = CORE_WIDGETS.has(w.type) || SIGNAL_WIDGETS.has(w.type) || RECON_WIDGETS.has(w.type);
       expect(known, `preset "${p.id}" references unknown widget type "${w.type}"`).toBe(true);
     }
+  }
+});
+
+test("the Tools board carries the six recon widgets", () => {
+  const l = BUILTIN_PRESETS.find((p) => p.id === "tools")!.build();
+  for (const id of RECON_WIDGETS) {
+    expect(l.widgets.some((w) => w.type === id), `tools board missing "${id}"`).toBe(true);
   }
 });
 

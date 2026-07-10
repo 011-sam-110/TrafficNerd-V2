@@ -1683,6 +1683,31 @@ a { color: var(--tn-accent); }
 .tn-ais-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
 .tn-sd-more { font-size: 11px; color: var(--tn-text-faint); text-align: center; padding: 6px 0; }
 
+/* ── OSINT recon tools (Tools preset) — shared target input + result renderers ── */
+.tn-recon { display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+.tn-recon-target { display: flex; align-items: center; gap: 6px; }
+.tn-recon-target input { flex: 1; min-width: 0; background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 6px; padding: 5px 9px; font-size: 12px; color: var(--tn-text); font-family: var(--tn-mono); }
+.tn-recon-kind { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; font-weight: 700; color: var(--tn-accent); background: var(--tn-chip-bg); border-radius: 4px; padding: 2px 6px; }
+.tn-recon-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; max-height: 220px; overflow-y: auto; }
+.tn-recon-list li { display: flex; align-items: center; gap: 8px; }
+.tn-recon-tag { font-size: 9px; font-weight: 700; color: var(--tn-accent); background: var(--tn-chip-bg); border-radius: 3px; padding: 1px 5px; min-width: 34px; text-align: center; }
+.tn-recon-mono { font-family: var(--tn-mono); font-size: 11px; color: var(--tn-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn-recon-ttl { margin-left: auto; font-size: 10px; color: var(--tn-text-faint); }
+.tn-recon-kv { display: flex; flex-direction: column; gap: 4px; }
+.tn-recon-row { display: grid; grid-template-columns: 88px 1fr; gap: 8px; }
+.tn-recon-k { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--tn-text-faint); }
+.tn-recon-v { color: var(--tn-text); overflow: hidden; text-overflow: ellipsis; }
+.tn-recon-stat { font-size: 11px; color: var(--tn-text-muted); margin-bottom: 4px; }
+.tn-recon-flagged { color: var(--tn-down); font-weight: 700; }
+.tn-recon-ports { display: flex; flex-wrap: wrap; gap: 4px; }
+.tn-recon-port { font-family: var(--tn-mono); font-size: 11px; font-weight: 600; background: var(--tn-chip-bg); border-radius: 4px; padding: 2px 7px; color: var(--tn-text); }
+.tn-recon-vulns { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.tn-recon-cve { font-family: var(--tn-mono); font-size: 10px; background: color-mix(in srgb, var(--tn-down) 14%, var(--tn-surface-2)); color: var(--tn-down); border-radius: 4px; padding: 2px 6px; }
+.tn-recon-providers { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; border-top: 1px solid var(--tn-border); padding-top: 8px; }
+.tn-recon-provider { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--tn-text); }
+.tn-recon-provider.is-locked { color: var(--tn-text-faint); }
+.tn-recon-env { font-family: var(--tn-mono); font-size: 9px; color: var(--tn-text-faint); }
+
 /* ── Signals FOCUS overhaul — KPI cards, filter bar, chart axes, map legend, value chips ── */
 .tn-sd-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .tn-sd-kpi { background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 8px; padding: 8px 10px; }

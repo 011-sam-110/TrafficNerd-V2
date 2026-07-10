@@ -1,0 +1,15 @@
+{
+  "status": "ok",
+  "data": {
+    "asn": 13335,
+    "name": "CLOUDFLARENET",
+    "description_short": "Cloudflare, Inc.",
+    "description_full": ["Cloudflare, Inc."],
+    "country_code": "US",
+    "website": "https://www.cloudflare.com",
+    "email_contacts": ["noc@cloudflare.com"],
+    "abuse_contacts": ["abuse@cloudflare.com"],
+    "rir_allocation": { "rir_name": "ARIN", "date_allocated": "2010-07-14 00:00:00" },
+    "traffic_estimation": null
+  }
+}
