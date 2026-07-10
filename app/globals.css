@@ -2042,3 +2042,72 @@ a { color: var(--tn-accent); }
 }
 .tn-track-stop:hover { border-color: var(--tn-down); color: var(--tn-down); }
 @media (prefers-reduced-motion: reduce) { .tn-track-dot { animation: none; } }
+
+/* ── Central globe search bar (drops pins) — see MapSearch ──────────────────── */
+.tn-mapsearch {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6;
+  width: clamp(240px, 36vw, 400px); pointer-events: auto;
+}
+.tn-mapsearch-bar {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  border-radius: 12px; background: var(--tn-surface); border: 1px solid var(--tn-border);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, .18);
+}
+.tn-mapsearch-icon { font-size: 15px; color: var(--tn-text-muted); }
+.tn-mapsearch-input {
+  flex: 1; border: 0; background: none; outline: none; font-size: 13px; color: var(--tn-text);
+}
+.tn-mapsearch-input::placeholder { color: var(--tn-text-faint); }
+.tn-mapsearch-results {
+  margin-top: 6px; border-radius: 12px; overflow: hidden; background: var(--tn-surface);
+  border: 1px solid var(--tn-border); box-shadow: 0 10px 28px rgba(0, 0, 0, .22); max-height: 320px; overflow-y: auto;
+}
+.tn-mapsearch-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+  border: 0; background: none; padding: 8px 12px; cursor: pointer; color: var(--tn-text); font-size: 13px;
+}
+.tn-mapsearch-item:hover { background: var(--tn-surface-2); }
+.tn-mapsearch-item-pin { font-size: 12px; flex: 0 0 auto; }
+.tn-mapsearch-item-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tn-mapsearch-item-meta { font-size: 11px; color: var(--tn-text-faint); flex: 0 0 auto; }
+.tn-mapsearch-status { padding: 8px 12px; font-size: 12px; color: var(--tn-text-muted); }
+
+/* ── Pin navigator (top-right, below the map-view buttons) — see PinNavigator ── */
+.tn-pinnav {
+  position: absolute; top: 52px; right: 10px; z-index: 6;
+  display: flex; align-items: center; gap: 2px; padding: 3px; pointer-events: auto;
+  border-radius: 11px; background: var(--tn-surface); border: 1px solid var(--tn-border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .18); max-width: min(60vw, 300px);
+}
+.tn-pinnav-step, .tn-pinnav-del {
+  border: 0; background: none; cursor: pointer; color: var(--tn-text-muted);
+  font-size: 12px; padding: 4px 7px; border-radius: 7px;
+}
+.tn-pinnav-step:hover:not(:disabled), .tn-pinnav-del:hover:not(:disabled) { background: var(--tn-surface-2); color: var(--tn-text); }
+.tn-pinnav-step:disabled, .tn-pinnav-del:disabled { opacity: .35; cursor: default; }
+.tn-pinnav-del:hover:not(:disabled) { color: var(--tn-down); }
+.tn-pinnav-body {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0;
+  border: 0; background: none; cursor: pointer; padding: 2px 6px; border-radius: 7px; color: var(--tn-text);
+}
+.tn-pinnav-body:hover { background: var(--tn-surface-2); }
+.tn-pinnav-count { font-size: 10px; font-weight: 700; color: var(--tn-accent); letter-spacing: .02em; }
+.tn-pinnav-label { font-size: 12px; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tn-pinnav-clear {
+  border: 0; background: none; cursor: pointer; color: var(--tn-text-faint); font-size: 11px; padding: 4px 7px; border-radius: 7px;
+}
+.tn-pinnav-clear:hover { color: var(--tn-down); background: var(--tn-surface-2); }
+
+/* ── Right-click "Add pin here" menu ───────────────────────────────────────── */
+.tn-pinmenu {
+  position: absolute; z-index: 7; display: flex; flex-direction: column; gap: 2px; padding: 4px;
+  border-radius: 10px; background: var(--tn-surface); border: 1px solid var(--tn-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .24); pointer-events: auto;
+}
+.tn-pinmenu-add {
+  border: 0; background: none; cursor: pointer; text-align: left; font-size: 13px; font-weight: 600;
+  color: var(--tn-text); padding: 6px 10px; border-radius: 7px; white-space: nowrap;
+}
+.tn-pinmenu-add:hover { background: var(--tn-surface-2); color: var(--tn-accent); }
+.tn-pinmenu-coord { font-size: 10px; color: var(--tn-text-faint); padding: 0 10px 4px; }
+@media (max-width: 640px) { .tn-mapsearch { width: min(70vw, 320px); } }

@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 // safe: any upstream failure returns an empty result set, never a 5xx, so a flaky
 // community geocoder can never crash the search box.
 const PHOTON = "https://photon.komoot.io/api";
+const PHOTON_REVERSE = "https://photon.komoot.io/reverse";
 const UA = "TrafficNerd/2.0 (+github.com/011-sam-110/TrafficNerd-V2)";
 const REFERER = "https://trafficnerd.app";
 const TTL_MS = 5 * 60 * 1000;
@@ -19,13 +20,39 @@ const cache = new Map<string, CacheEntry>();
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") ?? "").trim();
+  const lat = url.searchParams.get("lat");
+  const lon = url.searchParams.get("lon");
+  const hasCoord = lat != null && lon != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lon));
+
+  // REVERSE mode — coordinates but no query: name the place under a dropped pin.
+  // Dormant-safe (empty results on any failure); the caller keeps its coord label.
+  if (q.length < 2 && hasCoord) {
+    const key = `rev|${Number(lat).toFixed(4)},${Number(lon).toFixed(4)}`;
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.at < TTL_MS) return Response.json(hit.body);
+    const upstream = new URL(PHOTON_REVERSE);
+    upstream.searchParams.set("lat", lat as string);
+    upstream.searchParams.set("lon", lon as string);
+    upstream.searchParams.set("limit", "1");
+    try {
+      const res = await fetch(upstream, {
+        headers: { Accept: "application/json", "User-Agent": UA, Referer: REFERER },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) return Response.json({ results: [] });
+      const body = { results: normalizePhoton(await res.json(), 1) };
+      cache.set(key, { at: Date.now(), body });
+      return Response.json(body);
+    } catch {
+      return Response.json({ results: [] });
+    }
+  }
+
   if (q.length < 2) return Response.json({ results: [] });
 
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit")) || 8, 1), 15);
   // Optional viewport bias (Photon proximity-ranks results around lat/lon).
-  const lat = url.searchParams.get("lat");
-  const lon = url.searchParams.get("lon");
-  const biased = lat != null && lon != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lon));
+  const biased = hasCoord;
 
   const key = `${q.toLowerCase()}|${limit}|${biased ? `${lat},${lon}` : ""}`;
   const hit = cache.get(key);

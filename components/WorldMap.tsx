@@ -22,6 +22,7 @@ import { loadedCamerasStore } from "@/lib/cameras/loaded";
 import { useSatellites } from "@/lib/satellites/useSatellites";
 import { usePlanes, type PlaneTrail, type PlanesLayer } from "@/lib/planes/usePlanes";
 import { trackStore, useTrack, type TrackState } from "@/lib/planes/track";
+import { pinsStore, useMapPins, type MapPin } from "@/lib/map/pins";
 import { useLayers, layersStore, ACTIVE_LAYERS, type LayerState } from "@/lib/layers";
 import { useCameraFilter, cameraFilterStore } from "@/lib/cameraFilter";
 import { metricsStore } from "@/lib/metrics";
@@ -73,6 +74,10 @@ const TRAIL_LAYER = "trail-lines";
 // own source so it updates independently of the plane layer and survives restyles.
 const TRACK_SRC = "track-highlight";
 const TRACK_RING_LAYER = "track-ring";
+// User-dropped pins (search bar + right-click). Rendered on top of everything.
+const PIN_SRC = "user-pins";
+const PIN_DOT_LAYER = "user-pin-dots";
+const PIN_LABEL_LAYER = "user-pin-labels";
 const SAT_SRC = "satellites";
 const SAT_GLOW_LAYER = "satellite-glow";
 const SAT_LAYER = "satellite-core";
@@ -118,6 +123,18 @@ function toTrackFC(o: WorldObject | null | undefined): GeoJSON.FeatureCollection
   };
 }
 
+/** User pins → point features (with the active flag driving the highlight paint). */
+function toPinFC(pins: MapPin[], activeId: string | null): GeoJSON.FeatureCollection {
+  return {
+    type: "FeatureCollection",
+    features: pins.map((p) => ({
+      type: "Feature",
+      geometry: { type: "Point", coordinates: [p.lon, p.lat] },
+      properties: { label: p.label, active: p.id === activeId ? 1 : 0 },
+    })),
+  };
+}
+
 // The Light (Positron) vector basemap ships its own country names; the Satellite
 // and Topographic rasters don't. Our name labels show only on the rasters.
 const isRasterBasemap = (b: BasemapKey): boolean => b !== "positron";
@@ -155,11 +172,15 @@ export default function WorldMap() {
   const trackingRef = useRef<TrackState>({ id: null, label: "", mode: "follow" });
   const trackedObjectRef = useRef<WorldObject | null>(null);
   const followMoveRef = useRef(false);
+  // Latest user pins, so addAppLayers can re-seed the pin source after a restyle.
+  const pinsRef = useRef<{ pins: MapPin[]; activeId: string | null }>({ pins: [], activeId: null });
   // A deep-linked object id (?obj=) waiting to be resolved once its layer's data
   // has streamed in — see the restore effect below. Cleared after it opens.
   const pendingObjRef = useRef<string | null>(null);
 
   const [pts, setPts] = useState<Pt[]>([]);
+  // Right-click "Add pin here" menu — screen position + the geo point under it.
+  const [pinMenu, setPinMenu] = useState<{ x: number; y: number; lat: number; lon: number } | null>(null);
 
   // Live-layer data is lifted into state from gating <…Feed> children so that a
   // hidden layer's hook (and its fetch/tick) is unmounted entirely — see the
@@ -184,6 +205,8 @@ export default function WorldMap() {
   const layers = useLayers();
   const track = useTrack();
   trackingRef.current = track; // keep the spin loop / input handlers current without a re-subscribe
+  const pins = useMapPins();
+  pinsRef.current = pins;
   const camFilter = useCameraFilter();
   const signalsState = useSignals();
   // Global time-window filter (M-final): trims time-stamped signals by recency.
@@ -410,6 +433,7 @@ export default function WorldMap() {
       ensureGeoJSON(map, WEBCAM_SRC, toWebcamFC(webcamsRef.current), WEBCAM_CLUSTER);
       ensureGeoJSON(map, PLANE_SRC, toPlaneFC(planesRef.current));
       ensureGeoJSON(map, TRACK_SRC, toTrackFC(trackedObjectRef.current));
+      ensureGeoJSON(map, PIN_SRC, toPinFC(pinsRef.current.pins, pinsRef.current.activeId));
       ensureGeoJSON(map, SIGNAL_FILL_SRC, toSignalFillFC(signalsRef.current));
       ensureGeoJSON(map, SIGNAL_LINE_SRC, toSignalLineFC(signalsRef.current));
       ensureGeoJSON(map, SIGNAL_SRC, toSignalFC(signalsRef.current));
@@ -826,6 +850,44 @@ export default function WorldMap() {
         });
       }
 
+      // User pins — drawn on top of every data layer. The active pin reads larger
+      // and fully-opaque; its label rides above the dot. Data-driven off `active`.
+      if (!map.getLayer(PIN_DOT_LAYER)) {
+        map.addLayer({
+          id: PIN_DOT_LAYER,
+          type: "circle",
+          source: PIN_SRC,
+          paint: {
+            "circle-radius": ["case", ["==", ["get", "active"], 1], 8, 6],
+            "circle-color": "#e0483b",
+            "circle-opacity": ["case", ["==", ["get", "active"], 1], 1, 0.85],
+            "circle-stroke-color": "#ffffff",
+            "circle-stroke-width": ["case", ["==", ["get", "active"], 1], 3, 2],
+          },
+        });
+      }
+      if (!map.getLayer(PIN_LABEL_LAYER)) {
+        map.addLayer({
+          id: PIN_LABEL_LAYER,
+          type: "symbol",
+          source: PIN_SRC,
+          layout: {
+            "text-field": ["get", "label"],
+            "text-font": ["Open Sans Regular"],
+            "text-size": 12,
+            "text-offset": [0, 1.2],
+            "text-anchor": "top",
+            "text-optional": true,
+            "text-max-width": 12,
+          },
+          paint: {
+            "text-color": "#b91c1c",
+            "text-halo-color": "#ffffff",
+            "text-halo-width": 1.4,
+          },
+        });
+      }
+
       applyVisibility(map, layersRef.current);
       readyRef.current = true;
     },
@@ -857,6 +919,28 @@ export default function WorldMap() {
       const plane = planesRef.current.find((p) => p.id === id);
       if (plane) overlay.open(plane);
     });
+
+    // Right-click anywhere on the map → the "Add pin here" menu at the cursor.
+    map.on("contextmenu", (e) => {
+      e.preventDefault();
+      setPinMenu({ x: e.point.x, y: e.point.y, lat: e.lngLat.lat, lon: e.lngLat.lng });
+    });
+    // Any left-click / drag dismisses the menu; a click on a pin makes it active.
+    map.on("click", () => setPinMenu(null));
+    map.on("movestart", () => setPinMenu(null));
+    map.on("click", PIN_DOT_LAYER, (e) => {
+      e.preventDefault?.();
+      const feat = e.features?.[0];
+      if (!feat) return;
+      // Match by coordinates (the source carries no id in props) to activate it.
+      const [lon, lat] = (feat.geometry as GeoJSON.Point).coordinates as [number, number];
+      const hit = pinsRef.current.pins.find((p) => Math.abs(p.lat - lat) < 1e-6 && Math.abs(p.lon - lon) < 1e-6);
+      if (hit) pinsStore.setActive(hit.id);
+    });
+    const pinEnter = () => { map.getCanvas().style.cursor = "pointer"; };
+    const pinLeave = () => { map.getCanvas().style.cursor = ""; };
+    map.on("mouseenter", PIN_DOT_LAYER, pinEnter);
+    map.on("mouseleave", PIN_DOT_LAYER, pinLeave);
     map.on("click", SAT_LAYER, (e) => {
       const id = (e.features?.[0]?.properties as { id?: string })?.id;
       const sat = satsRef.current.find((s) => s.id === id);
@@ -1169,6 +1253,13 @@ export default function WorldMap() {
     }
   }, [track, planesLayer]);
 
+  // User pins → source update (search bar / right-click / navigator all flow here).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !readyRef.current) return;
+    (map.getSource(PIN_SRC) as GeoJSONSource | undefined)?.setData(toPinFC(pins.pins, pins.activeId));
+  }, [pins]);
+
   // Restore a deep-linked dossier (?obj=) once its layer's data has streamed in.
   // Planes/satellites stream after first paint, so this retries on each data tick
   // until the id resolves, then clears the pending marker. A stale id (a landed
@@ -1264,9 +1355,31 @@ export default function WorldMap() {
 
   const trackedFound = track.id ? planesLayer.objects.some((o) => o.id === track.id) : false;
 
+  // Drop a pin at a point (right-click menu). Labels with coords immediately, then
+  // upgrades to a place name if a reverse geocode resolves (dormant-safe).
+  const addPinHere = useCallback((lat: number, lon: number) => {
+    const pin = pinsStore.add(lat, lon);
+    setPinMenu(null);
+    mapViewStore.flyToPoint({ lat, lon, zoom: Math.max(mapRef.current?.getZoom() ?? 4, 4) });
+    fetch(`/api/geocode?lat=${lat}&lon=${lon}`)
+      .then((r) => r.json())
+      .then((d) => { const name = (d?.results?.[0]?.name as string) || ""; if (name) pinsStore.relabel(pin.id, name); })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="world-map">
       <div ref={containerRef} className="map-canvas" />
+
+      {/* Right-click "Add pin here" menu, positioned at the cursor over the map. */}
+      {pinMenu && (
+        <div className="tn-pinmenu" style={{ left: pinMenu.x, top: pinMenu.y }} role="menu">
+          <button type="button" className="tn-pinmenu-add" onClick={() => addPinHere(pinMenu.lat, pinMenu.lon)}>
+            📍 Add pin here
+          </button>
+          <div className="tn-pinmenu-coord">{pinMenu.lat.toFixed(4)}, {pinMenu.lon.toFixed(4)}</div>
+        </div>
+      )}
 
       {/* Tracking chip — persists across board/widget changes because the track lives
           in an external store; the map just reflects it. Recenter appears once the
