@@ -1,4 +1,5 @@
 import { parseRss, mergeNews, type NewsItem, type NewsPayload } from "@/lib/news";
+import { parseTelegram } from "@/lib/news/telegram";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,17 @@ const FEEDS: Feed[] = [
   { url: "https://www.france24.com/en/rss", source: "France 24" },
 ];
 
+// Keyless Telegram channels, scraped from their public t.me/s web preview (no API,
+// no key). Merged into the same stream as the RSS feeds; attribution stays honest
+// via lib/news/sources.ts ("OSINT monitor"). Add a channel = add a line here.
+interface TgChannel {
+  url: string;
+  source: string;
+}
+const TELEGRAM: TgChannel[] = [
+  { url: "https://t.me/s/liveuamap", source: "Liveuamap" },
+];
+
 const CACHE_TTL_MS = 5 * 60 * 1000;
 // Higher than the docked list needs on purpose: the focus view clusters these
 // into stories, so more raw material = richer, better-corroborated mega-cards.
@@ -44,11 +56,32 @@ async function fetchFeed(feed: Feed): Promise<NewsItem[]> {
   }
 }
 
+async function fetchTelegram(ch: TgChannel): Promise<NewsItem[]> {
+  try {
+    // t.me/s serves its HTML only to browser-like clients, so use a browser UA.
+    const res = await fetch(ch.url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        Accept: "text/html",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return [];
+    return parseTelegram(await res.text(), ch.source);
+  } catch {
+    return []; // a dead channel contributes nothing
+  }
+}
+
 export async function GET() {
   if (cache && Date.now() - cache.generatedAt < CACHE_TTL_MS) {
     return Response.json(cache);
   }
-  const lists = await Promise.all(FEEDS.map(fetchFeed));
+  const lists = await Promise.all([
+    ...FEEDS.map(fetchFeed),
+    ...TELEGRAM.map(fetchTelegram),
+  ]);
   const items = mergeNews(lists, LIMIT);
   // Keep the last good list if a transient outage emptied everything.
   if (items.length === 0 && cache && cache.items.length > 0) {
