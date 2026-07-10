@@ -6,6 +6,7 @@ import type { SegmentId } from "@/lib/console/types";
 import Segment from "@/components/console/Segment";
 import StageHost from "@/components/console/StageHost";
 import MapControls from "@/components/console/MapControls";
+import WorldClock from "@/components/console/WorldClock";
 
 // Full-bleed console: the map is a 100%×100% base layer and the three widget
 // segments FLOAT over it as translucent glass columns (the calm-glass identity the
@@ -44,6 +45,7 @@ export default function ConsoleWorkspace() {
       <div className="tn-cw-stage">
         <StageHost stage={layout.stage} />
         {showMapOverlays && <MapControls />}
+        {showMapOverlays && <WorldClock />}
       </div>
 
       <div className="tn-cw-col tn-cw-col-left" style={{ width: lw }}><Segment id="left" /></div>

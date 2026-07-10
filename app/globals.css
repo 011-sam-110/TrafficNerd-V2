@@ -1150,8 +1150,6 @@ a { color: var(--tn-accent); }
 /* ===========================================================================
    StageHost + WorldClock + StageSwitch — Task 8
    =========================================================================== */
-.tn-clock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:32px;background:radial-gradient(circle at 50% 40%,#26323d,#141c24)}
-.tn-clock-time{font-size:34px;font-weight:800;color:#fff;letter-spacing:1px}.tn-clock-zone{font-size:11px;color:#9fb0bf;letter-spacing:1px;text-align:center}
 .tn-stage-switch{display:inline-flex;gap:2px;background:#fff;border:1px solid #d7dee6;border-radius:7px;padding:2px}
 .tn-stage-switch button{border:0;background:none;font-size:11px;font-weight:700;color:#5a6470;padding:2px 8px;border-radius:5px;cursor:pointer}
 .tn-stage-switch button.is-on{background:#27313b;color:#fff}
@@ -1900,3 +1898,24 @@ a { color: var(--tn-accent); }
 
 /* ── Floated map-view controls (top-right of the centre stage) ────────────── */
 .tn-map-controls { position: absolute; top: 10px; right: 10px; z-index: 5; display: flex; align-items: center; gap: 8px; }
+
+/* ── Cinematic world clock (ambient ribbon over the map, top-centre) ──────── */
+.tn-worldclock {
+  position: absolute; bottom: 46px; left: 50%; transform: translateX(-50%); z-index: 4;
+  display: flex; align-items: stretch; padding: 5px 6px; border-radius: 14px;
+  background: linear-gradient(100deg, rgba(13, 21, 38, .74), rgba(34, 46, 66, .70));
+  border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 10px 34px rgba(0, 0, 0, .34);
+  backdrop-filter: blur(12px) saturate(1.15); -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  color: #fff; pointer-events: none; user-select: none;
+}
+.tn-wc-cell { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 3px 14px; min-width: 60px; position: relative; }
+.tn-wc-cell + .tn-wc-cell::before { content: ""; position: absolute; left: 0; top: 22%; bottom: 22%; width: 1px; background: rgba(255, 255, 255, .12); }
+.tn-wc-glyph { font-size: 11px; line-height: 1.1; }
+.tn-wc-cell.is-day .tn-wc-glyph { color: #fbbf24; text-shadow: 0 0 8px rgba(251, 191, 36, .55); }
+.tn-wc-cell.is-night .tn-wc-glyph { color: #93c5fd; text-shadow: 0 0 8px rgba(147, 197, 253, .5); }
+.tn-wc-time { font-size: 15px; font-weight: 700; letter-spacing: .5px; line-height: 1.2; }
+.tn-wc-cell.is-night .tn-wc-time { color: #d5deea; }
+.tn-wc-city { font-size: 9px; font-weight: 600; letter-spacing: .13em; color: rgba(255, 255, 255, .58); }
+/* The clock is decorative chrome — drop it on tight viewports where the ribbon would
+   crowd the map-view controls / breaking banner. */
+@media (max-width: 900px) { .tn-worldclock { display: none; } }
