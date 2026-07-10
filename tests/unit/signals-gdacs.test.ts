@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import fixture from "@/tests/fixtures/gdacs-events.json";
-import { normalizeGdacs, gdacsEventLabel, gdacsAlertColor } from "@/lib/signals/gdacs";
+import { normalizeGdacs, gdacsEventLabel, gdacsAlertColor, GDACS_SOURCE } from "@/lib/signals/gdacs";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 
 test("normalizes the GDACS multi-hazard FeatureCollection", () => {
   const out = normalizeGdacs(fixture as never);
@@ -55,4 +56,25 @@ test("alertLevel maps to the expected magnitude (0–10 ramp)", () => {
   expect(normalizeGdacs(make("Orange") as never)[0].props?.magnitude).toBe(6);
   expect(normalizeGdacs(make("Green") as never)[0].props?.magnitude).toBe(3);
   expect(normalizeGdacs(make("Unknown") as never)[0].props?.magnitude).toBe(5);
+});
+
+test("declares GDACS's real alert score (0–3) as the metric and it resolves per feature", () => {
+  expect(GDACS_SOURCE.metric).toEqual({ field: "alertScore", domain: [0, 3] });
+
+  const out = normalizeGdacs(fixture as never);
+  const eq = out.find((f) => f.props?.hazard === "Earthquake")!;
+  // Real numeric scalar from the provider (not the 0–10 ramp), so rowMetric accepts it.
+  expect(typeof eq.props?.alertScore).toBe("number");
+  expect(Number.isFinite(eq.props?.alertScore as number)).toBe(true);
+
+  const m = rowMetric(eq, GDACS_SOURCE.metric);
+  expect(m).toBeDefined();
+  expect(m!.value).toBe(1); // Green earthquake → GDACS alertscore 1
+  expect(m!.domain).toEqual([0, 3]);
+  expect(m!.label).toBe("1");
+
+  // Every fixture feature carries a finite alert score → a bar, never a bare dot.
+  for (const f of out) {
+    expect(rowMetric(f, GDACS_SOURCE.metric)).toBeDefined();
+  }
 });

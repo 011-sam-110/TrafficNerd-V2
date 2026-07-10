@@ -1,7 +1,8 @@
 import { expect, test } from "vitest";
 import fixture from "@/tests/fixtures/unhcr-displacement.json";
-import { normalizeDisplacement, displacementColor } from "@/lib/signals/displacement";
+import { normalizeDisplacement, displacementColor, DISPLACEMENT_SOURCE } from "@/lib/signals/displacement";
 import { centroidByIso3 } from "@/lib/signals/country-centroids.data";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 
 test("normalizes UNHCR displacement by country of asylum, skipping non-country rows", () => {
   const out = normalizeDisplacement(fixture as never);
@@ -30,6 +31,18 @@ test("string/int UNHCR fields coerce; zero-total countries are dropped", () => {
   expect(out).toHaveLength(1); // France totals zero → dropped
   expect(out[0].id).toBe("displacement:ISL");
   expect(out[0].props?.crisis).toBeUndefined(); // 8,960 < 500K
+});
+
+test("declares a real numeric displaced-count metric that rowMetric resolves", () => {
+  const out = normalizeDisplacement(fixture as never);
+  const afg = out.find((f) => f.id === "displacement:AFG")!;
+  // Sibling numeric prop is a finite number (not the formatted display string).
+  expect(afg.props?.displacedCount).toBe(3_220_946);
+  expect(Number.isFinite(afg.props?.displacedCount as number)).toBe(true);
+
+  expect(DISPLACEMENT_SOURCE.metric).toEqual({ field: "displacedCount", domain: [0, 5_000_000] });
+  const m = rowMetric(afg, DISPLACEMENT_SOURCE.metric);
+  expect(m).toEqual({ value: 3_220_946, domain: [0, 5_000_000], label: "3220946" });
 });
 
 test("displacement colour ramps by total", () => {

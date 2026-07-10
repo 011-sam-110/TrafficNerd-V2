@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import fixture from "@/tests/fixtures/open-meteo-weather.json";
-import { normalizeWeather, weatherCodeLabel, temperatureColor } from "@/lib/signals/weather";
+import { normalizeWeather, weatherCodeLabel, temperatureColor, WEATHER_SOURCE } from "@/lib/signals/weather";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 import type { City } from "@/lib/signals/cities.data";
 
 // The fixture was captured for these three cities, in this order.
@@ -23,6 +24,19 @@ test("normalizes Open-Meteo current weather, one feature per city at the city's 
   expect(out[0].color).toBe(temperatureColor(temp));
   expect(out[0].props?.temperature).toBe(`${temp.toFixed(1)} °C`);
   expect(typeof out[0].ts).toBe("string");
+});
+
+test("exposes a finite numeric tempC that the source metric resolves for the monitor bar", () => {
+  const out = normalizeWeather(fixture as never, CITIES);
+  const temp = (fixture as never[])[0]["current"]["temperature_2m"] as number;
+  // A real numeric scalar sits alongside the formatted display string.
+  expect(out[0].props?.tempC).toBe(temp);
+  expect(typeof out[0].props?.tempC).toBe("number");
+  expect(Number.isFinite(out[0].props?.tempC as number)).toBe(true);
+  // The source declares that scalar as its metric with a habitable-range domain.
+  expect(WEATHER_SOURCE.metric).toEqual({ field: "tempC", domain: [-10, 40], unit: " °C" });
+  const resolved = rowMetric(out[0], WEATHER_SOURCE.metric);
+  expect(resolved).toEqual({ value: temp, domain: [-10, 40], label: `${temp.toFixed(1)} °C` });
 });
 
 test("skips a city with no usable current reading", () => {

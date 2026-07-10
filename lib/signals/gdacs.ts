@@ -98,6 +98,9 @@ export function normalizeGdacs(geojson: { features?: GdacsFeature[] }): SignalFe
         hazard: typeLabel,
         alertLevel: level,
         magnitude: GDACS_MAG[level] ?? 5,
+        // GDACS's own continuous alert score (0–3: green <1, orange 1–2, red 2–3).
+        // The REAL per-event severity scalar (metric bar), distinct from the 0–10 ramp.
+        alertScore: typeof p.alertscore === "number" && Number.isFinite(p.alertscore) ? p.alertscore : undefined,
         severity: p.severitydata?.severitytext?.trim() || "—",
         country: p.country?.trim() || "—",
         from: p.fromdate?.slice(0, 10) ?? "—",
@@ -116,6 +119,7 @@ export const GDACS_SOURCE: SignalSource = {
   color: "#e11d48",
   refreshMs: 600_000, // GDACS regenerates the map feed ~every few minutes
   attribution: GDACS_ATTRIBUTION,
+  metric: { field: "alertScore", domain: [0, 3] },
   async fetch() {
     try {
       const res = await fetch(ENDPOINT, {

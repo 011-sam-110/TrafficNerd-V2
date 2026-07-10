@@ -1,7 +1,8 @@
 import { expect, test } from "vitest";
 import fixture from "@/tests/fixtures/hungermap-food.json";
-import { normalizeFoodSecurity, foodInsecurityColor } from "@/lib/signals/food-security";
+import { normalizeFoodSecurity, foodInsecurityColor, FOOD_SECURITY_SOURCE } from "@/lib/signals/food-security";
 import { centroidByIso3 } from "@/lib/signals/country-centroids.data";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 
 test("normalizes HungerMap food insecurity by country, skipping unknown/zero rows", () => {
   const out = normalizeFoodSecurity(fixture as never);
@@ -15,6 +16,24 @@ test("normalizes HungerMap food insecurity by country, skipping unknown/zero row
   expect(afg.ts).toBeUndefined(); // nowcast snapshot, never time-filtered
   const ctr = centroidByIso3("AFG")!;
   expect(afg.lon).toBe(ctr.lon);
+});
+
+test("FCS prevalence resolves as the real metric (finite % scalar, not the radius proxy)", () => {
+  const out = normalizeFoodSecurity(fixture as never);
+  const afg = out.find((f) => f.id === "food:AFG")!;
+
+  // A finite numeric sibling prop must back the display string.
+  expect(typeof afg.props?.prevalencePct).toBe("number");
+  expect(Number.isFinite(afg.props?.prevalencePct as number)).toBe(true);
+  expect(afg.props?.prevalencePct).toBe(57); // Math.round(0.5709… * 100)
+
+  // The declared metric points at that field with a numeric-literal domain.
+  expect(FOOD_SECURITY_SOURCE.metric).toEqual({ field: "prevalencePct", domain: [5, 50], unit: " %" });
+
+  const m = rowMetric(afg, FOOD_SECURITY_SOURCE.metric)!;
+  expect(m.value).toBe(57);
+  expect(m.domain).toEqual([5, 50]);
+  expect(m.label).toBe("57 %");
 });
 
 test("prevalence colour ramp", () => {

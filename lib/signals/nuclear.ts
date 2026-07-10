@@ -23,6 +23,22 @@ interface OverpassElement {
   tags?: Record<string, string>;
 }
 
+/**
+ * Parse an OSM `plant:output:electricity` string (e.g. "1180 MW", "57 MW",
+ * "1.18 GW") into net electrical capacity in MW. Returns undefined when the tag
+ * is missing or unparseable — so we never fabricate a scalar.
+ */
+export function parseOutputMw(output: string | undefined): number | undefined {
+  if (!output) return undefined;
+  const m = output.match(/([\d.]+)\s*(GW|MW|kW|W)?/i);
+  if (!m) return undefined;
+  const val = parseFloat(m[1]);
+  if (!Number.isFinite(val)) return undefined;
+  const unit = (m[2] ?? "MW").toUpperCase();
+  const factor = unit === "GW" ? 1000 : unit === "KW" ? 0.001 : unit === "W" ? 1e-6 : 1;
+  return Math.round(val * factor);
+}
+
 /** Pure: Overpass elements → SignalFeature[] (one point per named plant). */
 export function normalizeOverpassNuclear(json: { elements?: OverpassElement[] }): SignalFeature[] {
   const out: SignalFeature[] = [];
@@ -36,6 +52,7 @@ export function normalizeOverpassNuclear(json: { elements?: OverpassElement[] })
     const id = `${e.type ?? "n"}/${e.id ?? ""}`.trim();
     if (id === "n/") continue;
     const output = t["plant:output:electricity"];
+    const outputMw = parseOutputMw(output);
     const operator = t.operator || t["operator:wikidata"];
     out.push({
       id: `nuclear:${id}`,
@@ -48,6 +65,7 @@ export function normalizeOverpassNuclear(json: { elements?: OverpassElement[] })
       props: {
         type: "Nuclear power plant",
         ...(output ? { output } : {}),
+        ...(outputMw != null ? { outputMw } : {}),
         ...(operator ? { operator } : {}),
         ...(t["start_date"] ? { commissioned: t["start_date"] } : {}),
       },
@@ -65,6 +83,9 @@ export const NUCLEAR_SOURCE: SignalSource = {
   color: "#16a34a",
   refreshMs: CACHE_TTL_MS,
   attribution: NUCLEAR_ATTRIBUTION,
+  // Real per-plant scalar: net electrical capacity in MW (OSM plant:output:electricity).
+  // Calm ≈ 0; extreme ≈ 8000 MW (world's largest stations, e.g. Kashiwazaki-Kariwa).
+  metric: { field: "outputMw", domain: [0, 8000], unit: " MW" },
   async fetch() {
     if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.features;
     try {

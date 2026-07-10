@@ -92,6 +92,9 @@ export const SPACE_WEATHER_SOURCE: SignalSource = {
   color: "#16a34a",
   refreshMs: 15 * 60 * 1000,
   attribution: SWPC_ATTRIBUTION,
+  // Real scalar: the planetary K-index (geomagnetic activity), 0 (quiet) → 9 (max
+  // storm) — not the rescaled `magnitude` radius proxy.
+  metric: { field: "kp", domain: [0, 9] },
   async fetch() {
     try {
       const [kpRes, scRes] = await Promise.all([

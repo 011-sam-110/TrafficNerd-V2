@@ -1,4 +1,4 @@
-import type { SignalFeature, SignalSource } from "@/lib/signals/types";
+import type { SignalFeature, SignalMetric, SignalSource } from "@/lib/signals/types";
 
 // NASA EONET (Earth Observatory Natural Event Tracker) — open natural events of
 // the last 30 days. ONE upstream fetch feeds FOUR registry layers (wildfires /
@@ -38,12 +38,23 @@ export interface EonetCategoryMeta {
   category: string; // EONET category id to filter on
   label: string;
   color: string;
+  /** Real per-feature scalar for the monitor bar. Only severe storms carry one
+   *  (wind in kts); wildfires/volcanoes/floods have no numeric scalar → dot only. */
+  metric?: SignalMetric;
 }
 
 export const CATEGORIES: Record<string, EonetCategoryMeta> = {
   wildfires: { signalId: "wildfires", category: "wildfires", label: "Wildfires", color: "#f97316" },
   volcanoes: { signalId: "volcanoes", category: "volcanoes", label: "Volcanoes", color: "#dc2626" },
-  severeStorms: { signalId: "severeStorms", category: "severeStorms", label: "Severe storms", color: "#6366f1" },
+  severeStorms: {
+    signalId: "severeStorms",
+    category: "severeStorms",
+    label: "Severe storms",
+    color: "#6366f1",
+    // EONET severe-storm geometries carry sustained wind in knots. Tropical-storm
+    // floor (~35 kt) → Cat-5 (~140 kt) fills the bar across the real intensity range.
+    metric: { field: "windKt", domain: [35, 140], unit: " kts" },
+  },
   floods: { signalId: "floods", category: "floods", label: "Floods", color: "#0ea5e9" },
 };
 
@@ -97,6 +108,15 @@ export function eonetToFeatures(events: EonetEvent[], meta: EonetCategoryMeta): 
       last?.magnitudeValue != null
         ? `${last.magnitudeValue}${last.magnitudeUnit ? ` ${last.magnitudeUnit}` : ""}`
         : undefined;
+    // Sibling NUMERIC scalar for the monitor MetricBar (severe storms declare a
+    // metric on `windKt`). Only when the unit is genuinely knots — never invented.
+    const windKt =
+      typeof last?.magnitudeValue === "number" &&
+      Number.isFinite(last.magnitudeValue) &&
+      typeof last?.magnitudeUnit === "string" &&
+      /kt/i.test(last.magnitudeUnit)
+        ? last.magnitudeValue
+        : undefined;
     out.push({
       id: `eonet:${id}`,
       lat,
@@ -110,6 +130,7 @@ export function eonetToFeatures(events: EonetEvent[], meta: EonetCategoryMeta): 
         category: meta.label,
         observed: last?.date ?? "—",
         ...(intensity ? { intensity } : {}),
+        ...(windKt != null ? { windKt } : {}),
         ...(source ? { source } : {}),
       },
     });
@@ -153,6 +174,7 @@ function makeSource(meta: EonetCategoryMeta): SignalSource {
     color: meta.color,
     refreshMs: 10 * 60 * 1000, // EONET events move slowly; matches the shared cache
     attribution: EONET_ATTRIBUTION,
+    ...(meta.metric ? { metric: meta.metric } : {}),
     async fetch() {
       const events = await fetchEonet();
       return eonetToFeatures(events, meta);

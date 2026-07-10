@@ -4,8 +4,13 @@ import {
   eonetToFeatures,
   representativePoint,
   CATEGORIES,
+  SEVERE_STORMS_SOURCE,
+  WILDFIRES_SOURCE,
+  VOLCANOES_SOURCE,
+  FLOODS_SOURCE,
   type EonetEvent,
 } from "@/lib/signals/eonet";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 
 const events = (fixture as { events: EonetEvent[] }).events;
 
@@ -47,4 +52,27 @@ test("representativePoint handles Point and Polygon, rejects junk", () => {
 
 test("floods category yields nothing from this slice (dormant-safe empty)", () => {
   expect(eonetToFeatures(events, CATEGORIES.floods)).toEqual([]);
+});
+
+test("severe storms carry a numeric windKt scalar that resolves via the metric", () => {
+  const storms = eonetToFeatures(events, CATEGORIES.severeStorms);
+  const s = storms[0];
+  // Sibling NUMERIC prop (alongside the "50 kts" display string) for the bar.
+  expect(s.props?.windKt).toBe(50);
+  expect(typeof s.props?.windKt).toBe("number");
+  expect(Number.isFinite(s.props?.windKt as number)).toBe(true);
+
+  // The source declares the metric and rowMetric resolves it for this feature.
+  expect(SEVERE_STORMS_SOURCE.metric).toEqual({ field: "windKt", domain: [35, 140], unit: " kts" });
+  const m = rowMetric(s, SEVERE_STORMS_SOURCE.metric);
+  expect(m).toEqual({ value: 50, domain: [35, 140], label: "50 kts" });
+});
+
+test("categorical hazards (fires/volcanoes/floods) declare NO metric — honest dot", () => {
+  expect(WILDFIRES_SOURCE.metric).toBeUndefined();
+  expect(VOLCANOES_SOURCE.metric).toBeUndefined();
+  expect(FLOODS_SOURCE.metric).toBeUndefined();
+  // and their features carry no windKt scalar
+  const fires = eonetToFeatures(events, CATEGORIES.wildfires);
+  expect(fires.every((f) => f.props?.windKt === undefined)).toBe(true);
 });

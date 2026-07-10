@@ -88,6 +88,9 @@ export const AIR_QUALITY_SOURCE: SignalSource = {
   color: "#65a30d",
   refreshMs: 1_800_000, // CAMS air-quality fields update ~hourly; 30 min is comfortable
   attribution: OPEN_METEO_AQ_ATTRIBUTION,
+  // Real US-AQI scalar (already a numeric prop) → the detail Value column / sort /
+  // slider / Peak KPI, instead of the log-radius proxy. 0 = Good, 300 = Hazardous.
+  metric: { field: "usAqi", domain: [0, 300], unit: " AQI" },
   async fetch() {
     try {
       const { latitude, longitude } = cityCoordParams();

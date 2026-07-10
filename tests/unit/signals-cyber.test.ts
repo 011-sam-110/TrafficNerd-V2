@@ -1,10 +1,11 @@
 import { expect, test } from "vitest";
 import feodo from "@/tests/fixtures/feodo-c2.json";
 import ransomware from "@/tests/fixtures/ransomware-victims.json";
-import { normalizeFeodoC2, c2Color } from "@/lib/signals/cyber-c2";
-import { normalizeRansomware, ransomwareColor } from "@/lib/signals/cyber-ransomware";
+import { normalizeFeodoC2, c2Color, CYBER_C2_SOURCE } from "@/lib/signals/cyber-c2";
+import { normalizeRansomware, ransomwareColor, CYBER_RANSOMWARE_SOURCE } from "@/lib/signals/cyber-ransomware";
 import { countMagnitude, groupByCountry, toNum } from "@/lib/signals/aggregate";
 import { centroidByIso2 } from "@/lib/signals/country-centroids.data";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 
 test("Feodo C2 aggregates by country, skipping rows with no/garbled country", () => {
   const out = normalizeFeodoC2(feodo as never);
@@ -20,6 +21,13 @@ test("Feodo C2 aggregates by country, skipping rows with no/garbled country", ()
   expect(us.lon).toBe(ctr.lon);
   expect(us.color).toBe(c2Color(2));
   expect(us.ts).toBeUndefined(); // snapshot, never time-filtered
+
+  // Metric resolves the REAL C2 count (not the log-radius magnitude proxy).
+  expect(CYBER_C2_SOURCE.metric).toEqual({ field: "c2Servers", domain: [1, 20] });
+  const m = rowMetric(us, CYBER_C2_SOURCE.metric)!;
+  expect(m.value).toBe(2);
+  expect(m.domain).toEqual([1, 20]);
+  expect(m.label).toBe("2");
 });
 
 test("Ransomware.live aggregates recent victims by country with gangs + sectors", () => {
@@ -30,6 +38,13 @@ test("Ransomware.live aggregates recent victims by country with gangs + sectors"
   expect(us.props?.gangs).toBe("dragonforce");
   expect(us.props?.sectors).toBe("Technology");
   expect(us.color).toBe(ransomwareColor(1));
+
+  // Metric resolves the REAL victim count (not the log-radius magnitude proxy).
+  expect(CYBER_RANSOMWARE_SOURCE.metric).toEqual({ field: "victims", domain: [1, 15] });
+  const m = rowMetric(us, CYBER_RANSOMWARE_SOURCE.metric)!;
+  expect(m.value).toBe(1);
+  expect(m.domain).toEqual([1, 15]);
+  expect(m.label).toBe("1");
 });
 
 test("aggregate helpers: log-scaled magnitude, country grouping, numeric coercion", () => {

@@ -34,6 +34,13 @@ function altitude(a: AcRow["alt_baro"]): string {
   return "—";
 }
 
+/** Real barometric altitude in feet: a finite number, "ground" → 0, else undefined. */
+function altitudeFt(a: AcRow["alt_baro"]): number | undefined {
+  if (typeof a === "number" && Number.isFinite(a)) return a;
+  if (typeof a === "string" && a.toLowerCase() === "ground") return 0;
+  return undefined;
+}
+
 /** Pure: adsb `/mil` payload → one SignalFeature per aircraft with a position. */
 export function normalizeMilitaryAir(json: { ac?: AcRow[] }): SignalFeature[] {
   const out: SignalFeature[] = [];
@@ -46,6 +53,7 @@ export function normalizeMilitaryAir(json: { ac?: AcRow[] }): SignalFeature[] {
     if (!hex) continue;
     const callsign = (a.flight ?? "").trim();
     const typeName = a.desc?.trim() || a.t?.trim() || "Military aircraft";
+    const altFt = altitudeFt(a.alt_baro);
     out.push({
       id: `mil:${hex}`,
       lat,
@@ -58,7 +66,8 @@ export function normalizeMilitaryAir(json: { ac?: AcRow[] }): SignalFeature[] {
         type: typeName,
         typeCode: a.t ?? "—",
         registration: a.r?.trim() || "—",
-        altitude: altitude(a.alt_baro),
+        altitude: altitude(a.alt_baro), // display string (keeps "on ground" / "—")
+        ...(altFt !== undefined ? { altitudeFt: altFt } : {}), // real scalar → metric bar
         speed: typeof a.gs === "number" ? `${Math.round(a.gs)} kt` : "—",
         heading: typeof a.track === "number" ? `${Math.round(a.track)}°` : "—",
         squawk: a.squawk ?? "—",
@@ -76,6 +85,8 @@ export const MILITARY_AIR_SOURCE: SignalSource = {
   color: "#3f6212",
   refreshMs: 20_000, // live aircraft — a short cache keeps positions current
   attribution: ADSB_MIL_ATTRIBUTION,
+  // Barometric altitude is the real per-aircraft scalar: 0 (on ground) → ~45k ft ceiling.
+  metric: { field: "altitudeFt", domain: [0, 45000], unit: " ft" },
   async fetch() {
     for (const url of ENDPOINTS) {
       try {

@@ -1,6 +1,13 @@
 import { expect, test } from "vitest";
 import fixture from "@/tests/fixtures/gdelt-geo.json";
-import { normalizeGdelt, firstHref, GDELT_LAYERS } from "@/lib/signals/gdelt";
+import {
+  normalizeGdelt,
+  firstHref,
+  GDELT_LAYERS,
+  CONFLICT_SOURCE,
+  PROTESTS_SOURCE,
+} from "@/lib/signals/gdelt";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 
 test("normalizes GDELT GeoJSON, skipping null/out-of-range coords and nameless features", () => {
   const out = normalizeGdelt(fixture as never, GDELT_LAYERS.conflict);
@@ -32,6 +39,21 @@ test("the cap bounds the output regardless of feature count", () => {
   expect(out).toHaveLength(1);
   expect(out[0].title).toBe("Baghdad, Iraq"); // highest count survives the cap
   expect(out[0].signalId).toBe("protests");
+});
+
+test("declares article volume as the real metric and resolves it per feature", () => {
+  // Both layers carry the same real scalar: per-place article count.
+  expect(CONFLICT_SOURCE.metric).toEqual({ field: "articles", domain: [1, 100], unit: " articles" });
+  expect(PROTESTS_SOURCE.metric).toEqual({ field: "articles", domain: [1, 100], unit: " articles" });
+
+  const [a, b] = normalizeGdelt(fixture as never, GDELT_LAYERS.conflict);
+  // props.articles is a finite number the metric points at.
+  expect(typeof a.props?.articles).toBe("number");
+  expect(Number.isFinite(a.props?.articles as number)).toBe(true);
+
+  const m = rowMetric(a, CONFLICT_SOURCE.metric);
+  expect(m).toEqual({ value: 42, domain: [1, 100], label: "42 articles" });
+  expect(rowMetric(b, CONFLICT_SOURCE.metric)?.value).toBe(7); // London's count
 });
 
 test("firstHref decodes entities and rejects non-http", () => {

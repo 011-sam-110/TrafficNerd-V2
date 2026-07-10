@@ -71,6 +71,10 @@ export const INTERNET_OUTAGES_SOURCE: SignalSource = {
   color: "#b91c1c",
   refreshMs: 15 * 60 * 1000,
   attribution: IODA_ATTRIBUTION,
+  // Real scalar: IODA's aggregate outage-severity score (scores.overall, stored as
+  // the finite `outageScore` prop). Calm = 0 (fully connected); extreme = 100k, the
+  // adapter's own "severe" band, so a national-scale shutdown fills the bar.
+  metric: { field: "outageScore", domain: [0, 100_000] },
   async fetch() {
     // Look back 24h; IODA extends the window server-side to catch ongoing events.
     const until = Math.floor(Date.now() / 1000);
