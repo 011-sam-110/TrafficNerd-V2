@@ -5,7 +5,6 @@ import type { StageId } from "@/lib/console/types";
 import { viewModeStore } from "@/lib/shell/viewMode";
 import { useShellLayout } from "@/lib/console/store";
 import { getWidgetType } from "@/lib/console/registry";
-import WorldClock from "@/components/console/WorldClock";
 import WidgetDetail from "@/components/console/WidgetDetail";
 
 const WorldMap = dynamic(() => import("@/components/WorldMap"), { ssr: false });
@@ -22,6 +21,7 @@ export default function StageHost({ stage }: { stage: StageId }) {
     ? widgets.find((w) => w.id === focusedWidgetId && getWidgetType(w.type))
     : undefined;
   if (focused) return <WidgetDetail instance={focused} />;
-  if (stage === "clock") return <WorldClock />;
+  // The old full-screen "clock" stage is retired (the world clock is an ambient map
+  // overlay now); a persisted clock stage falls back to the map.
   return <WorldMap />;
 }

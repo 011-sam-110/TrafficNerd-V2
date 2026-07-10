@@ -5,6 +5,7 @@ import { shellLayoutStore } from "@/lib/console/store";
 import { layersStore } from "@/lib/layers";
 import { signalsStore } from "@/lib/signals/store";
 import { layersForLayout } from "@/lib/console/presetLayers";
+import { activePresetStore } from "@/lib/console/activePreset";
 import { loadPersisted, savePersisted } from "@/lib/shell/persist";
 
 // A preset is a persona: a curated workspace aimed at ONE kind of user. `blurb` is the
@@ -93,6 +94,8 @@ export function applyPreset(presetId: string): void {
   const { core, signals } = layersForLayout(layout);
   layersStore.applyExact(core);
   signalsStore.applyExact(signals);
+  // Record which board is now live so the central pill / Settings list reflect it.
+  activePresetStore.set(presetId);
 }
 
 export function saveCustomPreset(title: string): void {

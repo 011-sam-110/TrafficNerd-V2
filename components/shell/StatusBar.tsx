@@ -2,30 +2,23 @@
 // Top status bar — the global chrome that recedes while the map stays the hero.
 //
 // Layout (left → right):
-//   Brand + variant  ·  live-data pulse (fills remaining width)  ·  view controls | utilities
+//   Brand (OpenData)  ·  live-data pulse  ·  [ central board pill ]  ·  ⌘K | profile | settings
 //
-// View controls:  StageSwitch (3D / 2D / clock)  +  Basemap segmented (Light / Sat / Topo)
-// Utilities:      LangSwitcher  +  Share  +  ⌘K  +  theme toggle
-//
-// The disabled OS UK basemap button is removed from the DOM — it has no public
-// keyless tile source, so showing it as a dead button is misleading.
-// The tagline is removed from the DOM — decorative copy that wastes header space.
-// VariantSwitcher is kept and moved directly into the brand cluster: it drives
-// layers, signals, and panels across the whole console (not orphaned).
+// The map-view controls (3D/2D + basemap) moved onto the map itself (see
+// components/console/MapControls.tsx); language, theme and layout-sharing moved into
+// the Settings drawer (opened from the gear). What remains in the bar is identity
+// (brand + profile), the single central board switcher, and the ⌘K entry point — a
+// far calmer header than the old variant-pill + basemap + utility pile.
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useMetrics } from "@/lib/metrics";
 import { useFreshness, classifyFreshness, type FreshState } from "@/lib/freshness";
-import { useMapView, mapViewStore } from "@/lib/mapView";
-import { BASEMAPS, type BasemapKey } from "@/lib/basemaps";
-import { uiStore, useUI } from "@/lib/shell/ui";
 import { useNow } from "@/lib/shell/useNow";
-import { copyShareLink } from "@/lib/share/deepLink";
 import { useT } from "@/lib/i18n/store";
 import type { StringKey } from "@/lib/i18n/catalog";
-import LangSwitcher from "@/components/shell/LangSwitcher";
-import VariantSwitcher from "@/components/shell/VariantSwitcher";
-import StageSwitch from "@/components/console/StageSwitch";
+import PresetPill from "@/components/shell/PresetPill";
+import ProfileMenu from "@/components/shell/ProfileMenu";
+import SettingsPanel from "@/components/shell/SettingsPanel";
 
 type Health = { labelKey: StringKey; tone: "live" | "degraded" | "down" | "connecting" };
 
@@ -43,10 +36,8 @@ function fmtCount(n: number): string {
 }
 
 /**
- * Single-line live-data pulse, replacing the three tall two-row Metric blocks.
- * Renders camera online/total, plane count, satellite count, and a health dot
- * all on one baseline — glanceable at desktop widths, hidden on mobile where
- * screen space is too narrow.
+ * Single-line live-data pulse: camera online/total, plane count, satellite count, and
+ * a health dot on one baseline — glanceable at desktop widths, hidden on mobile.
  */
 function LivePulse({
   camerasOnline,
@@ -92,114 +83,72 @@ function LivePulse({
 export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const m = useMetrics();
   const fresh = useFreshness();
-  const view = useMapView();
-  const ui = useUI();
   const t = useT();
   const now = useNow(5000); // re-evaluate health a couple of times per minute
-
   const health = deriveHealth(fresh.map((r) => classifyFreshness(r, now)));
 
-  // "Share" copies a deep link to the current view. The label flips to "Copied"
-  // for ~1.6 s then restores.
-  const [shared, setShared] = useState(false);
-  const sharedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (sharedTimer.current) clearTimeout(sharedTimer.current);
-  }, []);
-  const onShare = async () => {
-    const ok = await copyShareLink();
-    if (!ok) return;
-    setShared(true);
-    if (sharedTimer.current) clearTimeout(sharedTimer.current);
-    sharedTimer.current = setTimeout(() => setShared(false), 1600);
-  };
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <header className="tn-topbar" role="banner">
-      {/* Canonical machine-readable pulse — visually hidden, kept for the e2e
-          smoke test and screen readers; the visible LivePulse below mirrors it. */}
-      <span data-testid="stat-line" className="tn-sr-only">
-        {m.camerasTotal.toLocaleString()} cameras · {m.planes.toLocaleString()} planes ·{" "}
-        {m.satellites.toLocaleString()} satellites
-      </span>
-
-      {/* ── Brand + variant ─────────────────────────────────────────────── */}
-      <div className="tn-topbar-left">
-        <span className="tn-wordmark">
-          World <span className="tn-wordmark-accent">Monitor</span>
+    <>
+      <header className="tn-topbar" role="banner">
+        {/* Canonical machine-readable pulse — visually hidden, kept for the e2e smoke
+            test and screen readers; the visible LivePulse below mirrors it. */}
+        <span data-testid="stat-line" className="tn-sr-only">
+          {m.camerasTotal.toLocaleString()} cameras · {m.planes.toLocaleString()} planes ·{" "}
+          {m.satellites.toLocaleString()} satellites
         </span>
-        <VariantSwitcher />
-      </div>
 
-      {/* ── Live data pulse (grows to fill remaining space) ─────────────── */}
-      <div className="tn-topbar-metrics">
-        <LivePulse
-          camerasOnline={m.camerasOnline}
-          camerasTotal={m.camerasTotal}
-          planes={m.planes}
-          satellites={m.satellites}
-          health={health}
-          t={t}
-        />
-      </div>
-
-      {/* ── View controls · utility actions ──────────────────────────────── */}
-      <div className="tn-topbar-right">
-
-        {/* Primary view controls ---------------------------------------- */}
-        <StageSwitch />
-
-        {/* Basemap segmented control — 3 active options (OS UK removed: needs
-            an API key and has no public keyless tile source for this build). */}
-        <div className="tn-basemap" role="group" aria-label="Basemap">
-          {(Object.keys(BASEMAPS) as BasemapKey[]).map((k) => (
-            <button
-              key={k}
-              type="button"
-              className="tn-basemap-btn"
-              aria-pressed={view.basemap === k}
-              onClick={() => mapViewStore.setBasemap(k)}
-            >
-              {BASEMAPS[k].label}
-            </button>
-          ))}
+        {/* ── Brand ────────────────────────────────────────────────────────── */}
+        <div className="tn-topbar-left">
+          <span className="tn-wordmark">
+            Open<span className="tn-wordmark-accent">Data</span>
+          </span>
         </div>
 
-        {/* Hairline divider: view controls / utility actions */}
-        <span className="tn-top-sep" aria-hidden />
+        {/* ── Live data pulse (grows to fill remaining space) ─────────────── */}
+        <div className="tn-topbar-metrics">
+          <LivePulse
+            camerasOnline={m.camerasOnline}
+            camerasTotal={m.camerasTotal}
+            planes={m.planes}
+            satellites={m.satellites}
+            health={health}
+            t={t}
+          />
+        </div>
 
-        {/* Utility actions ---------------------------------------------- */}
-        <LangSwitcher />
+        {/* ── Central board switcher (absolutely centred over the bar) ─────── */}
+        <PresetPill />
 
-        <button
-          type="button"
-          className={`tn-icon-btn tn-share-btn${shared ? " is-copied" : ""}`}
-          onClick={onShare}
-          title="Copy a link to this exact view"
-          aria-live="polite"
-        >
-          {shared ? "✓ Copied" : "Share"}
-        </button>
+        {/* ── Entry points + identity ──────────────────────────────────────── */}
+        {/* ⌘K · Settings · Profile — the avatar sits at the very edge, with the
+            settings gear and ⌘K to its left. */}
+        <div className="tn-topbar-right">
+          <button
+            type="button"
+            className="tn-icon-btn tn-palette-trigger"
+            onClick={onOpenPalette}
+            title="Command palette (⌘K)"
+          >
+            <span className="tn-kbd">⌘K</span>
+          </button>
 
-        <button
-          type="button"
-          className="tn-icon-btn tn-palette-trigger"
-          onClick={onOpenPalette}
-          title="Command palette (⌘K)"
-        >
-          <span className="tn-kbd">⌘K</span>
-        </button>
+          <button
+            type="button"
+            className="tn-icon-btn tn-settings-trigger"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Settings"
+            title="Settings"
+          >
+            <span aria-hidden>⚙</span>
+          </button>
 
-        <button
-          type="button"
-          className="tn-icon-btn"
-          onClick={() => uiStore.toggleTheme()}
-          aria-label="Toggle light/dark"
-          title="Toggle light / dark"
-        >
-          {ui.theme === "light" ? "☾" : "☀"}
-        </button>
-      </div>
-    </header>
+          <ProfileMenu onOpenSettings={() => setSettingsOpen(true)} />
+        </div>
+      </header>
+
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+    </>
   );
 }

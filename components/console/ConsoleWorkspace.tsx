@@ -5,6 +5,7 @@ import { useShellLayout, shellLayoutStore } from "@/lib/console/store";
 import type { SegmentId } from "@/lib/console/types";
 import Segment from "@/components/console/Segment";
 import StageHost from "@/components/console/StageHost";
+import MapControls from "@/components/console/MapControls";
 
 // Full-bleed console: the map is a 100%×100% base layer and the three widget
 // segments FLOAT over it as translucent glass columns (the calm-glass identity the
@@ -34,9 +35,16 @@ export default function ConsoleWorkspace() {
   const bh = bottomShown ? layout.segments.bottom.size : 0;
   const vars = { "--tn-lw": `${lw}px`, "--tn-rw": `${rw}px`, "--tn-bh": `${bh}px` } as CSSProperties;
 
+  // Ambient map overlays (map-view controls, world clock) show only over a live map —
+  // never when a widget is fullscreened onto the stage (focused) or on a non-map stage.
+  const showMapOverlays = layout.focusedWidgetId == null && (layout.stage === "map3d" || layout.stage === "map2d");
+
   return (
     <div className="tn-cw-shell" style={vars}>
-      <div className="tn-cw-stage"><StageHost stage={layout.stage} /></div>
+      <div className="tn-cw-stage">
+        <StageHost stage={layout.stage} />
+        {showMapOverlays && <MapControls />}
+      </div>
 
       <div className="tn-cw-col tn-cw-col-left" style={{ width: lw }}><Segment id="left" /></div>
       <VGrip seg="left" dir={1} cls="tn-grip-l" />
