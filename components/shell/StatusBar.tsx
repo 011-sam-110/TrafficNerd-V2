@@ -39,8 +39,21 @@ export default function StatusBar({ onOpenPalette }: { onOpenPalette: () => void
         <PresetPill />
 
         {/* ── Entry points + identity ──────────────────────────────────────── */}
-        {/* ⌘K · Settings · Profile — the avatar sits at the very edge. */}
+        {/* Support · ⌘K · Settings · Profile — the avatar sits at the very edge. */}
         <div className="tn-topbar-right">
+          {/* Buy Me a Coffee (Ko-fi) — the app is free + keyless; this is a calm,
+              opt-in way to support it. Present but not shouty. */}
+          <a
+            className="tn-kofi"
+            href="https://ko-fi.com/opendata"
+            target="_blank"
+            rel="noreferrer noopener"
+            title="Support OpenData on Ko-fi"
+          >
+            <span className="tn-kofi-icon" aria-hidden>☕</span>
+            <span className="tn-kofi-label">Support</span>
+          </a>
+
           <button
             type="button"
             className="tn-icon-btn tn-palette-trigger"

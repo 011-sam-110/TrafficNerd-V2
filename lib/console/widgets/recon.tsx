@@ -185,13 +185,25 @@ function bodyFor(Comp: (p: { report: (n: number) => void }) => React.ReactNode) 
   };
 }
 
-const TOOLS: { id: string; title: string; icon: string; body: (p: { report: (n: number) => void }) => React.ReactNode }[] = [
-  { id: "dns", title: "DNS records", icon: "🌐", body: DnsBody },
-  { id: "whois", title: "WHOIS / RDAP", icon: "📄", body: WhoisBody },
-  { id: "certs", title: "Certificates & subdomains", icon: "🔏", body: CertsBody },
-  { id: "bgp", title: "BGP / ASN", icon: "🛰", body: BgpBody },
-  { id: "ports", title: "Ports & services", icon: "🔌", body: PortsBody },
-  { id: "threat", title: "Threat intel", icon: "🛡", body: ThreatBody },
+const TOOLS: { id: string; title: string; icon: string; help: { what: string; source: string }; body: (p: { report: (n: number) => void }) => React.ReactNode }[] = [
+  { id: "dns", title: "DNS records", icon: "🌐",
+    help: { what: "Type a domain to resolve its live DNS — A/AAAA/MX/TXT/NS — so you can see where it points and who handles its mail. Passive; nothing is sent to the target.", source: "Cloudflare DNS-over-HTTPS (keyless)" },
+    body: DnsBody },
+  { id: "whois", title: "WHOIS / RDAP", icon: "📄",
+    help: { what: "Registration details for a domain or IP — registrar, org and key dates — from the authoritative registries.", source: "rdap.org (regional internet registries), keyless" },
+    body: WhoisBody },
+  { id: "certs", title: "Certificates & subdomains", icon: "🔏",
+    help: { what: "Every TLS certificate ever issued for a domain, which quietly enumerates its subdomains.", source: "crt.sh Certificate Transparency logs (keyless)" },
+    body: CertsBody },
+  { id: "bgp", title: "BGP / ASN", icon: "🛰",
+    help: { what: "The autonomous system and network that announces an IP or domain to the internet — who really hosts it.", source: "BGPView routing data (keyless)" },
+    body: BgpBody },
+  { id: "ports", title: "Ports & services", icon: "🔌",
+    help: { what: "Internet-facing ports and services already observed for a host. Passive lookup only — no scan is performed from here.", source: "Shodan InternetDB (keyless, passive)" },
+    body: PortsBody },
+  { id: "threat", title: "Threat intel", icon: "🛡",
+    help: { what: "A quick reputation read on a host — known-bad tags and blocklist hits — to gauge whether it's flagged anywhere.", source: "Shodan InternetDB + public DNS blocklists (keyless)" },
+    body: ThreatBody },
 ];
 
 for (const t of TOOLS) {
@@ -203,5 +215,6 @@ for (const t of TOOLS) {
     defaultHeight: 240,
     defaultConfig: {},
     component: bodyFor(t.body),
+    help: t.help,
   });
 }

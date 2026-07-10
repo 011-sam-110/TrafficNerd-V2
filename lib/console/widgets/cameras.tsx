@@ -70,6 +70,10 @@ export const CAMERAS_WIDGET = {
   defaultConfig: {},
   component: CamerasBody,
   detail: CamerasDetail,
+  help: {
+    what: "A live thumbnail grid of the public traffic and street cameras currently on the map — a look at conditions on the ground, with any feed that drops offline flagged.",
+    source: "Public DOT / city camera networks (keyless)",
+  },
   capabilities: { filter: true, sort: true },
 };
 registerWidget(CAMERAS_WIDGET);

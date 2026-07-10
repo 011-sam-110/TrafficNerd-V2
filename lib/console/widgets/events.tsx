@@ -309,6 +309,10 @@ export const EVENTS_WIDGET = {
   defaultConfig: { minTier: "S1", sort: "severity", evGroupBy: "region" },
   component: EventsBody,
   detail: EventsDetail,
+  help: {
+    what: "Major disasters and events — earthquakes, storms, floods, outbreaks — ranked by severity and clustered by region, with anything near a watched asset escalated to the top.",
+    source: "GDACS + USGS + partner hazard feeds (keyless)",
+  },
   capabilities: { filter: true, sort: true },
 };
 registerWidget(EVENTS_WIDGET);

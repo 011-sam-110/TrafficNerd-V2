@@ -17,6 +17,7 @@ import { shellLayoutStore } from "@/lib/console/store";
 import type { StageId } from "@/lib/console/types";
 import { listPresets, applyPreset, saveCustomPreset, DEFAULT_PRESET_ID } from "@/lib/console/presets";
 import { encodeLayout } from "@/lib/console/share";
+import { tourStore } from "@/lib/shell/tour";
 import { uiStore } from "@/lib/shell/ui";
 import { langStore } from "@/lib/i18n/store";
 import { LANGS } from "@/lib/i18n/catalog";
@@ -179,6 +180,7 @@ function buildCommands(close: () => void): Command[] {
   for (const l of LANGS) cmds.push({ id: `lang-${l.code}`, label: `Language: ${l.name}`, hint: "language", group: "Appearance", run: () => { langStore.set(l.code); close(); } });
 
   // ── Workspace: reset / save / share the current composition ─────────────
+  cmds.push({ id: "take-tour", label: "Take the tour", hint: "guide", group: "Workspace", run: () => { tourStore.start(); close(); } });
   cmds.push({ id: "reset-layout", label: "Reset to default layout", hint: "reset", group: "Workspace", run: () => { applyPreset(DEFAULT_PRESET_ID); close(); } });
   cmds.push({ id: "save-preset", label: "Save layout as preset…", hint: "save", group: "Workspace", run: () => { const t = window.prompt("Preset name?"); if (t) saveCustomPreset(t); close(); } });
   cmds.push({ id: "share-layout", label: "Copy shareable link", hint: "share", group: "Workspace", run: () => { const url = `${location.origin}${location.pathname}?c=${encodeLayout(shellLayoutStore.get())}`; navigator.clipboard?.writeText(url); close(); } });
