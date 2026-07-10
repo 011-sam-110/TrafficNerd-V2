@@ -1,6 +1,6 @@
 // components/console/WidgetFrame.tsx
 "use client";
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import type { WidgetInstance } from "@/lib/console/types";
 import { shellLayoutStore } from "@/lib/console/store";
 import { spanFromPointer } from "@/lib/console/resize";
@@ -8,6 +8,10 @@ import { getWidgetType } from "@/lib/console/registry";
 import { topSeverity, type Alert } from "@/lib/console/alerts";
 import { WidgetErrorBoundary } from "@/components/console/WidgetErrorBoundary";
 import { toCsv, toGeoJson, downloadText, exportFilename, type GeoPoint } from "@/lib/export";
+import {
+  notificationsStore, useRule, useNotifications, dispatch, isDiscordConfigured, requestNotifyPermission,
+} from "@/lib/shell/notifications";
+import { useTelegram, isTelegramConfigured } from "@/lib/shell/telegram";
 
 interface Report {
   alerts: Alert[];
@@ -24,12 +28,54 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
   const type = getWidgetType(instance.type);
   const [report, setReport] = useState<Report>({ alerts: [] });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const onReport = useCallback((r: Report) => setReport(r), []);
+
+  // Per-widget notification rule (keyed by TYPE) + the creds that gate each channel.
+  const rule = useRule(instance.type);
+  const notif = useNotifications();
+  const tg = useTelegram();
+  const tgReady = isTelegramConfigured(tg);
+  const discordReady = isDiscordConfigured(notif.discordWebhook);
+
+  // Dispatch NEW alerts to the armed channels. A silent baseline is seeded on first
+  // mount so pre-existing alerts don't stampede; dedupe by alert.ref ?? alert.id in a
+  // ref Set that survives renders (mirrors lib/events/alerting's seeded/fired pattern).
+  const firedRef = useRef<Set<string>>(new Set());
+  const seededRef = useRef(false);
+  useEffect(() => {
+    const keyOf = (a: Alert) => a.ref ?? a.id;
+    if (!seededRef.current) {
+      for (const a of report.alerts) firedRef.current.add(keyOf(a));
+      seededRef.current = true;
+      return;
+    }
+    const fresh = report.alerts.filter((a) => !firedRef.current.has(keyOf(a)));
+    for (const a of fresh) firedRef.current.add(keyOf(a));
+    if (fresh.length === 0) return;
+    for (const a of fresh) dispatch(a.text, rule); // dormant-safe: no-op unless armed + configured
+  }, [report.alerts, rule]);
+
   if (!type) return null;
   const Body = type.component;
   const sev = topSeverity(report.alerts);
   const cfg = instance.config ?? {};
   const alertStyle = (cfg.alertStyle as string) ?? "top"; // "top" | "feed"
+
+  const setChannel = (patch: Partial<{ browser: boolean; telegram: boolean; discord: boolean }>) =>
+    notificationsStore.setRule(instance.type, { channels: patch });
+  const onThreshold = (raw: string) => {
+    const v = raw.trim();
+    if (v === "") {
+      notificationsStore.setRule(instance.type, { minValue: undefined });
+      shellLayoutStore.configure(instance.id, { alertMin: undefined });
+      return;
+    }
+    const n = Number(v);
+    if (!Number.isFinite(n)) return;
+    notificationsStore.setRule(instance.type, { minValue: n });
+    shellLayoutStore.configure(instance.id, { alertMin: n }); // widget's own alert maths honours it
+  };
 
   const onDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("text/tn-widget", instance.id);
@@ -81,9 +127,43 @@ export default function WidgetFrame({ instance }: { instance: WidgetInstance }) 
         <span className="tn-cw-sp" />
         {report.alerts.length > 0 && <span className={`tn-cw-badge tn-sev-${sev}`}>{report.alerts.length}</span>}
         {report.freshLabel && <span className="tn-cw-fresh">{report.freshLabel}</span>}
+        <button className={`tn-cw-bell${rule.enabled ? " is-on" : ""}`} aria-label="Notifications" aria-pressed={rule.enabled}
+          title={rule.enabled ? "Notifications on" : "Notify me"} onClick={() => { setBellOpen((o) => !o); setMenuOpen(false); }}>🔔</button>
         <button className="tn-cw-expand" aria-label="Expand widget" title="Expand to main window" onClick={() => shellLayoutStore.focus(instance.id)}>⤢</button>
-        <button className="tn-cw-menu" aria-label="Widget menu" onClick={() => setMenuOpen((o) => !o)}>⋯</button>
+        <button className="tn-cw-menu" aria-label="Widget menu" onClick={() => { setMenuOpen((o) => !o); setBellOpen(false); }}>⋯</button>
       </header>
+
+      {bellOpen && (
+        <div className="tn-cw-notify-pop" role="dialog" aria-label="Notifications">
+          <label className="tn-cw-notify-toggle">
+            <input type="checkbox" checked={rule.enabled}
+              onChange={(e) => notificationsStore.setRule(instance.type, { enabled: e.target.checked })} />
+            <span>Notify me</span>
+          </label>
+          <div className="tn-cw-notify-chs">
+            <label className="tn-cw-notify-ch">
+              <input type="checkbox" checked={rule.channels.browser}
+                onChange={(e) => { setChannel({ browser: e.target.checked }); if (e.target.checked) void requestNotifyPermission(); }} />
+              <span>Browser</span>
+            </label>
+            <label className={`tn-cw-notify-ch${tgReady ? "" : " is-off"}`}>
+              <input type="checkbox" checked={rule.channels.telegram} disabled={!tgReady}
+                onChange={(e) => setChannel({ telegram: e.target.checked })} />
+              <span>Telegram{!tgReady && <em className="tn-cw-notify-hint"> · set in Settings</em>}</span>
+            </label>
+            <label className={`tn-cw-notify-ch${discordReady ? "" : " is-off"}`}>
+              <input type="checkbox" checked={rule.channels.discord} disabled={!discordReady}
+                onChange={(e) => setChannel({ discord: e.target.checked })} />
+              <span>Discord{!discordReady && <em className="tn-cw-notify-hint"> · set in Settings</em>}</span>
+            </label>
+          </div>
+          <label className="tn-cw-notify-field">
+            <span>Threshold (min value)</span>
+            <input type="number" className="tn-cw-notify-num" placeholder="any"
+              value={rule.minValue ?? ""} onChange={(e) => onThreshold(e.target.value)} />
+          </label>
+        </div>
+      )}
 
       {menuOpen && (
         <div className="tn-cw-menu-pop" role="menu">

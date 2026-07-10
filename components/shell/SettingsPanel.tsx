@@ -15,6 +15,20 @@ import { shellLayoutStore } from "@/lib/console/store";
 import { BUILTIN_PRESETS, applyPreset } from "@/lib/console/presets";
 import { useActivePreset } from "@/lib/console/activePreset";
 import { useTelegram, telegramStore, sendTelegram, isTelegramConfigured } from "@/lib/shell/telegram";
+import {
+  useNotifications, notificationsStore, isDiscordConfigured, requestNotifyPermission, type NotifyRule,
+} from "@/lib/shell/notifications";
+import { getWidgetType } from "@/lib/console/registry";
+
+/** A "Browser · Telegram" style summary of a rule's armed channels. */
+function channelSummary(r: NotifyRule): string {
+  const on = [
+    r.channels.browser && "Browser",
+    r.channels.telegram && "Telegram",
+    r.channels.discord && "Discord",
+  ].filter(Boolean) as string[];
+  return on.length ? on.join(" · ") : "no channels";
+}
 
 /** A shareable URL that carries BOTH the map view state and the widget layout (?c=). */
 async function copyLayoutLink(): Promise<boolean> {
@@ -39,6 +53,7 @@ export default function SettingsPanel({ open, onClose }: { open: boolean; onClos
   const lang = useLang();
   const activeId = useActivePreset();
   const tg = useTelegram();
+  const notif = useNotifications();
   const [copied, setCopied] = useState(false);
   const [tgStatus, setTgStatus] = useState<{ kind: "idle" | "sending" | "ok" | "err"; msg?: string }>({ kind: "idle" });
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -167,6 +182,46 @@ export default function SettingsPanel({ open, onClose }: { open: boolean; onClos
               </button>
               {tgStatus.kind === "ok" && <span className="tn-settings-tg-ok">✓ Sent</span>}
               {tgStatus.kind === "err" && <span className="tn-settings-tg-err">{tgStatus.msg ?? "Failed"}</span>}
+            </div>
+          </section>
+
+          {/* Notifications --------------------------------------------------- */}
+          <section className="tn-settings-sec">
+            <h3 className="tn-settings-sec-title">Notifications</h3>
+            <p className="tn-settings-hint">
+              Per-widget alerts. Arm any widget with its 🔔 button, pick channels + a threshold,
+              and a NEW &ldquo;needs attention&rdquo; item is relayed to those channels. For Discord, open a
+              channel&rsquo;s <em>Integrations → Webhooks</em> and paste the URL below.
+            </p>
+            <label className="tn-settings-toggle">
+              <input type="checkbox" checked={notif.master}
+                onChange={(e) => notificationsStore.setMaster(e.target.checked)} />
+              <span>Enable notifications</span>
+            </label>
+            <label className="tn-settings-field">
+              <span className="tn-settings-field-label">Discord webhook URL</span>
+              <input className="tn-settings-input" type="password" autoComplete="off" spellCheck={false}
+                placeholder="https://discord.com/api/webhooks/…" value={notif.discordWebhook}
+                onChange={(e) => notificationsStore.setDiscordWebhook(e.target.value)} />
+              {notif.discordWebhook.length > 0 && !isDiscordConfigured(notif.discordWebhook) &&
+                <span className="tn-settings-tg-err">That webhook URL doesn&rsquo;t look right.</span>}
+            </label>
+            <div className="tn-settings-notify-list">
+              {Object.entries(notif.rules).length === 0 ? (
+                <p className="tn-settings-hint">No widgets armed yet — use a widget&rsquo;s 🔔 button.</p>
+              ) : Object.entries(notif.rules).map(([type, r]) => (
+                <div key={type} className="tn-settings-notify-row">
+                  <label className="tn-settings-toggle">
+                    <input type="checkbox" checked={r.enabled}
+                      onChange={(e) => {
+                        notificationsStore.setRule(type, { enabled: e.target.checked });
+                        if (e.target.checked && r.channels.browser) void requestNotifyPermission();
+                      }} />
+                    <span className="tn-settings-notify-name">{getWidgetType(type)?.title ?? type}</span>
+                  </label>
+                  <span className="tn-settings-notify-chs">{channelSummary(r)}</span>
+                </div>
+              ))}
             </div>
           </section>
         </div>

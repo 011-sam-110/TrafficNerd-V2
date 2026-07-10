@@ -1136,6 +1136,21 @@ a { color: var(--tn-accent); }
 .tn-cw-menu-pop{display:flex;flex-direction:column;border-bottom:1px solid var(--tn-border);background:var(--tn-surface-solid)}
 .tn-cw-menu-pop button{text-align:left;border:0;background:none;padding:7px 10px;font-size:12px;cursor:pointer;color:var(--tn-text)}
 .tn-cw-menu-pop button:hover{background:var(--tn-surface-2)}.tn-cw-danger{color:#d9534f}
+/* per-widget notifications — bell + arm popover (see WidgetFrame + lib/shell/notifications) */
+.tn-cw-bell{border:0;background:none;cursor:pointer;color:var(--tn-text-faint);font-size:13px;line-height:1;padding:0;filter:grayscale(1) opacity(.6)}
+.tn-cw-bell:hover{color:var(--tn-text);filter:grayscale(.4) opacity(.9)}
+.tn-cw-bell.is-on{filter:none;color:var(--tn-accent)}
+.tn-cw-notify-pop{display:flex;flex-direction:column;gap:8px;padding:9px 10px;border-bottom:1px solid var(--tn-border);background:var(--tn-surface-solid);color:var(--tn-text)}
+.tn-cw-notify-toggle{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;cursor:pointer}
+.tn-cw-notify-toggle input,.tn-cw-notify-ch input{width:14px;height:14px;accent-color:var(--tn-accent);cursor:pointer}
+.tn-cw-notify-chs{display:flex;flex-direction:column;gap:5px;padding-left:2px}
+.tn-cw-notify-ch{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--tn-text);cursor:pointer}
+.tn-cw-notify-ch.is-off{color:var(--tn-text-faint)}
+.tn-cw-notify-ch input:disabled{cursor:not-allowed}
+.tn-cw-notify-hint{font-style:normal;font-size:10px;color:var(--tn-text-faint)}
+.tn-cw-notify-field{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--tn-text-muted)}
+.tn-cw-notify-num{font:inherit;font-size:12px;color:var(--tn-text);background:var(--tn-surface-2);border:1px solid var(--tn-border);border-radius:7px;padding:5px 8px;width:100%}
+.tn-cw-notify-num:focus{outline:none;border-color:var(--tn-accent)}
 .tn-cw-attn{border-bottom:1px solid var(--tn-border)}.tn-cw-attn-h{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--tn-text-faint);padding:5px 8px 2px}
 .tn-cw-alert{font-size:11px;padding:4px 8px;border-left:3px solid #d9534f;background:rgba(217,83,79,.12);color:var(--tn-text)}
 .tn-cw-alert.tn-sev-warn{border-left-color:#d9882f;background:rgba(217,136,47,.12)}.tn-cw-alert.tn-sev-info{border-left-color:#4a78c9;background:rgba(74,120,201,.12)}
@@ -1966,6 +1981,11 @@ a { color: var(--tn-accent); }
 .tn-settings-tg-test:disabled { opacity: .5; cursor: not-allowed; }
 .tn-settings-tg-ok { font-size: 12px; font-weight: 600; color: var(--tn-live); }
 .tn-settings-tg-err { font-size: 12px; color: var(--tn-down); }
+/* Notifications section — armed-widget list */
+.tn-settings-notify-list { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--tn-border); padding-top: 8px; }
+.tn-settings-notify-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 0; }
+.tn-settings-notify-name { font-size: 13px; color: var(--tn-text); }
+.tn-settings-notify-chs { font-size: 11px; color: var(--tn-text-faint); white-space: nowrap; }
 
 /* ── Floated map-view controls (top-right of the centre stage) ────────────── */
 .tn-map-controls { position: absolute; top: 10px; right: 10px; z-index: 5; display: flex; align-items: center; gap: 8px; }
