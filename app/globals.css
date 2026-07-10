@@ -1124,28 +1124,29 @@ a { color: var(--tn-accent); }
 /* ===========================================================================
    WidgetFrame chrome — Task 6
    =========================================================================== */
-/* Light translucent glass (pinned, not var(--tn-surface)) — the widget chrome uses
-   light-mode ink, so a dark-theme surface here would make the text unreadable. */
-.tn-cw{position:relative;display:flex;flex-direction:column;background:rgba(255,255,255,.9);backdrop-filter:blur(14px) saturate(1.05);-webkit-backdrop-filter:blur(14px) saturate(1.05);border:1px solid var(--tn-border,#dbe2ea);border-radius:10px;overflow:hidden;box-shadow:0 6px 22px rgba(20,28,38,.16)}
-.tn-cw-head{display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid #f1f5f9;cursor:grab;font-size:12px}
-.tn-cw-title{font-weight:700;color:#2b3640}.tn-cw-count{font-size:11px;color:#8a97a6}.tn-cw-sp{flex:1}
+/* Translucent glass card — theme-aware surface + ink so widgets read in dark too
+   (the body's .tn-w-* rows already use tokens; the frame chrome now matches). */
+.tn-cw{position:relative;display:flex;flex-direction:column;background:var(--tn-surface);backdrop-filter:blur(14px) saturate(1.05);-webkit-backdrop-filter:blur(14px) saturate(1.05);border:1px solid var(--tn-border);border-radius:10px;overflow:hidden;box-shadow:var(--tn-shadow-sm);color:var(--tn-text)}
+.tn-cw-head{display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid var(--tn-border);cursor:grab;font-size:12px}
+.tn-cw-title{font-weight:700;color:var(--tn-text)}.tn-cw-count{font-size:11px;color:var(--tn-text-faint)}.tn-cw-sp{flex:1}
 .tn-cw-badge{font-size:10px;font-weight:800;color:#fff;border-radius:8px;padding:0 5px;background:#8a97a6}
 .tn-cw-badge.tn-sev-critical{background:#d9534f}.tn-cw-badge.tn-sev-warn{background:#d9882f}.tn-cw-badge.tn-sev-info{background:#4a78c9}
-.tn-cw-fresh{font-size:10px;color:#3f8f5c}.tn-cw-menu,.tn-cw-expand{border:0;background:none;cursor:pointer;color:#b3bdc8;font-size:14px}
-.tn-cw-menu-pop{display:flex;flex-direction:column;border-bottom:1px solid #eef2f6}
-.tn-cw-menu-pop button{text-align:left;border:0;background:none;padding:7px 10px;font-size:12px;cursor:pointer}
-.tn-cw-menu-pop button:hover{background:#f6f9fb}.tn-cw-danger{color:#d9534f}
-.tn-cw-attn{border-bottom:1px solid #f1f5f9}.tn-cw-attn-h{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#a9b4bf;padding:5px 8px 2px}
-.tn-cw-alert{font-size:11px;padding:4px 8px;border-left:3px solid #d9534f;background:#fdf3f2}
-.tn-cw-alert.tn-sev-warn{border-left-color:#d9882f;background:#fdf7ee}.tn-cw-alert.tn-sev-info{border-left-color:#4a78c9;background:#f1f5fc}
+.tn-cw-fresh{font-size:10px;color:#3f8f5c}.tn-cw-menu,.tn-cw-expand{border:0;background:none;cursor:pointer;color:var(--tn-text-faint);font-size:14px}
+.tn-cw-menu:hover,.tn-cw-expand:hover{color:var(--tn-text)}
+.tn-cw-menu-pop{display:flex;flex-direction:column;border-bottom:1px solid var(--tn-border);background:var(--tn-surface-solid)}
+.tn-cw-menu-pop button{text-align:left;border:0;background:none;padding:7px 10px;font-size:12px;cursor:pointer;color:var(--tn-text)}
+.tn-cw-menu-pop button:hover{background:var(--tn-surface-2)}.tn-cw-danger{color:#d9534f}
+.tn-cw-attn{border-bottom:1px solid var(--tn-border)}.tn-cw-attn-h{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--tn-text-faint);padding:5px 8px 2px}
+.tn-cw-alert{font-size:11px;padding:4px 8px;border-left:3px solid #d9534f;background:rgba(217,83,79,.12);color:var(--tn-text)}
+.tn-cw-alert.tn-sev-warn{border-left-color:#d9882f;background:rgba(217,136,47,.12)}.tn-cw-alert.tn-sev-info{border-left-color:#4a78c9;background:rgba(74,120,201,.12)}
 .tn-cw-body{flex:1 1 auto;overflow:auto;min-height:0}
 .tn-cw-attn-feed{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
-.tn-cw-failed{padding:12px 10px;font-size:11px;color:#a9b4bf}
-.tn-cw-resize{height:6px;cursor:row-resize;background:linear-gradient(#f1f5f9,#fff)}
+.tn-cw-failed{padding:12px 10px;font-size:11px;color:var(--tn-text-faint)}
+.tn-cw-resize{height:6px;cursor:row-resize;background:linear-gradient(var(--tn-surface-2),transparent)}
 .tn-cw-resize-x{position:absolute;top:0;right:0;width:6px;height:100%;cursor:col-resize;z-index:2}
 .tn-cw-resize-x:hover{background:rgba(120,140,160,.18)}
 .tn-cw-resize-xy{position:absolute;right:0;bottom:0;width:12px;height:12px;cursor:nwse-resize;z-index:3}
-.tn-cw-resize-xy::after{content:"";position:absolute;right:2px;bottom:2px;width:6px;height:6px;border-right:2px solid #b3bdc8;border-bottom:2px solid #b3bdc8}
+.tn-cw-resize-xy::after{content:"";position:absolute;right:2px;bottom:2px;width:6px;height:6px;border-right:2px solid var(--tn-text-faint);border-bottom:2px solid var(--tn-text-faint)}
 
 /* ===========================================================================
    StageHost + WorldClock + StageSwitch — Task 8
