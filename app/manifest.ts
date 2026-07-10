@@ -6,8 +6,8 @@ import type { MetadataRoute } from "next";
 // app. Icons are the committed globe marks under public/icons (see scripts/gen-icons.mjs).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "World Monitor — live global intelligence",
-    short_name: "World Monitor",
+    name: "OpenData — live global intelligence",
+    short_name: "OpenData",
     description:
       "A calm live globe of the world's cameras, planes, satellites and global signals — hazards, conflict, infrastructure and markets.",
     id: "/",
