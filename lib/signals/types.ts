@@ -74,6 +74,27 @@ export interface SignalMetric {
   unit?: string;
 }
 
+/**
+ * Optional presentation hints for the asset-DIRECTORY focus view (kind:"asset").
+ * The directory template is capability-driven — it auto-hides the country/region
+ * columns when the layer carries no such props, and ranks by `metric` (or a `rank`
+ * prop) when it has one. A source only declares what is NON-obvious: a short
+ * identifier to show as the left column when it has no magnitude to rank by (e.g.
+ * an airport's IATA code) and/or one extra descriptor column (e.g. a plant's
+ * operator). Everything else is inferred from the features. Omit ⇒ ports-style.
+ */
+export interface DirectorySpec {
+  /** props key for a short identifier, used as the left column when the layer has
+   *  no metric/rank to rank by (e.g. "iata"). */
+  codeKey?: string;
+  /** Header for the code column (e.g. "IATA"). Defaults to a humanised codeKey. */
+  codeLabel?: string;
+  /** props key for one extra descriptor column (e.g. "operator", "city"). */
+  detailKey?: string;
+  /** Header for the descriptor column. Defaults to a humanised detailKey. */
+  detailLabel?: string;
+}
+
 /** A registered signal layer: metadata + a pure-ish fetch that yields points. */
 export interface SignalSource {
   /** Stable id; also the dynamic route segment (/api/signals/<id>) + store key. */
@@ -98,6 +119,8 @@ export interface SignalSource {
   attribution: string;
   /** Optional: the scalar → magnitude bar in the monitor row. Omit for a plain dot. */
   metric?: SignalMetric;
+  /** Optional: presentation hints for the asset-directory focus view (kind:"asset"). */
+  directory?: DirectorySpec;
   /** Fetch + normalise upstream into points. MUST resolve (never reject) to []. */
   fetch(): Promise<SignalFeature[]>;
 }

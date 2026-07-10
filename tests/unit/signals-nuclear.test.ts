@@ -24,6 +24,14 @@ test("uses node lat/lon and way center, surfacing output + operator", () => {
   expect(way?.link).toBe("https://www.openstreetmap.org/way/4800321");
 });
 
+test("prefers OSM's English name where present, else the default name", () => {
+  const out = normalizeOverpassNuclear(fixture as never);
+  // node 8645134918 has name "RHF de l'Institut Laue Langevin" + name:en "High-flux Reactor".
+  expect(out.find((f) => f.id === "nuclear:node/8645134918")?.title).toBe("High-flux Reactor");
+  // node 6443114600 has no name:en → keeps its default name.
+  expect(out.find((f) => f.id === "nuclear:node/6443114600")?.title).toBe("Indústrias Nucleares do Brasil");
+});
+
 test("adds a numeric outputMw prop that the declared metric resolves to a bar", () => {
   const out = normalizeOverpassNuclear(fixture as never);
 
@@ -46,4 +54,11 @@ test("adds a numeric outputMw prop that the declared metric resolves to a bar", 
   const capacityless = out.find((f) => f.id === "nuclear:node/6443114600");
   expect(capacityless?.props?.outputMw).toBeUndefined();
   expect(rowMetric(capacityless!, NUCLEAR_SOURCE.metric)).toBeUndefined();
+});
+
+test("registers as an asset directory ranked by capacity, described by operator", () => {
+  // OSM carries no country → the directory ranks by the MW metric and shows operator.
+  expect(NUCLEAR_SOURCE.kind).toBe("asset");
+  expect(NUCLEAR_SOURCE.directory?.detailKey).toBe("operator");
+  expect(NUCLEAR_SOURCE.directory?.codeKey).toBeUndefined();
 });

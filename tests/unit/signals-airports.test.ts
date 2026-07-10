@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { parseAirportsCsv, parseCsv } from "@/lib/signals/airports";
+import { parseAirportsCsv, parseCsv, continentName, AIRPORTS_SOURCE } from "@/lib/signals/airports";
 
 const csv = readFileSync("tests/fixtures/airports.csv", "utf8");
 
@@ -30,4 +30,25 @@ test("maps ident, iata, country and city; tolerates a missing IATA", () => {
   const noIata = out.find((f) => f.id === "airport:NOIA");
   expect(noIata?.props?.iata).toBeUndefined();
   expect(noIata?.props?.country).toBe("SB");
+});
+
+test("derives a readable region from the OurAirports continent column", () => {
+  const out = parseAirportsCsv(csv);
+  expect(out.find((f) => f.id === "airport:KSFO")?.props?.region).toBe("North America");
+  expect(out.find((f) => f.id === "airport:EGLL")?.props?.region).toBe("Europe");
+  expect(out.find((f) => f.id === "airport:NOIA")?.props?.region).toBe("Oceania");
+});
+
+test("continentName maps codes and stays honest on unknowns", () => {
+  expect(continentName("AS")).toBe("Asia");
+  expect(continentName("sa")).toBe("South America"); // case-insensitive
+  expect(continentName("ZZ")).toBe("");
+  expect(continentName(undefined)).toBe("");
+});
+
+test("registers as an asset directory browsed by IATA (no magnitude)", () => {
+  expect(AIRPORTS_SOURCE.kind).toBe("asset");
+  expect(AIRPORTS_SOURCE.metric).toBeUndefined();
+  expect(AIRPORTS_SOURCE.directory?.codeKey).toBe("iata");
+  expect(AIRPORTS_SOURCE.directory?.detailKey).toBe("city");
 });

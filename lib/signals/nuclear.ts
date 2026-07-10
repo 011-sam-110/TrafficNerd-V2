@@ -44,7 +44,9 @@ export function normalizeOverpassNuclear(json: { elements?: OverpassElement[] })
   const out: SignalFeature[] = [];
   for (const e of json.elements ?? []) {
     const t = e.tags ?? {};
-    const name = t.name?.trim();
+    // Prefer OSM's English name where it exists (many plants are tagged only in the
+    // local script, e.g. 柏崎刈羽原子力発電所); fall back to the default name. No translation.
+    const name = (t["name:en"] || t.name)?.trim();
     if (!name) continue; // skip unnamed fragments
     const lat = e.lat ?? e.center?.lat;
     const lon = e.lon ?? e.center?.lon;
@@ -83,9 +85,12 @@ export const NUCLEAR_SOURCE: SignalSource = {
   color: "#16a34a",
   refreshMs: CACHE_TTL_MS,
   attribution: NUCLEAR_ATTRIBUTION,
+  kind: "asset", // permanent infrastructure → asset-directory focus view, ranked by capacity
   // Real per-plant scalar: net electrical capacity in MW (OSM plant:output:electricity).
   // Calm ≈ 0; extreme ≈ 8000 MW (world's largest stations, e.g. Kashiwazaki-Kariwa).
   metric: { field: "outputMw", domain: [0, 8000], unit: " MW" },
+  // OSM carries no country, so the directory ranks by capacity and shows the operator.
+  directory: { detailKey: "operator", detailLabel: "Operator" },
   async fetch() {
     if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.features;
     try {
