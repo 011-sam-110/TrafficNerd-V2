@@ -11,3 +11,5 @@ import "@/lib/console/widgets/locate";
 import "@/lib/console/widgets/signals";
 // Registers the six passive-OSINT "Tools" recon widgets (dns/whois/certs/bgp/ports/threat).
 import "@/lib/console/widgets/recon";
+// Registers the cross-layer "What's abnormal" anomaly-triage widget.
+import "@/lib/console/widgets/anomaly";
