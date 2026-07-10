@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -30,7 +31,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // Calm LIGHT by default; the shell flips data-theme on the client for the
     // optional dark toggle. Setting it here keeps SSR markup matching first paint.
     <html lang="en" data-theme="light">
-      <body>{children}</body>
+      <body>
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
