@@ -84,6 +84,7 @@ export function normalizeWeather(points: MeteoPoint[], cities: City[] = WORLD_CI
       color: temperatureColor(temp),
       ts: meteoTimeToIso(cur.time),
       props: {
+        tempC: temp,
         temperature: `${temp.toFixed(1)} °C`,
         conditions: label,
         wind: wind != null ? `${wind.toFixed(0)} km/h` : "—",
@@ -102,6 +103,9 @@ export const WEATHER_SOURCE: SignalSource = {
   color: "#0284c7",
   refreshMs: 600_000, // Open-Meteo "current" advances ~every 15 min; 10 min is plenty
   attribution: OPEN_METEO_ATTRIBUTION,
+  // Real per-city scalar: air temperature °C. Domain spans a cold winter reading to a
+  // dangerous heat-wave value so the bar fills meaningfully across the habitable range.
+  metric: { field: "tempC", domain: [-10, 40], unit: " °C" },
   async fetch() {
     try {
       const { latitude, longitude } = cityCoordParams();

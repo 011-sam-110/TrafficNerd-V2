@@ -57,6 +57,7 @@ export function normalizeFoodSecurity(json: { body?: { countries?: HmCountry[] }
         country: ctr.name,
         insufficientFood: people.toLocaleString(),
         prevalence: `${pct}%`,
+        prevalencePct: pct, // real FCS prevalence as a finite number (drives the metric bar)
         ...(typeof c.metrics?.rcsi?.prevalence === "number"
           ? { crisisCoping: `${Math.round(c.metrics.rcsi.prevalence * 100)}%` }
           : {}),
@@ -76,6 +77,9 @@ export const FOOD_SECURITY_SOURCE: SignalSource = {
   color: "#ea580c",
   refreshMs: 6 * 60 * 60 * 1000, // a daily-ish nowcast; 6-hour cache is ample
   attribution: HUNGERMAP_ATTRIBUTION,
+  // Share of the population with insufficient food consumption (FCS). ~5% is an
+  // unremarkable baseline; ≥50% (e.g. Afghanistan) is a full-blown food emergency.
+  metric: { field: "prevalencePct", domain: [5, 50], unit: " %" },
   async fetch() {
     try {
       const res = await fetch(ENDPOINT, {

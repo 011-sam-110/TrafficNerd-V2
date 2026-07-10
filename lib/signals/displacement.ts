@@ -56,6 +56,8 @@ export function normalizeDisplacement(rows: UnRow[]): SignalFeature[] {
       props: {
         country: ctr.name,
         totalDisplaced: total.toLocaleString(),
+        displacedCount: total, // real numeric scalar (people) for the monitor bar
+
         refugees: refugees.toLocaleString(),
         asylumSeekers: asylum.toLocaleString(),
         idps: idps.toLocaleString(),
@@ -76,6 +78,9 @@ export const DISPLACEMENT_SOURCE: SignalSource = {
   color: "#ea580c",
   refreshMs: 24 * 60 * 60 * 1000, // annual statistics; a daily cache is ample
   attribution: UNHCR_ATTRIBUTION,
+  // Real UNHCR scalar: total forced-displaced people this country holds/hosts.
+  // Calm ≈ a country with few displaced; extreme ≈ a multi-million crisis host.
+  metric: { field: "displacedCount", domain: [0, 5_000_000] },
   async fetch() {
     try {
       const year = new Date().getUTCFullYear() - 1; // latest fully-published year

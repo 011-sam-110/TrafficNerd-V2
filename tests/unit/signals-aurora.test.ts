@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import fixture from "@/tests/fixtures/aurora-ovation.json";
-import { normalizeAurora, auroraColor, type OvationGrid } from "@/lib/signals/aurora";
+import { normalizeAurora, auroraColor, AURORA_SOURCE, type OvationGrid } from "@/lib/signals/aurora";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 
 const grid = fixture as unknown as OvationGrid;
 
@@ -33,4 +34,21 @@ test("hard-caps the point count regardless of how active the grid is", () => {
 test("colour ramp brightens with probability", () => {
   expect(auroraColor(55)).toBe("#22c55e");
   expect(auroraColor(95)).toBe("#ecfdf5");
+});
+
+test("exposes a finite numeric probability prop for the metric bar", () => {
+  const out = normalizeAurora(grid);
+  const top = out[0]; // [200, 65, 90]
+  expect(top.props?.probabilityPct).toBe(90);
+  expect(typeof top.props?.probabilityPct).toBe("number");
+  // Display string is preserved alongside the numeric sibling.
+  expect(top.props?.probability).toBe("90%");
+});
+
+test("source metric resolves to the real probability value + domain", () => {
+  expect(AURORA_SOURCE.metric).toEqual({ field: "probabilityPct", domain: [0, 100], unit: "%" });
+  const out = normalizeAurora(grid);
+  const top = out[0]; // 90%
+  const m = rowMetric(top, AURORA_SOURCE.metric);
+  expect(m).toEqual({ value: 90, domain: [0, 100], label: "90%" });
 });

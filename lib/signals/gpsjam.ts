@@ -103,6 +103,7 @@ export function gpsjamCellsToFeatures(cells: GpsjamCell[], h3: H3Lib, day?: stri
       ts: day,
       props: {
         interference: `${pct}%`,
+        interferencePct: pct, // numeric sibling of `interference` → drives the metric bar
         aircraft: c.good + c.bad,
         badReports: c.bad,
         ...(day ? { day } : {}),
@@ -127,6 +128,8 @@ export const GPS_JAMMING_SOURCE: SignalSource = {
   color: "#dc2626",
   refreshMs: CACHE_TTL_MS,
   attribution: GPSJAM_ATTRIBUTION,
+  // Real per-cell scalar: % of sampled aircraft reporting bad GNSS (bad / total).
+  metric: { field: "interferencePct", domain: [0, 100], unit: "%" },
   async fetch() {
     if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.features;
     try {

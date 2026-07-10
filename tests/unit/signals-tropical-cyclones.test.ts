@@ -2,7 +2,12 @@ import { expect, test } from "vitest";
 // Schema-based fixture (no live storm to capture in the quiet season). Field shapes
 // mirror a real NHC CurrentStorms.json active-storm record.
 import fixture from "@/tests/fixtures/nhc-storms.json";
-import { normalizeCyclones, cycloneCategory } from "@/lib/signals/tropical-cyclones";
+import {
+  normalizeCyclones,
+  cycloneCategory,
+  TROPICAL_CYCLONES_SOURCE,
+} from "@/lib/signals/tropical-cyclones";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 
 test("normalizes active storms, skipping records with no usable position", () => {
   const out = normalizeCyclones(fixture as never);
@@ -26,6 +31,27 @@ test("parses string hemisphere coordinates when numeric fields are absent", () =
   expect(dep.lat).toBeCloseTo(18.0);
   expect(dep.lon).toBeCloseTo(135.0); // 135.0E → positive
   expect(dep.props?.category).toBe("tropical depression");
+});
+
+test("exposes max sustained wind as a numeric metric field", () => {
+  const out = normalizeCyclones(fixture as never);
+  const alberto = out.find((f) => f.id === "cyclone:al012026")!;
+
+  // Sibling numeric prop (real scalar), distinct from the "120 kt" display string.
+  expect(alberto.props?.windKt).toBe(120);
+  expect(typeof alberto.props?.windKt).toBe("number");
+
+  // Source declares the metric pointing at that numeric field.
+  expect(TROPICAL_CYCLONES_SOURCE.metric).toEqual({
+    field: "windKt",
+    domain: [34, 160],
+    unit: " kt",
+  });
+
+  // rowMetric resolves it to the real value + domain (not the log-radius proxy).
+  const m = rowMetric(alberto, TROPICAL_CYCLONES_SOURCE.metric);
+  expect(m?.value).toBe(120);
+  expect(m?.domain).toEqual([34, 160]);
 });
 
 test("Saffir–Simpson category mapping by wind/classification", () => {

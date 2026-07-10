@@ -189,6 +189,10 @@ function makeSource(meta: GdeltLayerMeta): SignalSource {
     color: meta.color,
     refreshMs: 20 * 60 * 1000, // GDELT updates every ~15 min; cache matches
     attribution: GDELT_ATTRIBUTION,
+    // Real scalar: `count` = number of matching articles geolocated to this place
+    // in the trailing 24h (stored as the finite `articles` prop). A quiet place is
+    // a handful of mentions; a heavily-covered flashpoint runs to ~100+.
+    metric: { field: "articles", domain: [1, 100], unit: " articles" },
     async fetch() {
       try {
         const features = await fetchGdelt(meta.query);

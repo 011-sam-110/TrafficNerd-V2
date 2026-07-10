@@ -68,6 +68,9 @@ export const CYBER_C2_SOURCE: SignalSource = {
   color: "#dc2626",
   refreshMs: 900_000, // abuse.ch refreshes the blocklist a few times an hour
   attribution: FEODO_ATTRIBUTION,
+  // Real scalar: active C2 servers tracked in that country (not the radius proxy).
+  // Calm ≈ a lone C2; extreme ≈ the ramp's top bucket (a country hosting a swarm).
+  metric: { field: "c2Servers", domain: [1, 20] },
   async fetch() {
     try {
       const res = await fetch(ENDPOINT, {

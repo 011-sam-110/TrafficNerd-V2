@@ -57,6 +57,10 @@ export function normalizeAurora(
       ts: forecast,
       props: {
         probability: `${pct}%`,
+        // Sibling numeric scalar (the display string above is "NN%"): the real
+        // OVATION aurora-visibility probability, so the generic monitor can rank
+        // + bar it instead of the log-radius proxy.
+        probabilityPct: pct,
         forecastFor: forecast ?? "—",
       },
     });
@@ -71,6 +75,9 @@ export const AURORA_SOURCE: SignalSource = {
   color: "#22c55e",
   refreshMs: 5 * 60 * 1000, // SWPC publishes a new grid every few minutes
   attribution: AURORA_ATTRIBUTION,
+  // Real OVATION visibility probability (0–100%); rendered cells are ≥50%, so the
+  // bar fills across the meaningful half — 100% is a near-certain-aurora extreme.
+  metric: { field: "probabilityPct", domain: [0, 100], unit: "%" },
   async fetch() {
     try {
       const res = await fetch(ENDPOINT, {

@@ -1,7 +1,8 @@
 import { expect, test } from "vitest";
 // Live-captured NOAA SWPC Kp series + current storm-scale block.
 import fixture from "@/tests/fixtures/space-weather.json";
-import { normalizeSpaceWeather, gScaleColor } from "@/lib/signals/space-weather";
+import { normalizeSpaceWeather, gScaleColor, SPACE_WEATHER_SOURCE } from "@/lib/signals/space-weather";
+import { rowMetric } from "@/lib/console/signals/signalCard";
 
 test("emits a single status pin from the latest Kp + current scales", () => {
   const out = normalizeSpaceWeather(fixture as never);
@@ -16,6 +17,15 @@ test("emits a single status pin from the latest Kp + current scales", () => {
   expect(f.color).toBe(gScaleColor(0)); // G0 → green
   // Anchored near the north geomagnetic pole.
   expect(f.lat).toBeGreaterThan(75);
+});
+
+test("source metric resolves the real Kp index over the 0–9 domain", () => {
+  const f = normalizeSpaceWeather(fixture as never)[0];
+  // The declared metric must name the real Kp scalar, not the radius proxy.
+  expect(SPACE_WEATHER_SOURCE.metric).toEqual({ field: "kp", domain: [0, 9] });
+  expect(typeof f.props?.kp).toBe("number");
+  const m = rowMetric(f, SPACE_WEATHER_SOURCE.metric);
+  expect(m).toEqual({ value: 2, domain: [0, 9], label: "2" });
 });
 
 test("empty Kp series yields no feature; G-scale colours escalate", () => {

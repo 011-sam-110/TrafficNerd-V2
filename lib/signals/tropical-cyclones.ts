@@ -91,6 +91,8 @@ export function normalizeCyclones(json: { activeStorms?: NhcStorm[] }): SignalFe
         storm: name,
         category: cat.label,
         maxWind: wind > 0 ? `${wind} kt` : "—",
+        // Real scalar behind the metric bar: max sustained wind in knots.
+        windKt: wind,
         pressure: Number.isFinite(pressure) ? `${pressure} mb` : "—",
         movement:
           Number.isFinite(dir) && Number.isFinite(spd) ? `${dir}° at ${spd} kt` : "—",
@@ -110,6 +112,9 @@ export const TROPICAL_CYCLONES_SOURCE: SignalSource = {
   color: "#dc2626",
   refreshMs: 30 * 60 * 1000,
   attribution: NHC_ATTRIBUTION,
+  // Max sustained wind (kt): calm ≈ tropical-storm threshold (34 kt),
+  // extreme ≈ a strong Cat 5 (≥160 kt).
+  metric: { field: "windKt", domain: [34, 160], unit: " kt" },
   async fetch() {
     try {
       const res = await fetch(ENDPOINT, {
