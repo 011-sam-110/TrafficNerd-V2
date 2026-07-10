@@ -35,11 +35,12 @@ test("Air·Sea·Space board → planes+satellites core layers ON plus its signal
   expect(onSignals).toEqual(["ais", "aurora", "cables", "launches", "ports"]);
 });
 
-test("list-only widgets (events/markets/headlines) imply no map layer", () => {
-  // World Overview mixes a cameras widget + list widgets: only cameras should light up.
+test("list-only widgets (events/markets/headlines/locate) imply no map layer", () => {
+  // World Overview mixes a cameras widget + signal cards + list/utility widgets: only
+  // the cameras core layer + the two signal layers (instability, gdacs) should light up.
   const { onCore, onSignals } = onLayers(buildById("overview"));
   expect(onCore).toEqual(["cameras"]);
-  expect(onSignals).toEqual(["instability"]);
+  expect(onSignals).toEqual(["gdacs", "instability"]);
 
   // A board of pure list widgets lights up nothing.
   let l = createDefaultLayout();
