@@ -11,6 +11,16 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export const AIRPORTS_ATTRIBUTION = "Airport data © OurAirports (public domain)";
 
+/** OurAirports `continent` code → readable region. Empty string when unknown, so
+ *  the directory view simply omits the region rather than inventing one. */
+export function continentName(code: string | undefined): string {
+  const M: Record<string, string> = {
+    AF: "Africa", AN: "Antarctica", AS: "Asia", EU: "Europe",
+    NA: "North America", OC: "Oceania", SA: "South America",
+  };
+  return M[(code ?? "").trim().toUpperCase()] ?? "";
+}
+
 /** Minimal RFC-4180-ish CSV parser: handles quoted fields, "" escapes, CRLF. */
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -67,6 +77,7 @@ export function parseAirportsCsv(text: string): SignalFeature[] {
   const iIata = col("iata_code");
   const iMuni = col("municipality");
   const iIdent = col("ident");
+  const iCont = col("continent");
   if (iType < 0 || iLat < 0 || iLon < 0) return [];
   const out: SignalFeature[] = [];
   for (let r = 1; r < rows.length; r++) {
@@ -81,6 +92,7 @@ export function parseAirportsCsv(text: string): SignalFeature[] {
     const iata = (row[iIata] ?? "").trim();
     const country = (row[iIso] ?? "").trim();
     const city = (row[iMuni] ?? "").trim();
+    const region = iCont >= 0 ? continentName(row[iCont]) : "";
     out.push({
       id: `airport:${ident}`,
       lat,
@@ -92,6 +104,7 @@ export function parseAirportsCsv(text: string): SignalFeature[] {
         type: "Major airport",
         ...(iata ? { iata } : {}),
         ...(country ? { country } : {}),
+        ...(region ? { region } : {}),
         ...(city ? { city } : {}),
       },
     });
@@ -108,6 +121,9 @@ export const AIRPORTS_SOURCE: SignalSource = {
   color: "#2563eb",
   refreshMs: CACHE_TTL_MS,
   attribution: AIRPORTS_ATTRIBUTION,
+  kind: "asset", // permanent infrastructure → asset-directory focus view (no magnitude)
+  // No throughput scalar, so the directory browses by IATA + country + continent.
+  directory: { codeKey: "iata", codeLabel: "IATA", detailKey: "city", detailLabel: "City" },
   async fetch() {
     if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.features;
     try {

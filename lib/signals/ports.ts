@@ -16,12 +16,32 @@ function slug(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-/** Pure: curated port records → SignalFeature[]. */
+/** Coarse trade region for a port's ISO-3166-1 alpha-2 country — the asset-directory
+ *  breakdown groups by this. Pure + unit-tested; covers every country in the dataset. */
+export function portRegion(country: string | undefined): string {
+  const R: Record<string, string> = {
+    CN: "East Asia", HK: "East Asia", TW: "East Asia", KR: "East Asia", JP: "East Asia",
+    SG: "SE Asia", MY: "SE Asia", TH: "SE Asia", PH: "SE Asia", VN: "SE Asia", ID: "SE Asia",
+    IN: "South Asia", LK: "South Asia", BD: "South Asia", PK: "South Asia",
+    AE: "Middle East", SA: "Middle East", OM: "Middle East", QA: "Middle East", TR: "Middle East", KW: "Middle East",
+    NL: "Europe", BE: "Europe", DE: "Europe", ES: "Europe", GR: "Europe", GB: "Europe", IT: "Europe", FR: "Europe", PL: "Europe", SE: "Europe", PT: "Europe",
+    US: "North America", CA: "North America",
+    MX: "Latin America", BR: "Latin America", CO: "Latin America", AR: "Latin America", PE: "Latin America", PA: "Latin America", CL: "Latin America", EC: "Latin America",
+    ZA: "Africa", EG: "Africa", MA: "Africa", NG: "Africa", KE: "Africa", DJ: "Africa", TZ: "Africa",
+    AU: "Oceania", NZ: "Oceania", PG: "Oceania",
+  };
+  return R[(country ?? "").toUpperCase()] ?? "Other";
+}
+
+/** Pure: curated port records → SignalFeature[]. The list is ordered by 2023 container
+ *  throughput, so the array position IS the published rank — carried as `rank` (1-based)
+ *  for the leaderboard, alongside the derived trade `region`. No throughput number is
+ *  invented (the source publishes it, but it is not in this file). */
 export function normalizePorts(records: PortRecord[]): SignalFeature[] {
   const out: SignalFeature[] = [];
-  for (const p of records) {
-    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) continue;
-    if (p.lat < -90 || p.lat > 90 || p.lon < -180 || p.lon > 180) continue;
+  records.forEach((p, i) => {
+    if (!Number.isFinite(p.lat) || !Number.isFinite(p.lon)) return;
+    if (p.lat < -90 || p.lat > 90 || p.lon < -180 || p.lon > 180) return;
     out.push({
       id: `port:${slug(p.name)}`,
       lat: p.lat,
@@ -31,10 +51,11 @@ export function normalizePorts(records: PortRecord[]): SignalFeature[] {
       color: "#0891b2",
       props: {
         type: "Major seaport",
-        ...(p.country ? { country: p.country } : {}),
+        rank: i + 1,
+        ...(p.country ? { country: p.country, region: portRegion(p.country) } : {}),
       },
     });
-  }
+  });
   return out;
 }
 
@@ -42,6 +63,7 @@ export const PORTS_SOURCE: SignalSource = {
   id: "ports",
   label: "Major ports",
   group: "Infrastructure",
+  kind: "asset", // permanent infrastructure → the asset-directory focus view, not the event template
   color: "#0891b2",
   refreshMs: 24 * 60 * 60 * 1000, // static data — long cadence
   attribution: PORTS_ATTRIBUTION,

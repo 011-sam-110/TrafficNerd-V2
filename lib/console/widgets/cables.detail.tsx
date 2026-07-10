@@ -32,6 +32,7 @@ import {
   type CableSortKey,
   type CableAsset,
 } from "@/lib/console/signals/cableDetail";
+import { makeDirectoryDetail } from "./directory.detail";
 
 const selStyle: React.CSSProperties = {
   background: "var(--tn-surface-2)",
@@ -293,7 +294,11 @@ function makeLandingDetail(source: SignalSource) {
   return LandingDetailView;
 }
 
-/** Dispatch the right asset template for a `kind: "asset"` source. */
+/** Dispatch the right asset template for a `kind: "asset"` source. Cables/landings
+ *  have a bespoke technical schema; browsable/ranked infrastructure (ports, and
+ *  next airports/nuclear) uses the generic ranked asset directory. */
 export function makeAssetDetail(source: SignalSource) {
-  return source.id === "cable-landings" ? makeLandingDetail(source) : makeCableDetail(source);
+  if (source.id === "cable-landings") return makeLandingDetail(source);
+  if (source.id === "cables") return makeCableDetail(source);
+  return makeDirectoryDetail(source);
 }
