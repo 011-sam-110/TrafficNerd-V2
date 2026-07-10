@@ -1454,6 +1454,10 @@ function SignalFeed({
               attribution: source.attribution,
               sourceLabel: source.label,
               link: f.link,
+              // Provider dataset/home URL for the dossier's mandatory clickable
+              // source (used when a feature carries no deep record link). Optional
+              // on the adapter; SignalDetail falls back to the keyed provider table.
+              sourceUrl: source.sourceUrl,
               // ISO timestamp (when known) — the global time-window filter reads
               // this; untimed features have no ts and are always shown.
               ts: f.ts,

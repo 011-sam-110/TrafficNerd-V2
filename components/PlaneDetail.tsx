@@ -355,18 +355,50 @@ export default function PlaneDetail({ object }: Props) {
         </div>
       )}
 
-      {/* ── Attribution ── */}
-      <div
-        style={{
-          marginTop: 14,
-          fontSize: 11,
-          color: "var(--tn-text-faint)",
-          borderTop: "1px solid var(--tn-border)",
-          paddingTop: 8,
-        }}
-      >
-        Live data from adsb.lol{route || aircraft ? " · enrichment from adsbdb.com" : ""}
+      {/* ── Source (clickable upstream) ── */}
+      <div style={{ marginTop: 14, borderTop: "1px solid var(--tn-border)", paddingTop: 10 }}>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--tn-accent)",
+            marginBottom: 6,
+          }}
+        >
+          Source
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <a
+            href={hex && hex !== "unknown" ? `https://globe.adsb.lol/?icao=${encodeURIComponent(hex)}` : "https://adsb.lol/"}
+            target="_blank"
+            rel="noreferrer noopener"
+            style={sourceLinkStyle}
+          >
+            {hex && hex !== "unknown" ? "Track on adsb.lol" : "adsb.lol"} ↗
+          </a>
+          {(route || aircraft) && (
+            <a href="https://www.adsbdb.com/" target="_blank" rel="noreferrer noopener" style={sourceLinkStyle}>
+              adsbdb ↗
+            </a>
+          )}
+        </div>
+        <div style={{ marginTop: 8, fontSize: 11, color: "var(--tn-text-faint)", lineHeight: 1.5 }}>
+          Live ADS-B position © adsb.lol{route || aircraft ? " · route / airframe © adsbdb.com" : ""}
+        </div>
       </div>
     </div>
   );
 }
+
+const sourceLinkStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 600,
+  color: "var(--tn-accent-strong)",
+  textDecoration: "none",
+  border: "1px solid var(--tn-border)",
+  borderRadius: 999,
+  padding: "3px 10px",
+  whiteSpace: "nowrap",
+};

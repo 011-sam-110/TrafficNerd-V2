@@ -128,6 +128,8 @@ export const GPS_JAMMING_SOURCE: SignalSource = {
   color: "#dc2626",
   refreshMs: CACHE_TTL_MS,
   attribution: GPSJAM_ATTRIBUTION,
+  sourceUrl: "https://gpsjam.org/", // interference map (dossier source)
+
   // Real per-cell scalar: % of sampled aircraft reporting bad GNSS (bad / total).
   metric: { field: "interferencePct", domain: [0, 100], unit: "%" },
   async fetch() {

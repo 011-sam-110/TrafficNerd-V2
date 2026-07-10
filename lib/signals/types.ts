@@ -153,6 +153,13 @@ export interface SignalSource {
   refreshMs: number;
   /** Mandatory upstream credit, shown in the rail and the dossier. */
   attribution: string;
+  /**
+   * Optional provider dataset / home page for the dossier's mandatory clickable
+   * source, used when a feature carries no deep record `link`. Keyless + honest.
+   * When omitted, SignalDetail resolves it from the keyed table in
+   * lib/signals/sourceLink.ts (which a unit test proves covers every layer).
+   */
+  sourceUrl?: string;
   /** Optional: the scalar → magnitude bar in the monitor row. Omit for a plain dot. */
   metric?: SignalMetric;
   /** Optional: presentation hints for the asset-directory focus view (kind:"asset"). */

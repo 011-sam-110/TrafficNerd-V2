@@ -78,6 +78,8 @@ export const DISPLACEMENT_SOURCE: SignalSource = {
   color: "#ea580c",
   refreshMs: 24 * 60 * 60 * 1000, // annual statistics; a daily cache is ample
   attribution: UNHCR_ATTRIBUTION,
+  sourceUrl: "https://www.unhcr.org/refugee-statistics/", // UNHCR Refugee Data Finder (dossier source)
+
   // Real UNHCR scalar: total forced-displaced people this country holds/hosts.
   // Calm ≈ a country with few displaced; extreme ≈ a multi-million crisis host.
   metric: { field: "displacedCount", domain: [0, 5_000_000] },
