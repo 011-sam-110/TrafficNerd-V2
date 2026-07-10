@@ -40,40 +40,35 @@ function compose(stage: ShellLayout["stage"], specs: { type: string; segment: Se
 export const BUILTIN_PRESETS: ConsolePreset[] = [
   // ── World Overview — the calm landing board (a bit of everything) ────────
   { id: "overview", title: "World Overview", icon: "🌐", blurb: "a bit of everything", build: () => compose("map2d", [
-      { type: "signal:instability", segment: "left" }, { type: "events", segment: "left" },
-      { type: "cameras", segment: "right" }, { type: "markets", segment: "right" },
+      { type: "signal:instability", segment: "left" }, { type: "events", segment: "left" }, { type: "signal:gdacs", segment: "left" },
+      { type: "cameras", segment: "right" }, { type: "markets", segment: "right" }, { type: "locate", segment: "right" },
       { type: "headlines", segment: "bottom" },
   ]) },
 
   // ── Situation Room — conflict, intel & the human cost ───────────────────
   { id: "situation", title: "Situation Room", icon: "🎯", blurb: "conflict & intel", build: () => compose("map2d", [
-      { type: "signal:instability", segment: "left" }, { type: "signal:conflict", segment: "left" },
-      { type: "signal:acled", segment: "right" }, { type: "signal:protests", segment: "right" },
-      { type: "signal:military-air", segment: "bottom" }, { type: "signal:displacement", segment: "bottom" },
+      { type: "signal:instability", segment: "left" }, { type: "signal:conflict", segment: "left" }, { type: "signal:military-air", segment: "left" },
+      { type: "signal:acled", segment: "right" }, { type: "signal:protests", segment: "right" }, { type: "signal:displacement", segment: "right" },
       { type: "news", segment: "bottom" },
   ]) },
 
   // ── Earth Systems — hazards, weather & climate ──────────────────────────
   { id: "earth", title: "Earth Systems", icon: "🌍", blurb: "hazards & climate", build: () => compose("map2d", [
-      { type: "signal:gdacs", segment: "left" }, { type: "signal:earthquakes", segment: "left" },
-      { type: "signal:wildfires", segment: "right" }, { type: "signal:floods", segment: "right" },
-      { type: "signal:tropical-cyclones", segment: "bottom" }, { type: "signal:weather", segment: "bottom" },
-      { type: "signal:airquality", segment: "bottom" },
+      { type: "signal:gdacs", segment: "left" }, { type: "signal:earthquakes", segment: "left" }, { type: "signal:weather", segment: "left" },
+      { type: "signal:wildfires", segment: "right" }, { type: "signal:floods", segment: "right" }, { type: "signal:airquality", segment: "right" },
+      { type: "signal:tropical-cyclones", segment: "bottom" },
   ]) },
 
   // ── Air · Sea · Space — mobility & orbital (globe stage) ────────────────
   { id: "mobility", title: "Air · Sea · Space", icon: "🛰", blurb: "mobility & orbital", build: () => compose("map3d", [
-      { type: "aviation", segment: "left" }, { type: "satellites", segment: "left" },
-      { type: "signal:ais", segment: "right" }, { type: "signal:ports", segment: "right" },
-      { type: "signal:launches", segment: "bottom" }, { type: "signal:aurora", segment: "bottom" },
-      { type: "signal:cables", segment: "bottom" },
+      { type: "aviation", segment: "left" }, { type: "satellites", segment: "left" }, { type: "signal:launches", segment: "left" }, { type: "signal:cables", segment: "left" },
+      { type: "signal:ais", segment: "right" }, { type: "signal:ports", segment: "right" }, { type: "signal:aurora", segment: "right" },
   ]) },
 
   // ── Markets & Cyber — economy & security ────────────────────────────────
   { id: "markets", title: "Markets & Cyber", icon: "📈", blurb: "economy & security", build: () => compose("map2d", [
-      { type: "markets", segment: "left" }, { type: "headlines", segment: "left" },
-      { type: "signal:cyber-c2", segment: "right" }, { type: "signal:cyber-ransomware", segment: "right" },
-      { type: "signal:internet-outages", segment: "bottom" }, { type: "signal:grid-load", segment: "bottom" },
+      { type: "markets", segment: "left" }, { type: "headlines", segment: "left" }, { type: "signal:internet-outages", segment: "left" },
+      { type: "signal:cyber-c2", segment: "right" }, { type: "signal:cyber-ransomware", segment: "right" }, { type: "signal:grid-load", segment: "right" },
   ]) },
 ];
 

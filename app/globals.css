@@ -1895,6 +1895,21 @@ a { color: var(--tn-accent); }
 .tn-settings-share { font: inherit; font-size: 13px; font-weight: 600; color: #fff; background: var(--tn-accent); border: 0; border-radius: 10px; padding: 11px 14px; cursor: pointer; }
 .tn-settings-share:hover { background: var(--tn-accent-strong); }
 .tn-settings-share.is-copied { background: var(--tn-live); }
+.tn-settings-hint code { font-family: var(--tn-mono); font-size: 11px; background: var(--tn-chip-bg); padding: 1px 4px; border-radius: 4px; word-break: break-all; }
+.tn-settings-hint a { color: var(--tn-accent); font-weight: 600; }
+.tn-settings-field { display: flex; flex-direction: column; gap: 4px; }
+.tn-settings-field-label { font-size: 11px; font-weight: 600; color: var(--tn-text-muted); }
+.tn-settings-input { font: inherit; font-size: 13px; color: var(--tn-text); background: var(--tn-surface-2); border: 1px solid var(--tn-border); border-radius: 8px; padding: 8px 10px; width: 100%; }
+.tn-settings-input:focus { outline: none; border-color: var(--tn-accent); }
+.tn-settings-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--tn-text); cursor: pointer; }
+.tn-settings-toggle input { width: 16px; height: 16px; accent-color: var(--tn-accent); cursor: pointer; }
+.tn-settings-toggle input:disabled { cursor: not-allowed; }
+.tn-settings-tg-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.tn-settings-tg-test { font: inherit; font-size: 12.5px; font-weight: 600; color: var(--tn-text); background: var(--tn-chip-bg); border: 1px solid var(--tn-border); border-radius: 9px; padding: 8px 12px; cursor: pointer; }
+.tn-settings-tg-test:hover:not(:disabled) { border-color: var(--tn-border-strong); }
+.tn-settings-tg-test:disabled { opacity: .5; cursor: not-allowed; }
+.tn-settings-tg-ok { font-size: 12px; font-weight: 600; color: var(--tn-live); }
+.tn-settings-tg-err { font-size: 12px; color: var(--tn-down); }
 
 /* ── Floated map-view controls (top-right of the centre stage) ────────────── */
 .tn-map-controls { position: absolute; top: 10px; right: 10px; z-index: 5; display: flex; align-items: center; gap: 8px; }

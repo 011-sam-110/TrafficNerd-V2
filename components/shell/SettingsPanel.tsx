@@ -14,6 +14,7 @@ import { encodeLayout } from "@/lib/console/share";
 import { shellLayoutStore } from "@/lib/console/store";
 import { BUILTIN_PRESETS, applyPreset } from "@/lib/console/presets";
 import { useActivePreset } from "@/lib/console/activePreset";
+import { useTelegram, telegramStore, sendTelegram, isTelegramConfigured } from "@/lib/shell/telegram";
 
 /** A shareable URL that carries BOTH the map view state and the widget layout (?c=). */
 async function copyLayoutLink(): Promise<boolean> {
@@ -37,7 +38,9 @@ export default function SettingsPanel({ open, onClose }: { open: boolean; onClos
   const ui = useUI();
   const lang = useLang();
   const activeId = useActivePreset();
+  const tg = useTelegram();
   const [copied, setCopied] = useState(false);
+  const [tgStatus, setTgStatus] = useState<{ kind: "idle" | "sending" | "ok" | "err"; msg?: string }>({ kind: "idle" });
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -57,6 +60,12 @@ export default function SettingsPanel({ open, onClose }: { open: boolean; onClos
     setCopied(true);
     if (copyTimer.current) clearTimeout(copyTimer.current);
     copyTimer.current = setTimeout(() => setCopied(false), 1800);
+  };
+
+  const onSendTest = async () => {
+    setTgStatus({ kind: "sending" });
+    const res = await sendTelegram("✅ Test alert from OpenData — your Telegram channel is working.");
+    setTgStatus(res.ok ? { kind: "ok" } : { kind: "err", msg: res.error ?? "Failed" });
   };
 
   return (
@@ -123,6 +132,42 @@ export default function SettingsPanel({ open, onClose }: { open: boolean; onClos
             <button type="button" className={`tn-settings-share${copied ? " is-copied" : ""}`} onClick={onShare}>
               {copied ? "✓ Link copied" : "Share this layout"}
             </button>
+          </section>
+
+          {/* Telegram alerts ------------------------------------------------- */}
+          <section className="tn-settings-sec">
+            <h3 className="tn-settings-sec-title">Telegram alerts</h3>
+            <p className="tn-settings-hint">
+              Optional. Relay your armed Disasters &amp; Events alerts to a Telegram chat. Message
+              <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer"> @BotFather</a> to make a bot and get its
+              token, then message your bot and open
+              <code> api.telegram.org/bot&lt;token&gt;/getUpdates</code> to find your chat id.
+            </p>
+            <label className="tn-settings-field">
+              <span className="tn-settings-field-label">Bot token</span>
+              <input className="tn-settings-input" type="password" autoComplete="off" spellCheck={false}
+                placeholder="123456789:AA…" value={tg.botToken}
+                onChange={(e) => telegramStore.setToken(e.target.value)} />
+            </label>
+            <label className="tn-settings-field">
+              <span className="tn-settings-field-label">Chat id</span>
+              <input className="tn-settings-input" type="text" autoComplete="off" spellCheck={false}
+                placeholder="-1001234567890 or @channel" value={tg.chatId}
+                onChange={(e) => telegramStore.setChatId(e.target.value)} />
+            </label>
+            <label className="tn-settings-toggle">
+              <input type="checkbox" checked={tg.enabled} disabled={!isTelegramConfigured(tg)}
+                onChange={(e) => telegramStore.setEnabled(e.target.checked)} />
+              <span>Send alerts to Telegram</span>
+            </label>
+            <div className="tn-settings-tg-actions">
+              <button type="button" className="tn-settings-tg-test" disabled={!isTelegramConfigured(tg) || tgStatus.kind === "sending"}
+                onClick={onSendTest}>
+                {tgStatus.kind === "sending" ? "Sending…" : "Send test message"}
+              </button>
+              {tgStatus.kind === "ok" && <span className="tn-settings-tg-ok">✓ Sent</span>}
+              {tgStatus.kind === "err" && <span className="tn-settings-tg-err">{tgStatus.msg ?? "Failed"}</span>}
+            </div>
           </section>
         </div>
       </aside>
