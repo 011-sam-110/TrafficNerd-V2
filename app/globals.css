@@ -315,9 +315,17 @@ a { color: var(--tn-accent); }
   letter-spacing: 0.09em; color: var(--tn-text-muted); pointer-events: none;
 }
 .tn-palette-col > .tn-palette-group:first-child { padding-top: 4px; }
-.tn-palette-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; padding: 9px 11px; border-radius: 9px; cursor: pointer; font-size: 13.5px; color: var(--tn-text); }
+.tn-palette-item { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 9px 11px; border-radius: 9px; cursor: pointer; font-size: 13.5px; color: var(--tn-text); }
 .tn-palette-item.is-active { background: var(--tn-accent-soft); color: var(--tn-accent-strong); }
-.tn-palette-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Active-state affordances: a fixed-width leading check keeps labels aligned whether
+   or not a row is a current choice; .is-on marks the selected/toggled-on row; the
+   state pill shows ON/OFF (layers) or the live theme. .is-active (keyboard cursor)
+   and .is-on can both apply at once. */
+.tn-palette-check { flex: none; width: 12px; text-align: center; font-size: 11px; color: var(--tn-accent-strong); }
+.tn-palette-item.is-on .tn-palette-label { font-weight: 600; }
+.tn-palette-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tn-palette-state { flex: none; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 1px 6px; border-radius: 999px; background: var(--tn-chip-bg); color: var(--tn-text-faint); }
+.tn-palette-state.on { background: var(--tn-accent-soft); color: var(--tn-accent-strong); }
 .tn-palette-hint { flex: none; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--tn-text-faint); white-space: nowrap; }
 .tn-palette-empty { padding: 16px; text-align: center; color: var(--tn-text-faint); font-size: 13px; }
 .tn-palette-foot { display: flex; gap: 14px; padding: 8px 14px; border-top: 1px solid var(--tn-border); color: var(--tn-text-faint); font-size: 11px; }
