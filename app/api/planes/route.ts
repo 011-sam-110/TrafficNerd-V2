@@ -1,12 +1,12 @@
-import { fetchAircraft } from "@/lib/sources/adsb";
+import { fetchAircraft } from "@/lib/sources/opensky";
 
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/planes — live aircraft (keyless, from adsb.lol) across a coarse global
- * grid as classified WorldObjects. fetchAircraft serves a shared, stored snapshot
- * (Next Data Cache) and handles failure (empty), so this route never throws and
- * users never trigger their own upstream pull.
+ * GET /api/planes — live aircraft worldwide (keyless, from OpenSky's global
+ * `/states/all` snapshot) as classified WorldObjects. fetchAircraft serves a shared,
+ * stored snapshot (Next Data Cache) and handles failure (last-good / empty), so this
+ * route never throws and users never trigger their own upstream pull.
  *
  * Response: { count: number, planes: WorldObject[] }
  */

@@ -14,15 +14,16 @@ import AviationDetail from "./aviation.detail";
  * Field-mapping notes (real usePlanes() shape vs brief's assumed fields):
  * - usePlanes() returns PlanesLayer { objects: WorldObject[], trails: PlaneTrail[] }
  *   → we use .objects (not the top-level array the brief assumed).
- * - WorldObject.label  → callsign (adsb.ts sets label = a.callsign ?? a.hex)
+ * - WorldObject.label  → callsign (opensky.ts sets label = callsign ?? icao24)
  * - WorldObject.altKm  → altitude in km (NOT feet; brief used p.altitude)
  * - WorldObject.typeLabel → human type ("Airliner", "Regional / jet", etc.)
- * - squawk            — parseAdsb() now captures the raw ADS-B `squawk` code and
- *   aircraftToWorldObject() carries it on meta.squawk, so the emergency-squawk
+ * - squawk            — opensky.ts parseStates() captures the raw squawk code and
+ *   planeToWorldObject() carries it on meta.squawk, so the emergency-squawk
  *   alerts are LIVE: a plane squawking 7500/7600/7700 raises a critical alert.
- * - NO isMilitary     — classifyPlane() has no military category; the ADS-B A6
- *   "heavy military" code exists but is not mapped. isMilitary is always undefined.
- * - NO origin/destination — not present in the WorldObject/Aircraft schema.
+ * - NO isMilitary     — classifyPlane() has no military category; military traffic
+ *   comes from the separate military-air signal layer, not this civil feed.
+ * - NO origin/destination — not present in the WorldObject schema (the dossier
+ *   enriches those on demand from /api/flight by callsign+hex).
  */
 function AviationBody({ config }: WidgetBodyProps) {
   const layer = usePlanes();
