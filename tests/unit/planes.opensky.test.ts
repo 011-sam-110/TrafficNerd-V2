@@ -4,7 +4,8 @@
  */
 
 import { expect, test, describe } from "vitest";
-import { parseStates, planeToWorldObject } from "@/lib/sources/opensky";
+import { parseStates, planeToWorldObject, capPlanes } from "@/lib/sources/opensky";
+import type { WorldObject } from "@/lib/world";
 
 // ---------------------------------------------------------------------------
 // Fixture
@@ -240,5 +241,64 @@ describe("planeToWorldObject", () => {
   test("meta.onGround is true for the ground vector", () => {
     const { meta } = planeToWorldObject(onGround);
     expect((meta as Record<string, unknown>).onGround).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// squawk — index 14, drives the emergency-squawk (7500/7600/7700) alerts.
+// The regional adapter dropped it; the global one MUST carry it through.
+// ---------------------------------------------------------------------------
+
+describe("squawk", () => {
+  test("parseStates captures the squawk code when present", () => {
+    const [p] = parseStates([VECTOR_CRUISER]);
+    expect(p.squawk).toBe("1234");
+  });
+
+  test("parseStates yields empty string when squawk is null", () => {
+    const [p] = parseStates([VECTOR_ON_GROUND]);
+    expect(p.squawk).toBe("");
+  });
+
+  test("planeToWorldObject carries squawk on meta (emergency-squawk alerts read this)", () => {
+    const [p] = parseStates([VECTOR_CRUISER]);
+    const { meta } = planeToWorldObject(p);
+    expect((meta as Record<string, unknown>).squawk).toBe("1234");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// capPlanes — bounds the served set (payload + Data Cache 2 MB limit), keeping
+// airborne aircraft ahead of ground ones. A global snapshot is ~10k aircraft,
+// so this cap is load-bearing.
+// ---------------------------------------------------------------------------
+
+describe("capPlanes", () => {
+  const mk = (id: string, onGround: boolean): WorldObject => ({
+    kind: "plane",
+    id,
+    lat: 0,
+    lon: 0,
+    altKm: 0,
+    heading: 0,
+    label: id,
+    color: "#000",
+    icon: "plane-airliner",
+    typeLabel: "Airliner",
+    meta: { onGround },
+  });
+
+  test("returns the input unchanged when under the cap", () => {
+    const objs = [mk("a", false), mk("b", true)];
+    expect(capPlanes(objs, 5)).toHaveLength(2);
+  });
+
+  test("caps to the limit, preferring airborne over ground", () => {
+    const objs = [mk("g1", true), mk("a1", false), mk("g2", true), mk("a2", false)];
+    const capped = capPlanes(objs, 2);
+    expect(capped).toHaveLength(2);
+    expect(
+      capped.every((o) => (o.meta as { onGround?: boolean }).onGround === false),
+    ).toBe(true);
   });
 });
