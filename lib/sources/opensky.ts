@@ -1,6 +1,27 @@
 /**
- * OpenSky Network — live aircraft state vectors.
- * Anonymous access: heavily rate-limited (few req/min). Cache 12 s server-side.
+ * OpenSky Network — live aircraft worldwide, from ONE global snapshot.
+ *
+ * WHY GLOBAL, NOT A SWEEP: adsb.lol/adsb.fi are point+radius only (max 250 nm, no
+ * global query), so worldwide coverage there means sweeping ~50 cells and stitching
+ * them together in server state. On Vercel serverless that state is per-instance and
+ * never accumulates across the cold, independent lambdas that handle each cache
+ * revalidation — so the stitched union collapses to whichever handful of (rate-limit-
+ * surviving, North-America-first) cells landed last. OpenSky's `/states/all` returns
+ * EVERY tracked aircraft on Earth in a single request, so coverage is worldwide by
+ * construction — no grid, no rolling store, no rate-limit-order bias.
+ *
+ * TRADE-OFF: OpenSky's anonymous tier is credit-capped (~400 credits/day, a global
+ * call costs ~4), so we DON'T poll it per-visitor. The fetch is wrapped in Next's
+ * Data Cache (`unstable_cache`, revalidate = REVALIDATE_S) so upstream is hit at most
+ * once per window for the ENTIRE deployment (stale-while-revalidate) and REVALIDATE_S
+ * is set so a fully-saturated day still stays under the daily cap. On any failure
+ * (429 / 5xx / null states / timeout) we serve the last-good snapshot — and because
+ * that snapshot is GLOBAL, even a stale serve is still worldwide, never regional.
+ *
+ * OpenSky omits type-code + registration (unlike adsb.lol); the dossier fetches those
+ * on demand from /api/flight by callsign+hex, both of which OpenSky provides. squawk
+ * IS present (index 14), so the emergency-squawk (7500/7600/7700) alerts stay live.
+ *
  * Docs: https://openskynetwork.github.io/opensky-api/rest.html#all-state-vectors
  */
 
@@ -11,13 +32,6 @@ import { PLANE_META } from "@/lib/icons/svg";
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
-
-export interface OpenSkyBbox {
-  south: number;
-  west: number;
-  north: number;
-  east: number;
-}
 
 export interface Plane {
   icao24: string;
@@ -30,20 +44,8 @@ export interface Plane {
   verticalRateMs: number | null; // m/s climb (+) / descent (−); null when unknown
   onGround: boolean;
   country: string;            // origin_country string (not ISO code)
+  squawk: string;             // transponder code; "" when unknown. Drives emergency alerts.
 }
-
-// ---------------------------------------------------------------------------
-// Default bbox: UK + Ireland
-// ---------------------------------------------------------------------------
-
-export const DEFAULT_BBOX: OpenSkyBbox = {
-  south: 49.5,
-  west: -11,
-  north: 61,
-  east: 2,
-};
-
-const CACHE_TTL_MS = 12_000;
 
 // ---------------------------------------------------------------------------
 // State-vector index helpers (avoids magic numbers throughout the parser)
@@ -64,7 +66,7 @@ const IDX = {
   vertical_rate: 11,
   // sensors: 12,
   geo_altitude: 13,
-  // squawk: 14,
+  squawk: 14,
   // spi: 15,
   // position_source: 16,
 } as const;
@@ -118,6 +120,7 @@ export function parseStates(states: unknown[][]): Plane[] {
       verticalRateMs: asNum(s[IDX.vertical_rate]),
       onGround: asBool(s[IDX.on_ground]),
       country: asStr(s[IDX.country]),
+      squawk: asStr(s[IDX.squawk]).trim(),
     });
   }
 
@@ -125,7 +128,7 @@ export function parseStates(states: unknown[][]): Plane[] {
 }
 
 // ---------------------------------------------------------------------------
-// WorldObject mapper — exported for unit testing + consumed by usePlanes hook
+// WorldObject mapper — exported for unit testing + consumed by the planes route
 // ---------------------------------------------------------------------------
 
 /**
@@ -157,87 +160,92 @@ export function planeToWorldObject(p: Plane): WorldObject {
       altKm: p.altKm,
       verticalRateMs: p.verticalRateMs,
       onGround: p.onGround,
+      headingDeg: p.headingDeg,
       category,
       typeLabel: meta.label,
+      squawk: p.squawk,
     },
   };
 }
 
 // ---------------------------------------------------------------------------
-// In-module TTL cache keyed by bbox string
+// Cap — bounds the served set (client payload + Data Cache 2 MB entry limit)
 // ---------------------------------------------------------------------------
 
-interface CacheEntry {
-  planes: Plane[];
-  fetchedAt: number;
+// A global snapshot is ~10k aircraft; capping keeps the cached entry under the
+// Data Cache 2 MB limit and the client payload reasonable.
+export const MAX_PLANES = 3000;
+
+/** Keep at most `cap` aircraft, preferring airborne over ground. Pure/testable. */
+export function capPlanes(objects: WorldObject[], cap: number): WorldObject[] {
+  if (objects.length <= cap) return objects;
+  const airborne: WorldObject[] = [];
+  const ground: WorldObject[] = [];
+  for (const o of objects) {
+    ((o.meta as { onGround?: boolean } | undefined)?.onGround ? ground : airborne).push(o);
+  }
+  return [...airborne, ...ground].slice(0, cap);
 }
 
-const _cache = new Map<string, CacheEntry>();
-
-function bboxKey(b: OpenSkyBbox): string {
-  return `${b.south},${b.west},${b.north},${b.east}`;
-}
-
 // ---------------------------------------------------------------------------
-// Main fetch — handles rate-limits, timeouts, null states, stale cache
+// Global fetch — one worldwide snapshot, cached deployment-wide, dormant-safe
 // ---------------------------------------------------------------------------
+
+// No bbox → every tracked aircraft on Earth in one response.
+const GLOBAL_URL = "https://opensky-network.org/api/states/all";
+const FETCH_TIMEOUT_MS = 12_000;
+// Deployment-wide revalidate. OpenSky anonymous is ~400 credits/day and a global
+// call costs ~4 (≈100 calls/day). 240 s ⇒ ≤360 upstream calls even on a fully
+// saturated day, so it never exhausts the daily budget and freezes. (A registered
+// OpenSky account lifts the cap ~10×; this could then drop to ~60–90 s.)
+const REVALIDATE_S = 240;
 
 interface OpenSkyResponse {
   time: number;
   states: unknown[][] | null;
 }
 
+// Last-good worldwide snapshot (module state). Served on any refresh failure so the
+// map never blanks — and because it is GLOBAL, a stale serve is still worldwide.
+let lastGood: WorldObject[] = [];
+
 /**
- * Fetch live state vectors from OpenSky, with a 12-second server-side cache.
- * Gracefully handles: 429 (rate-limit), timeouts, null states, network errors.
- * Falls back to the last good cache entry (or empty array) on any failure.
+ * Fetch one global snapshot and map it to capped WorldObjects. Never throws: on a
+ * 429 (rate-limit), non-2xx, null `states` (degraded upstream), timeout, or parse
+ * error it returns the last-good snapshot (or [] before the first success), so the
+ * Data Cache never memoises a thrown error.
  */
-export async function fetchStates(bbox: OpenSkyBbox = DEFAULT_BBOX): Promise<Plane[]> {
-  const key = bboxKey(bbox);
-  const now = Date.now();
-  const cached = _cache.get(key);
-
-  if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
-    return cached.planes;
-  }
-
-  const url =
-    `https://opensky-network.org/api/states/all` +
-    `?lamin=${bbox.south}&lomin=${bbox.west}&lamax=${bbox.north}&lomax=${bbox.east}`;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8_000);
-
+async function fetchGlobalOnce(): Promise<WorldObject[]> {
   try {
-    const res = await fetch(url, {
+    const res = await fetch(GLOBAL_URL, {
       headers: { Accept: "application/json" },
-      signal: controller.signal,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-
-    clearTimeout(timeoutId);
-
-    if (res.status === 429) {
-      // Rate-limited — serve stale or empty
-      return cached?.planes ?? [];
-    }
-    if (!res.ok) {
-      // Any non-2xx error — serve stale or empty
-      return cached?.planes ?? [];
-    }
-
+    if (!res.ok) return lastGood;
     const data = (await res.json()) as OpenSkyResponse;
-
-    if (!data.states) {
-      // OpenSky returns null states when bbox has no traffic or service is degraded
-      return cached?.planes ?? [];
-    }
-
-    const planes = parseStates(data.states);
-    _cache.set(key, { planes, fetchedAt: now });
-    return planes;
+    if (!data.states) return lastGood;
+    const objects = capPlanes(parseStates(data.states).map(planeToWorldObject), MAX_PLANES);
+    if (objects.length) lastGood = objects; // only overwrite last-good with a real snapshot
+    return objects;
   } catch {
-    // Covers AbortError (timeout), network failure, JSON parse errors
-    clearTimeout(timeoutId);
-    return cached?.planes ?? [];
+    return lastGood;
+  }
+}
+
+/**
+ * Live aircraft worldwide as WorldObjects. Wrapped in Next's Data Cache so upstream
+ * is polled at most once per REVALIDATE_S for the whole deployment (stale-while-
+ * revalidate): every visitor is served the shared stored snapshot rather than
+ * triggering their own live pull. Returns [] only before the first successful fetch
+ * (or outside the Next runtime, e.g. unit tests, where it fetches directly).
+ */
+export async function fetchAircraft(): Promise<WorldObject[]> {
+  try {
+    const { unstable_cache } = await import("next/cache");
+    return await unstable_cache(fetchGlobalOnce, ["planes-opensky-global-v1"], {
+      revalidate: REVALIDATE_S,
+    })();
+  } catch {
+    return fetchGlobalOnce();
   }
 }
