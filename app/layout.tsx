@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { BRAND, siteUrl } from "@/lib/brand";
 import "./globals.css";
 
